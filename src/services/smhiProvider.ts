@@ -93,7 +93,7 @@ async function nearestActiveStations(
     .map((s) => ({
       id: s.key,
       key: s.key,
-      displayName: s.name,
+      displayName: s.name?.trim() ? s.name : "Unnamed station",
       latitude: s.latitude,
       longitude: s.longitude,
       distanceKm: haversineKm(location, s),

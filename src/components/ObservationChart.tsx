@@ -24,11 +24,12 @@ import {
   buildHourlyRows,
   buildMetricDailyRows,
   buildMetricHourlyRows,
+  buildWindDailyRows,
   isMetricAvailable,
   seriesKey,
   type SingleSeriesMetric,
 } from "./chartData";
-import { seriesColor, seriesDash } from "./seriesColors";
+import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
 import MetricTabs from "./MetricTabs";
 import { formatValue } from "../services/format";
 
@@ -42,6 +43,7 @@ interface ObservationChartProps {
   onWindowChange: (window: ObservationWindow) => void;
   metric: WeatherMetric;
   onMetricChange: (metric: WeatherMetric) => void;
+  highLowVisible: boolean;
   unit: UnitSystem;
   series: ObservationSeries | null; // null while loading
   nearbyStations: NearbyStationSeries[];
@@ -81,6 +83,7 @@ export default function ObservationChart({
   onWindowChange,
   metric,
   onMetricChange,
+  highLowVisible,
   unit,
   series,
   nearbyStations,
@@ -245,26 +248,30 @@ export default function ObservationChart({
               name={`${location.displayName} precipitation`}
               fill="url(#precipGradient-daily)"
             />
-            <Line
-              yAxisId="temp"
-              type="monotone"
-              dataKey="primaryHigh"
-              name={`${location.displayName} high`}
-              stroke={seriesColor(0)}
-              strokeDasharray="4 2"
-              connectNulls={false}
-              dot={false}
-            />
-            <Line
-              yAxisId="temp"
-              type="monotone"
-              dataKey="primaryLow"
-              name={`${location.displayName} low`}
-              stroke={seriesColor(0)}
-              strokeDasharray="4 2"
-              connectNulls={false}
-              dot={false}
-            />
+            {highLowVisible && (
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="primaryHigh"
+                name={`${location.displayName} high`}
+                stroke={HIGH_COLOR}
+                strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            {highLowVisible && (
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="primaryLow"
+                name={`${location.displayName} low`}
+                stroke={LOW_COLOR}
+                strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
             <Line
               yAxisId="temp"
               type="monotone"
@@ -350,7 +357,7 @@ export default function ObservationChart({
       {series !== null &&
         series.status === "ready" &&
         isMetricAvailable(series, metric) &&
-        (metric === "wind" || metric === "cloud") && (
+        (metric === "cloud" || (metric === "wind" && window === "last-24-hours")) && (
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart
             data={
@@ -396,6 +403,83 @@ export default function ObservationChart({
                 type="monotone"
                 dataKey={seriesKey(i + 1)}
                 name={`${n.station.displayName} (${n.station.distanceKm.toFixed(1)} km)`}
+                stroke={seriesColor(i + 1)}
+                strokeDasharray={seriesDash(i + 1)}
+                connectNulls={false}
+                dot={false}
+              />
+            ))}
+          </ComposedChart>
+        </ResponsiveContainer>
+      )}
+
+      {series !== null &&
+        series.status === "ready" &&
+        isMetricAvailable(series, metric) &&
+        metric === "wind" &&
+        window !== "last-24-hours" && (
+        <ResponsiveContainer width="100%" height={320}>
+          <ComposedChart
+            data={buildWindDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="bucketEnd"
+              tickFormatter={(t: string) =>
+                new Date(t).toLocaleDateString(
+                  [],
+                  window === "last-30-days" ? { month: "short", day: "numeric" } : { weekday: "short" }
+                )
+              }
+            />
+            <YAxis
+              label={{ value: METRIC_LABELS.wind.unit(unit), angle: -90, position: "insideLeft" }}
+            />
+            <Tooltip
+              labelFormatter={(t) => new Date(String(t)).toLocaleDateString()}
+              formatter={tooltipFormatter}
+              contentStyle={TOOLTIP_CONTENT_STYLE}
+              itemStyle={TOOLTIP_ITEM_STYLE}
+              labelStyle={TOOLTIP_LABEL_STYLE}
+            />
+            <Legend />
+            {highLowVisible && (
+              <Line
+                type="monotone"
+                dataKey="primaryHigh"
+                name={`${location.displayName} high`}
+                stroke={HIGH_COLOR}
+                strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            {highLowVisible && (
+              <Line
+                type="monotone"
+                dataKey="primaryLow"
+                name={`${location.displayName} low`}
+                stroke={LOW_COLOR}
+                strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            <Line
+              type="monotone"
+              dataKey="primaryAverage"
+              name={`${location.displayName} average`}
+              stroke={seriesColor(0)}
+              connectNulls={false}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            {nearbyStations.map((n, i) => (
+              <Line
+                key={n.station.id}
+                type="monotone"
+                dataKey={seriesKey(i + 1)}
+                name={`${n.station.displayName} average (${n.station.distanceKm.toFixed(1)} km)`}
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}

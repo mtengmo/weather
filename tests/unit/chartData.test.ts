@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDailyRows,
   buildMetricDailyRows,
   buildMetricHourlyRows,
+  buildWindDailyRows,
   isMetricAvailable,
   seriesKey,
 } from "../../src/components/chartData";
@@ -82,6 +84,59 @@ describe("buildMetricDailyRows", () => {
     const rows = buildMetricDailyRows(primary, [], "metric", "wind", 7);
     expect(rows).toHaveLength(7);
     expect(rows[rows.length - 1][seriesKey(0)]).toBeCloseTo(8);
+  });
+});
+
+describe("buildDailyRows (regression after the shared high/low/average refactor)", () => {
+  it("still produces primaryHigh/primaryLow/primaryAverage/primaryPrecipitation from temperature/precipitation fields", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: new Date(Date.now() - 3600_000).toISOString(), temperature: 20, precipitation: 1 }),
+      obs({ timestamp: new Date(Date.now() - 2 * 3600_000).toISOString(), temperature: 10, precipitation: 2 }),
+    ];
+    const primary = primarySeries(observations);
+    const stations = [
+      nearby("a", [
+        obs({ timestamp: new Date(Date.now() - 3600_000).toISOString(), temperature: 15 }),
+      ]),
+    ];
+
+    const rows = buildDailyRows(primary, stations, "metric", 7);
+    const mostRecentRow = rows[rows.length - 1];
+
+    expect(mostRecentRow.primaryHigh).toBe(20);
+    expect(mostRecentRow.primaryLow).toBe(10);
+    expect(mostRecentRow.primaryAverage).toBeCloseTo(15);
+    expect(mostRecentRow.primaryPrecipitation).toBeCloseTo(3);
+    expect(mostRecentRow[seriesKey(1)]).toBe(15);
+  });
+});
+
+describe("buildWindDailyRows (User Story 4: reuses the temperature high/low/average setup)", () => {
+  it("builds primaryHigh/primaryLow/primaryAverage from windHigh/windLow/windAverage, unit-converted", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: new Date(Date.now() - 3600_000).toISOString(), windSpeed: 9 }),
+      obs({ timestamp: new Date(Date.now() - 2 * 3600_000).toISOString(), windSpeed: 3 }),
+    ];
+    const primary = primarySeries(observations);
+
+    const metricRows = buildWindDailyRows(primary, [], "metric", 7);
+    const mostRecentMetricRow = metricRows[metricRows.length - 1];
+    expect(mostRecentMetricRow.primaryHigh).toBe(9);
+    expect(mostRecentMetricRow.primaryLow).toBe(3);
+    expect(mostRecentMetricRow.primaryAverage).toBeCloseTo(6);
+
+    const imperialRows = buildWindDailyRows(primary, [], "imperial", 7);
+    const mostRecentImperialRow = imperialRows[imperialRows.length - 1];
+    expect(mostRecentImperialRow.primaryHigh).toBeCloseTo(9 * 2.23694);
+  });
+
+  it("includes each nearby station's wind average (not its own high/low)", () => {
+    const t = new Date(Date.now() - 3600_000).toISOString();
+    const primary = primarySeries([obs({ timestamp: t, windSpeed: 5 })]);
+    const stations = [nearby("a", [obs({ timestamp: t, windSpeed: 7 })])];
+
+    const rows = buildWindDailyRows(primary, stations, "metric", 7);
+    expect(rows[rows.length - 1][seriesKey(1)]).toBe(7);
   });
 });
 

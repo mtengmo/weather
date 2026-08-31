@@ -47,6 +47,8 @@ export interface DailyAggregate {
   totalPrecipitation: number | null;
   windAverage: number | null;
   cloudAverage: number | null;
+  windHigh: number | null;
+  windLow: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */
@@ -78,3 +80,8 @@ export const DEFAULT_METRIC: WeatherMetric = "temperature";
 export type NearbyStationCount = 0 | 1 | 2 | 3 | 4;
 
 export const DEFAULT_NEARBY_STATION_COUNT: NearbyStationCount = 4;
+
+/** Whether the temperature/wind 7-day/30-day charts show high/low lines alongside the average. */
+export type HighLowVisibility = boolean;
+
+export const DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = true;

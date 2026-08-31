@@ -31,6 +31,8 @@ describe("toDailyAggregates", () => {
       expect(bucket.totalPrecipitation).toBeNull();
       expect(bucket.windAverage).toBeNull();
       expect(bucket.cloudAverage).toBeNull();
+      expect(bucket.windHigh).toBeNull();
+      expect(bucket.windLow).toBeNull();
     }
   });
 
@@ -64,6 +66,37 @@ describe("toDailyAggregates", () => {
     // No temperature/precipitation readings in this bucket -> still null.
     expect(mostRecentBucket.average).toBeNull();
     expect(mostRecentBucket.totalPrecipitation).toBeNull();
+  });
+
+  it("computes windHigh/windLow for a bucket with readings, independent of other fields", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursAgo(1), windSpeed: 4 }),
+      obs({ timestamp: hoursAgo(2), windSpeed: 9 }),
+      obs({ timestamp: hoursAgo(3), windSpeed: 2 }),
+    ];
+
+    const result = toDailyAggregates(observations, 7);
+    const mostRecentBucket = result[result.length - 1];
+
+    expect(mostRecentBucket.windHigh).toBe(9);
+    expect(mostRecentBucket.windLow).toBe(2);
+    expect(mostRecentBucket.windAverage).toBeCloseTo(5);
+    // No temperature readings in this bucket -> still null, unaffected by wind.
+    expect(mostRecentBucket.high).toBeNull();
+    expect(mostRecentBucket.low).toBeNull();
+  });
+
+  it("nulls windHigh/windLow independently when the bucket has no wind readings", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursAgo(1), temperature: 10 }),
+    ];
+
+    const result = toDailyAggregates(observations, 7);
+    const mostRecentBucket = result[result.length - 1];
+
+    expect(mostRecentBucket.windHigh).toBeNull();
+    expect(mostRecentBucket.windLow).toBeNull();
+    expect(mostRecentBucket.high).toBe(10);
   });
 
   it("nulls a bucket independently per field when only one field has readings", () => {

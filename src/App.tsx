@@ -5,12 +5,14 @@ import { useFavorites } from "./hooks/useFavorites";
 import { useUnitPreference } from "./hooks/useUnitPreference";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
+import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
 import UnitToggle from "./components/UnitToggle";
 import ThemePicker from "./components/ThemePicker";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
+import HighLowToggle from "./components/HighLowToggle";
 import LocationSwitcher from "./components/LocationSwitcher";
 import FavoritesList from "./components/FavoritesList";
 import PlaceSearch from "./components/PlaceSearch";
@@ -25,6 +27,8 @@ export default function App() {
   const { theme, setTheme } = useThemePreference();
   const { count: nearbyStationCount, setCount: setNearbyStationCount } =
     useNearbyStationCountPreference();
+  const { visible: highLowVisible, setVisible: setHighLowVisible } =
+    useHighLowVisibilityPreference();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -61,6 +65,7 @@ export default function App() {
           <ThemePicker theme={theme} onChange={setTheme} />
           <UnitToggle unit={unit} onChange={setUnit} />
           <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
+          <HighLowToggle visible={highLowVisible} onChange={setHighLowVisible} />
         </div>
       </header>
 
@@ -85,6 +90,7 @@ export default function App() {
           onWindowChange={setObsWindow}
           metric={metric}
           onMetricChange={setMetric}
+          highLowVisible={highLowVisible}
           unit={unit}
           series={series}
           nearbyStations={nearbyStations}

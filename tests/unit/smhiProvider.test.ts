@@ -119,6 +119,24 @@ describe("smhiProvider", () => {
     expect(present).toBeDefined();
   });
 
+  it("getNearestStations falls back to 'Unnamed station' when the source name is blank", async () => {
+    mockFetchRouter({
+      "/parameter/1.json": stationListBody([
+        { key: "blank", name: "", latitude: 59.331, longitude: 18.061, active: true },
+        { key: "whitespace", name: "   ", latitude: 59.332, longitude: 18.062, active: true },
+        { key: "named", name: "Real Name", latitude: 59.333, longitude: 18.063, active: true },
+      ]),
+    });
+
+    const { getNearestStations } = await freshProvider();
+    const result = await getNearestStations(STOCKHOLM, 3);
+
+    const byId = Object.fromEntries(result.map((s) => [s.id, s.displayName]));
+    expect(byId.blank).toBe("Unnamed station");
+    expect(byId.whitespace).toBe("Unnamed station");
+    expect(byId.named).toBe("Real Name");
+  });
+
   it("getObservations throws when no active temperature station exists", async () => {
     mockFetchRouter({
       "/parameter/1.json": stationListBody([]),

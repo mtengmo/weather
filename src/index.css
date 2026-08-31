@@ -171,14 +171,16 @@ h2[tabindex="-1"]:focus {
 .window-toggle button,
 .unit-toggle button,
 .theme-picker button,
-.metric-tabs button {
+.metric-tabs button,
+.high-low-toggle button {
   margin-right: 0.5rem;
 }
 
 .window-toggle button[aria-pressed="true"],
 .unit-toggle button[aria-pressed="true"],
 .theme-picker button[aria-pressed="true"],
-.metric-tabs button[aria-pressed="true"] {
+.metric-tabs button[aria-pressed="true"],
+.high-low-toggle button[aria-pressed="true"] {
   font-weight: bold;
   text-decoration: underline;
 }

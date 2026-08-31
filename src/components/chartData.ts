@@ -37,11 +37,20 @@ export function buildHourlyRows(
   });
 }
 
-export function buildDailyRows(
+interface HighLowAverageFields {
+  high: keyof Pick<DailyAggregate, "high" | "windHigh">;
+  low: keyof Pick<DailyAggregate, "low" | "windLow">;
+  average: keyof Pick<DailyAggregate, "average" | "windAverage">;
+}
+
+/** Shared by temperature's and wind's daily high/low/average views (reused per FR-009/FR-010). */
+export function buildHighLowAverageDailyRows(
   primary: ObservationSeries,
   nearbyStations: NearbyStationSeries[],
   unit: UnitSystem,
-  bucketCount: number
+  bucketCount: number,
+  fields: HighLowAverageFields,
+  convert: (value: number | null, unit: UnitSystem) => number | null
 ): ChartRow[] {
   const primaryDaily = toDailyAggregates(primary.observations, bucketCount);
   const nearbyDaily = nearbyStations.map((n) =>
@@ -51,16 +60,60 @@ export function buildDailyRows(
   return primaryDaily.map((day, dayIndex) => {
     const row: ChartRow = {
       bucketEnd: day.bucketEnd,
-      primaryHigh: convertTemperature(day.high, unit),
-      primaryLow: convertTemperature(day.low, unit),
-      primaryAverage: convertTemperature(day.average, unit),
-      primaryPrecipitation: convertPrecipitation(day.totalPrecipitation, unit),
+      primaryHigh: convert(day[fields.high], unit),
+      primaryLow: convert(day[fields.low], unit),
+      primaryAverage: convert(day[fields.average], unit),
     };
     nearbyDaily.forEach((series, i) => {
-      row[seriesKey(i + 1)] = convertTemperature(series[dayIndex]?.average ?? null, unit);
+      row[seriesKey(i + 1)] = convert(series[dayIndex]?.[fields.average] ?? null, unit);
     });
     return row;
   });
+}
+
+const TEMPERATURE_FIELDS: HighLowAverageFields = { high: "high", low: "low", average: "average" };
+const WIND_HIGH_LOW_FIELDS: HighLowAverageFields = {
+  high: "windHigh",
+  low: "windLow",
+  average: "windAverage",
+};
+
+export function buildDailyRows(
+  primary: ObservationSeries,
+  nearbyStations: NearbyStationSeries[],
+  unit: UnitSystem,
+  bucketCount: number
+): ChartRow[] {
+  const rows = buildHighLowAverageDailyRows(
+    primary,
+    nearbyStations,
+    unit,
+    bucketCount,
+    TEMPERATURE_FIELDS,
+    convertTemperature
+  );
+
+  const primaryDaily = toDailyAggregates(primary.observations, bucketCount);
+  return rows.map((row, i) => ({
+    ...row,
+    primaryPrecipitation: convertPrecipitation(primaryDaily[i].totalPrecipitation, unit),
+  }));
+}
+
+export function buildWindDailyRows(
+  primary: ObservationSeries,
+  nearbyStations: NearbyStationSeries[],
+  unit: UnitSystem,
+  bucketCount: number
+): ChartRow[] {
+  return buildHighLowAverageDailyRows(
+    primary,
+    nearbyStations,
+    unit,
+    bucketCount,
+    WIND_HIGH_LOW_FIELDS,
+    convertWindSpeed
+  );
 }
 
 /** The three metrics that render as a single value-per-series line/bar chart (temperature keeps its own combined line+bar view above). */

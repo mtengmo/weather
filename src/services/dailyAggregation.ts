@@ -44,6 +44,8 @@ export function toDailyAggregates(
         precipitations.length > 0 ? precipitations.reduce((sum, p) => sum + p, 0) : null,
       windAverage: windSpeeds.length > 0 ? mean(windSpeeds) : null,
       cloudAverage: cloudCoverages.length > 0 ? mean(cloudCoverages) : null,
+      windHigh: windSpeeds.length > 0 ? Math.max(...windSpeeds) : null,
+      windLow: windSpeeds.length > 0 ? Math.min(...windSpeeds) : null,
     };
   });
 

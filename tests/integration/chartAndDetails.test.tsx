@@ -50,24 +50,37 @@ function nearbyStation(id: string, distanceKm: number): NearbyStationSeries {
   };
 }
 
-function ChartAndDetailsHarness({ location }: { location: Location }) {
+function ChartAndDetailsHarness({
+  location,
+  initialHighLowVisible = true,
+}: {
+  location: Location;
+  initialHighLowVisible?: boolean;
+}) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
   const [metric, setMetric] = useState<WeatherMetric>("temperature");
+  const [highLowVisible, setHighLowVisible] = useState(initialHighLowVisible);
   const [view, setView] = useState<"graph" | "details">("graph");
   const { series: primary, nearbyStations } = useObservationData(location, window, 4);
 
   return view === "graph" ? (
-    <ObservationChart
-      location={location}
-      window={window}
-      onWindowChange={setWindow}
-      metric={metric}
-      onMetricChange={setMetric}
-      unit="metric"
-      series={primary}
-      nearbyStations={nearbyStations}
-      onViewDetails={() => setView("details")}
-    />
+    <>
+      <button type="button" aria-pressed={highLowVisible} onClick={() => setHighLowVisible((v) => !v)}>
+        Toggle high/low
+      </button>
+      <ObservationChart
+        location={location}
+        window={window}
+        onWindowChange={setWindow}
+        metric={metric}
+        onMetricChange={setMetric}
+        highLowVisible={highLowVisible}
+        unit="metric"
+        series={primary}
+        nearbyStations={nearbyStations}
+        onViewDetails={() => setView("details")}
+      />
+    </>
   ) : (
     <ObservationDetails
       location={location}
@@ -259,6 +272,108 @@ describe("003 US2/US3: metric tabs and Rain-tab comparison bars", () => {
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Rain" }));
     expect(screen.getByRole("button", { name: "Rain" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("004 US3: high/low visibility toggle", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("defaults to visible (on)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours"));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(screen.getByRole("button", { name: "Toggle high/low" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  it("toggling off and back on updates the toggle state without an extra fetch, on the 7-day temperature view", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => series(w));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    const fetchCountAfterWindowSwitch = vi.mocked(getObservations).mock.calls.length;
+
+    const toggle = screen.getByRole("button", { name: "Toggle high/low" });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    // Toggling is a pure display preference — no additional fetches (research.md §3).
+    expect(getObservations).toHaveBeenCalledTimes(fetchCountAfterWindowSwitch);
+  });
+
+  it("does not affect the 24-hour view or the details table", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        {
+          timestamp: "2026-08-30T10:00:00Z",
+          temperature: 12,
+          precipitation: 0,
+          windSpeed: null,
+          cloudCoverPercent: null,
+        },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} initialHighLowVisible={false} />);
+    const viewDetails = await screen.findByRole("button", { name: "View details" });
+
+    // 24h view renders fine with the toggle off.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // The details table is unaffected by the toggle — still renders normally.
+    await userEvent.setup().click(viewDetails);
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+  });
+});
+
+describe("004 US4: wind graph reuses the high/low/average setup", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("renders the Wind tab's 7-day view without error, and the high/low toggle applies to it too", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        {
+          timestamp: new Date().toISOString(),
+          temperature: 10,
+          precipitation: 0,
+          windSpeed: 4,
+          cloudCoverPercent: null,
+        },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Wind" }));
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    const toggle = screen.getByRole("button", { name: "Toggle high/low" });
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
