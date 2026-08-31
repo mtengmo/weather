@@ -1,0 +1,241 @@
+:root,
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #12141a;
+  --surface: #1c1f27;
+  --text: #f2f0eb;
+  --text-muted: #a3a3ab;
+  --accent: #c9a86a;
+  --accent-2: #3a7d7a;
+  --border: #2e323d;
+  --surface-alpha: 1;
+  --surface-blur: 0px;
+  --error-bg: #3a2323;
+  --error-text: #f5c9c2;
+  --error-border: #6b3a34;
+}
+
+[data-theme="ivory"] {
+  color-scheme: light;
+  --bg: #fffdf9;
+  --surface: #ffffff;
+  --text: #151316;
+  --text-muted: #6b6570;
+  --accent: #e01050;
+  --accent-2: #00d4b5;
+  --border: #e5e1e6;
+  --surface-alpha: 1;
+  --surface-blur: 0px;
+  --error-bg: #ffe3e8;
+  --error-text: #7a0930;
+  --error-border: #ffb3c2;
+}
+
+[data-theme="glass"] {
+  color-scheme: dark;
+  --bg: #0f1729;
+  --surface: rgba(255, 255, 255, 0.08);
+  --text: #eef2ff;
+  --text-muted: #9fb0d0;
+  --accent: #a78bfa;
+  --accent-2: #67e8f9;
+  --border: rgba(255, 255, 255, 0.18);
+  --surface-alpha: 0.55;
+  --surface-blur: 14px;
+  --error-bg: rgba(239, 68, 68, 0.18);
+  --error-text: #fecaca;
+  --error-border: rgba(239, 68, 68, 0.35);
+}
+
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gap-point {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.error-banner {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.observation-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.observation-table th,
+.observation-table td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.observation-table-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.recharts-responsive-container {
+  min-width: 0; /* allow the chart to shrink inside a flex/narrow container instead of overflowing */
+}
+
+/* Themed chart chrome (grid/axis/legend) — reads the active theme's CSS variables
+   directly, so it updates automatically on theme switch with no JS re-render. */
+.recharts-cartesian-grid line {
+  stroke: var(--border);
+}
+
+.recharts-cartesian-axis-tick-value,
+.recharts-cartesian-axis-tick text {
+  fill: var(--text-muted);
+}
+
+.recharts-legend-item-text {
+  color: var(--text) !important;
+}
+
+.location-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+h2[tabindex="-1"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.favorites-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.favorites-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.window-toggle button,
+.unit-toggle button,
+.theme-picker button,
+.metric-tabs button {
+  margin-right: 0.5rem;
+}
+
+.window-toggle button[aria-pressed="true"],
+.unit-toggle button[aria-pressed="true"],
+.theme-picker button[aria-pressed="true"],
+.metric-tabs button[aria-pressed="true"] {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.metric-tabs {
+  margin: 0.5rem 0;
+}
+
+button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+input[type="text"] {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Glass theme: translucent, blurred panels behind key content areas rather than
+   the flat --surface color the other themes use. */
+[data-theme="glass"] .app-header,
+[data-theme="glass"] .observation-table-wrap,
+[data-theme="glass"] .favorites,
+[data-theme="glass"] .place-search,
+[data-theme="glass"] .error-banner {
+  background: var(--surface);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
