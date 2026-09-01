@@ -79,6 +79,7 @@ function ChartAndDetailsHarness({
         series={primary}
         nearbyStations={nearbyStations}
         onViewDetails={() => setView("details")}
+        onViewOverview={() => {}}
       />
     </>
   ) : (
@@ -89,6 +90,7 @@ function ChartAndDetailsHarness({
       series={primary}
       nearbyStations={nearbyStations}
       onBack={() => setView("graph")}
+      onViewOverview={() => {}}
     />
   );
 }

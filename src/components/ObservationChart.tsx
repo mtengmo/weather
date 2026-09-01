@@ -62,6 +62,7 @@ interface ObservationChartProps {
   series: ObservationSeries | null; // null while loading
   nearbyStations: NearbyStationSeries[];
   onViewDetails: () => void;
+  onViewOverview: () => void;
 }
 
 const METRIC_LABELS: Record<SingleSeriesMetric, { name: string; unit: (unit: UnitSystem) => string }> = {
@@ -107,6 +108,7 @@ export default function ObservationChart({
   series,
   nearbyStations,
   onViewDetails,
+  onViewOverview,
 }: ObservationChartProps) {
   const tempUnitLabel = unit === "imperial" ? "°F" : "°C";
   const precipUnitLabel = unit === "imperial" ? "in" : "mm";
@@ -168,6 +170,9 @@ export default function ObservationChart({
         ))}
         <button type="button" onClick={onViewDetails}>
           View details
+        </button>
+        <button type="button" onClick={onViewOverview}>
+          Overview
         </button>
       </div>
 

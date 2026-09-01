@@ -9,6 +9,7 @@ import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPref
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
+import WeatherIconOverview from "./components/WeatherIconOverview";
 import UnitToggle from "./components/UnitToggle";
 import ThemePicker from "./components/ThemePicker";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
@@ -17,7 +18,7 @@ import LocationSwitcher from "./components/LocationSwitcher";
 import FavoritesList from "./components/FavoritesList";
 import PlaceSearch from "./components/PlaceSearch";
 
-type View = "graph" | "details";
+type View = "graph" | "details" | "overview";
 
 export default function App() {
   const { location: currentLocation, status: geoStatus, request: requestLocation } =
@@ -52,6 +53,15 @@ export default function App() {
   function selectLocation(location: Location) {
     setSelected(location);
     setView("graph");
+  }
+
+  function viewOverview() {
+    // The overview only supports 24h/7d (007-weather-icon-overview) — fall back to 24h if
+    // the shared window is currently 30-day, rather than showing an invalid option there.
+    if (obsWindow === "last-30-days") {
+      setObsWindow("last-24-hours");
+    }
+    setView("overview");
   }
 
   const locationUnavailable =
@@ -95,6 +105,7 @@ export default function App() {
           series={series}
           nearbyStations={nearbyStations}
           onViewDetails={() => setView("details")}
+          onViewOverview={viewOverview}
         />
       )}
 
@@ -105,6 +116,18 @@ export default function App() {
           unit={unit}
           series={series}
           nearbyStations={nearbyStations}
+          onBack={() => setView("graph")}
+          onViewOverview={viewOverview}
+        />
+      )}
+
+      {selected && view === "overview" && (
+        <WeatherIconOverview
+          location={selected}
+          window={obsWindow}
+          onWindowChange={setObsWindow}
+          unit={unit}
+          series={series}
           onBack={() => setView("graph")}
         />
       )}

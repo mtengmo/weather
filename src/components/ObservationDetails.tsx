@@ -17,6 +17,7 @@ interface ObservationDetailsProps {
   series: ObservationSeries | null;
   nearbyStations: NearbyStationSeries[];
   onBack: () => void;
+  onViewOverview: () => void;
 }
 
 function formatTemperature(value: number | null, unit: UnitSystem): string {
@@ -36,6 +37,7 @@ export default function ObservationDetails({
   series,
   nearbyStations,
   onBack,
+  onViewOverview,
 }: ObservationDetailsProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -54,6 +56,9 @@ export default function ObservationDetails({
         </h2>
         <button type="button" onClick={onBack}>
           Back to graph
+        </button>
+        <button type="button" onClick={onViewOverview}>
+          Overview
         </button>
       </div>
 

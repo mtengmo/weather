@@ -246,3 +246,75 @@ a {
     align-items: flex-start;
   }
 }
+
+/* Weather Icon Overview (007-weather-icon-overview) — FR-011: breaks out of .app's 900px
+   cap to visibly use substantially more of the browser window than the fixed-height charts. */
+.weather-overview {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  padding: 0 1.5rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.weather-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.weather-overview-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.weather-overview-cell svg {
+  color: var(--accent);
+}
+
+.weather-overview-cell-label {
+  font-weight: 600;
+}
+
+.weather-overview-cell-forecast {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.weather-overview-cell-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.weather-overview-no-data {
+  font-size: 2rem;
+  line-height: 40px;
+  height: 40px;
+  color: var(--text-muted);
+}
+
+/* Higher specificity than the plain .weather-overview-cell rule above, so the forecast
+   tint always applies regardless of CSS source order (reuses the existing .forecast-row
+   convention from 004-chart-styling-fixes rather than introducing a new one). */
+.weather-overview-cell.forecast-row {
+  background: rgba(127, 127, 127, 0.08);
+}
+
+[data-theme="glass"] .weather-overview-cell {
+  background: var(--surface);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+}
