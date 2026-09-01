@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getObservations } from "../../src/services/openMeteoProvider";
+import { getForecastOnly, getObservations } from "../../src/services/openMeteoProvider";
 
 function isoHoursBack(hours: number): string {
   return new Date(Date.now() - hours * 3600_000).toISOString().slice(0, 13) + ":00";
@@ -115,5 +115,60 @@ describe("openMeteoProvider.getObservations", () => {
 
       expect(result.observations.some((o) => o.isForecast)).toBe(false);
     });
+  });
+});
+
+describe("openMeteoProvider.getForecastOnly (006-forecast-now-marker)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns just the forecast-tagged points matching what getObservations would produce", async () => {
+    const time = [
+      isoHoursBack(1),
+      ...Array.from({ length: 24 }, (_, i) => isoHoursBack(-(i + 1))),
+    ];
+    const temperature_2m = time.map((_, i) => i);
+
+    mockFetchOnce({ hourly: { time, temperature_2m, precipitation: time.map(() => 0) } });
+
+    const result = await getForecastOnly({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((o) => o.isForecast)).toBe(true);
+    expect(result.every((o) => Date.parse(o.timestamp) > Date.now())).toBe(true);
+  });
+
+  it("returns [] on a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+
+    const result = await getForecastOnly({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] on a non-ok response", async () => {
+    mockFetchOnce({}, false);
+
+    const result = await getForecastOnly({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] when the response has no hourly data", async () => {
+    mockFetchOnce({});
+
+    const result = await getForecastOnly({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns [] for last-30-days (out of forecast scope)", async () => {
+    const time = [isoHoursBack(1), isoHoursBack(-1)];
+    mockFetchOnce({ hourly: { time, temperature_2m: [5, 6], precipitation: [0, 0] } });
+
+    const result = await getForecastOnly({ latitude: 1, longitude: 2 }, "last-30-days");
+
+    expect(result).toEqual([]);
   });
 });

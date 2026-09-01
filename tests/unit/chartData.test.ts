@@ -5,11 +5,17 @@ import {
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
   seriesKey,
 } from "../../src/components/chartData";
-import type { NearbyStationSeries, ObservationSeries, WeatherObservation } from "../../src/models/types";
+import type {
+  DailyAggregate,
+  NearbyStationSeries,
+  ObservationSeries,
+  WeatherObservation,
+} from "../../src/models/types";
 
 function obs(partial: Partial<WeatherObservation> & { timestamp: string }): WeatherObservation {
   return {
@@ -258,6 +264,78 @@ describe("forecast continuation (005-add-weather-forecast)", () => {
     expect(rows[1][fKey]).toBe(4); // boundary duplicated
     expect(rows[2][key]).toBeNull();
     expect(rows[2][fKey]).toBe(5);
+  });
+});
+
+describe("forecastBoundaryValue (006-forecast-now-marker)", () => {
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("returns null when there is no forecast in the array", () => {
+    const items: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(-2), temperature: 10 }),
+      obs({ timestamp: hoursFromNow(-1), temperature: 11 }),
+    ];
+    expect(forecastBoundaryValue(items, "timestamp")).toBeNull();
+  });
+
+  it("returns null when the first item is already forecast (nothing precedes it)", () => {
+    const items: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(1), temperature: 12, isForecast: true }),
+    ];
+    expect(forecastBoundaryValue(items, "timestamp")).toBeNull();
+  });
+
+  it("returns the preceding item's key value for a WeatherObservation[] array", () => {
+    const boundary = hoursFromNow(0);
+    const items: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(-1), temperature: 10 }),
+      obs({ timestamp: boundary, temperature: 11 }),
+      obs({ timestamp: hoursFromNow(1), temperature: 12, isForecast: true }),
+    ];
+    expect(forecastBoundaryValue(items, "timestamp")).toBe(boundary);
+  });
+
+  it("returns the preceding item's key value for a DailyAggregate[] array", () => {
+    const boundary = hoursFromNow(0);
+    const items: DailyAggregate[] = [
+      {
+        bucketEnd: hoursFromNow(-24),
+        high: null,
+        low: null,
+        average: null,
+        totalPrecipitation: null,
+        windAverage: null,
+        cloudAverage: null,
+        windHigh: null,
+        windLow: null,
+      },
+      {
+        bucketEnd: boundary,
+        high: null,
+        low: null,
+        average: null,
+        totalPrecipitation: null,
+        windAverage: null,
+        cloudAverage: null,
+        windHigh: null,
+        windLow: null,
+      },
+      {
+        bucketEnd: hoursFromNow(24),
+        high: null,
+        low: null,
+        average: null,
+        totalPrecipitation: null,
+        windAverage: null,
+        cloudAverage: null,
+        windHigh: null,
+        windLow: null,
+        isForecast: true,
+      },
+    ];
+    expect(forecastBoundaryValue(items, "bucketEnd")).toBe(boundary);
   });
 });
 

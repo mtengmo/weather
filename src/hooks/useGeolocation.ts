@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Location } from "../models/types";
 import { getNearestStations } from "../services/smhiProvider";
+import { reverseGeocode } from "../services/geocoding";
 
 export type GeolocationStatus = "idle" | "loading" | "granted" | "denied" | "unavailable";
 
@@ -46,12 +47,30 @@ export function useGeolocation(): UseGeolocationResult {
         getNearestStations(coords, 1)
           .then((stations) => {
             const name = stations[0]?.displayName;
-            if (!name) return;
-            setLocation((current) =>
-              current && current.source === "current-position"
-                ? { ...current, displayName: name }
-                : current
-            );
+            if (name && name !== UNNAMED_STATION) {
+              setLocation((current) =>
+                current && current.source === "current-position"
+                  ? { ...current, displayName: name }
+                  : current
+              );
+              return;
+            }
+
+            // The station has no usable name — attempt to resolve an approximate place
+            // name from its coordinates instead (006-forecast-now-marker, FR-008–FR-010).
+            // Fire-and-forget: must not block `status` or delay the rest of the page.
+            reverseGeocode(coords)
+              .then((placeName) => {
+                if (!placeName) return;
+                setLocation((current) =>
+                  current && current.source === "current-position"
+                    ? { ...current, displayName: `near ${placeName}` }
+                    : current
+                );
+              })
+              .catch(() => {
+                // Keep the "Unnamed station" placeholder.
+              });
           })
           .catch(() => {
             // Keep the "Unnamed station" placeholder.

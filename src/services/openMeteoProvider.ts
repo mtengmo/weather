@@ -41,10 +41,16 @@ function forecastDaysFor(window: ObservationWindow): number {
   return 1;
 }
 
-export async function getObservations(
+/**
+ * Fetches and parses the raw hourly points (both past and upcoming) for a location+window.
+ * Returns `null` on any failure (network error, non-ok response, malformed/empty body) so
+ * callers can each apply their own fallback (006-forecast-now-marker: shared by
+ * `getObservations` and `getForecastOnly` rather than duplicating the fetch+parse).
+ */
+async function fetchHourlyPoints(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
   window: ObservationWindow
-): Promise<ObservationSeries> {
+): Promise<WeatherObservation[] | null> {
   const params = new URLSearchParams({
     latitude: String(location.latitude),
     longitude: String(location.longitude),
@@ -55,6 +61,39 @@ export async function getObservations(
     timezone: "UTC",
   });
 
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}?${params.toString()}`);
+  } catch {
+    return null;
+  }
+
+  if (!response.ok) return null;
+
+  let data: OpenMeteoHourlyResponse;
+  try {
+    data = (await response.json()) as OpenMeteoHourlyResponse;
+  } catch {
+    return null;
+  }
+
+  if (!data.hourly) return null;
+
+  const { time, temperature_2m, precipitation, wind_speed_10m, cloud_cover } = data.hourly;
+
+  return time.map((timestamp, i) => ({
+    timestamp,
+    temperature: temperature_2m[i] ?? null,
+    precipitation: precipitation[i] ?? null,
+    windSpeed: wind_speed_10m?.[i] ?? null,
+    cloudCoverPercent: cloud_cover?.[i] ?? null,
+  }));
+}
+
+export async function getObservations(
+  location: Pick<import("../models/types").Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<ObservationSeries> {
   const baseLocation = {
     latitude: location.latitude,
     longitude: location.longitude,
@@ -62,38 +101,12 @@ export async function getObservations(
     source: "current-position" as const,
   };
 
-  let response: Response;
-  try {
-    response = await fetch(`${BASE_URL}?${params.toString()}`);
-  } catch {
+  const all = await fetchHourlyPoints(location, window);
+  if (all === null) {
     return { location: baseLocation, window, observations: [], status: "unavailable" };
   }
 
-  if (!response.ok) {
-    return { location: baseLocation, window, observations: [], status: "unavailable" };
-  }
-
-  let data: OpenMeteoHourlyResponse;
-  try {
-    data = (await response.json()) as OpenMeteoHourlyResponse;
-  } catch {
-    return { location: baseLocation, window, observations: [], status: "unavailable" };
-  }
-
-  if (!data.hourly) {
-    return { location: baseLocation, window, observations: [], status: "unavailable" };
-  }
-
-  const { time, temperature_2m, precipitation, wind_speed_10m, cloud_cover } = data.hourly;
   const now = Date.now();
-
-  const all: WeatherObservation[] = time.map((timestamp, i) => ({
-    timestamp,
-    temperature: temperature_2m[i] ?? null,
-    precipitation: precipitation[i] ?? null,
-    windSpeed: wind_speed_10m?.[i] ?? null,
-    cloudCoverPercent: cloud_cover?.[i] ?? null,
-  }));
 
   const elapsed = all.filter((o) => Date.parse(o.timestamp) <= now);
   const hoursNeeded = WINDOW_HOURS[window];
@@ -111,4 +124,24 @@ export async function getObservations(
     observations: [...observations, ...forecastObservations],
     status: "ready",
   };
+}
+
+/**
+ * A forecast-only counterpart to `getObservations` (006-forecast-now-marker) — used by
+ * `weatherApi.ts`'s forecast-only fallback when SMHI has observed data but no forecast for
+ * a location. Returns just the forecast-tagged points, or `[]` on any failure.
+ */
+export async function getForecastOnly(
+  location: Pick<import("../models/types").Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<WeatherObservation[]> {
+  const all = await fetchHourlyPoints(location, window);
+  if (all === null) return [];
+
+  const now = Date.now();
+  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const upcoming = all
+    .filter((o) => Date.parse(o.timestamp) > now)
+    .map((o) => ({ ...o, isForecast: true as const }));
+  return upcoming.slice(0, forecastHoursNeeded);
 }

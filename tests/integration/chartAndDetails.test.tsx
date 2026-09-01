@@ -217,7 +217,7 @@ describe("US1 (005): 24h forecast continuation", () => {
     expect(screen.getByText("Forecast")).toBeInTheDocument();
   });
 
-  it("renders normally with no error when observed data exists but the forecast fetch returned nothing", async () => {
+  it("shows the forecast-unavailable message (not a crash) when observed data exists but the forecast fetch returned nothing (006-forecast-now-marker supersedes the original silent-degrade behavior)", async () => {
     vi.mocked(getObservations).mockResolvedValue(
       series("last-24-hours", [
         { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
@@ -226,6 +226,192 @@ describe("US1 (005): 24h forecast continuation", () => {
 
     render(<ChartAndDetailsHarness location={stockholm} />);
     await screen.findByRole("button", { name: "View details" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/forecast isn't available/i);
+  });
+});
+
+describe("US1 (006): now marker", () => {
+  // Recharts' <ResponsiveContainer> doesn't measure a real size under jsdom (confirmed by
+  // the "renders the Rain tab without error" test elsewhere in this file), so the SVG never
+  // actually paints and the ReferenceLine's "Now" label can't be queried here. The marker's
+  // positioning logic itself (forecastBoundaryValue) is covered directly in chartData.test.ts;
+  // these tests only confirm ObservationChart doesn't error when rendering it across every
+  // metric tab and window, with and without forecast data present.
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  const forecastCarryingObservations = [
+    { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+    {
+      timestamp: hoursFromNow(1),
+      temperature: 12,
+      precipitation: 2,
+      windSpeed: 4,
+      cloudCoverPercent: 50,
+      isForecast: true,
+    },
+  ];
+
+  it("renders every metric tab without error for a 24h series with forecast points (now-marker branch exercised)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours", forecastCarryingObservations));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    for (const tab of ["Temperature", "Wind", "Cloud coverage", "Rain"]) {
+      await user.click(screen.getByRole("button", { name: tab }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  });
+
+  it("renders the temperature and wind tabs without error for a 7-day series with forecast buckets", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) =>
+      series(w, w === "last-7-days" ? forecastCarryingObservations : [])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Wind" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the forecast-unavailable message (no marker to draw) when the series has no forecast points", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [forecastCarryingObservations[0]])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/forecast isn't available/i);
+  });
+
+  it("renders the 30-day view without error even if the underlying series happens to carry isForecast points", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) =>
+      series(w, w === "last-30-days" ? forecastCarryingObservations : [])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Last 30 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-30-days"));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("US2 (006): forecast fallback, unavailable message, source indicator", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("shows no unavailable message and no source-indicator suffix for the common case (forecast present, no fallback flag)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 12,
+          precipitation: 2,
+          windSpeed: 4,
+          cloudCoverPercent: 50,
+          isForecast: true,
+        },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the unavailable message when the series has zero forecast points for a forecast-expecting window", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/forecast isn't available/i);
+  });
+
+  it("renders without error across all four metric tabs when forecastFromFallbackSource is true", async () => {
+    // As with the "now" marker (see the US1 (006) describe block above), Recharts' <Legend>
+    // is part of the same chart tree that never paints under jsdom's zero-size
+    // <ResponsiveContainer>, so the source-indicator suffix text can't be queried here. This
+    // confirms the `forecastFromFallbackSource`-driven branch renders cleanly across every
+    // metric; the suffix text itself is a one-line ternary reviewable directly in
+    // ObservationChart.tsx.
+    vi.mocked(getObservations).mockResolvedValue({
+      ...series("last-24-hours", [
+        { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 12,
+          precipitation: 2,
+          windSpeed: 4,
+          cloudCoverPercent: 50,
+          isForecast: true,
+        },
+      ]),
+      forecastFromFallbackSource: true,
+    });
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    for (const tab of ["Temperature", "Wind", "Cloud coverage", "Rain"]) {
+      await user.click(screen.getByRole("button", { name: tab }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  });
+
+  it("never shows the unavailable message on the 30-day view even with forecastFromFallbackSource set", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) =>
+      w === "last-30-days"
+        ? {
+            ...series(w, [
+              { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+            ]),
+            forecastFromFallbackSource: true,
+          }
+        : series(w, [])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Last 30 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-30-days"));
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -364,7 +550,18 @@ describe("US4: nearby weather station comparison", () => {
   });
 
   it("still renders successfully when one comparison station has no data (omitted upstream)", async () => {
-    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours"));
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        {
+          timestamp: new Date().toISOString(),
+          temperature: 5,
+          precipitation: 0,
+          windSpeed: null,
+          cloudCoverPercent: null,
+          isForecast: true,
+        },
+      ])
+    );
     // Simulates weatherApi.getNearbyStationSeries already having dropped the failed station.
     vi.mocked(getNearbyStationSeries).mockResolvedValue([nearbyStation("a", 3.2)]);
 
@@ -431,7 +628,9 @@ describe("003 US2/US3: metric tabs and Rain-tab comparison bars", () => {
     // Recharts' <ResponsiveContainer> doesn't measure a real size under jsdom, so this
     // only verifies the tab renders cleanly; the per-station bar-series row data itself
     // (the part User Story 3 actually adds) is covered directly in chartData.test.ts.
-    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours", [fullObservation()]));
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [fullObservation(), fullObservation({ isForecast: true })])
+    );
     vi.mocked(getNearbyStationSeries).mockResolvedValue([
       nearbyStation("a", 3.2),
       nearbyStation("b", 7.9),
@@ -497,6 +696,14 @@ describe("004 US3: high/low visibility toggle", () => {
           windSpeed: null,
           cloudCoverPercent: null,
         },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 13,
+          precipitation: 0,
+          windSpeed: null,
+          cloudCoverPercent: null,
+          isForecast: true,
+        },
       ])
     );
 
@@ -528,6 +735,14 @@ describe("004 US4: wind graph reuses the high/low/average setup", () => {
           precipitation: 0,
           windSpeed: 4,
           cloudCoverPercent: null,
+        },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 5,
+          cloudCoverPercent: null,
+          isForecast: true,
         },
       ])
     );

@@ -34,6 +34,12 @@ export interface ObservationSeries {
   window: ObservationWindow;
   observations: WeatherObservation[];
   status: ObservationStatus;
+  /**
+   * true when this series' forecast points came from the secondary source via the
+   * forecast-only fallback rather than directly from the primary source that supplied the
+   * observed data (006-forecast-now-marker). Absent/false in the common case.
+   */
+  forecastFromFallbackSource?: boolean;
 }
 
 export type UnitSystem = "metric" | "imperial";

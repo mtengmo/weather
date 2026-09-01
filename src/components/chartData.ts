@@ -37,6 +37,22 @@ function bridgeForecastBoundary(
   }
 }
 
+/**
+ * The X-axis category value (matching a chart's `timestamp`/`bucketEnd` dataKey) at which
+ * the "now" marker should be drawn — the key value of the item immediately before the first
+ * forecast point, or `null` when there's no forecast to divide (or nothing precedes it)
+ * (006-forecast-now-marker).
+ */
+export function forecastBoundaryValue<T extends { isForecast?: boolean }>(
+  items: T[],
+  key: keyof T
+): string | null {
+  const boundaryIndex = items.findIndex((item) => item.isForecast);
+  if (boundaryIndex <= 0) return null;
+  const value = items[boundaryIndex - 1][key];
+  return value === null || value === undefined ? null : String(value);
+}
+
 export function buildHourlyRows(
   primary: ObservationSeries,
   nearbyStations: NearbyStationSeries[],

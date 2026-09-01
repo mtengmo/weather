@@ -6,6 +6,7 @@ import {
   ComposedChart,
   Legend,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,6 +26,7 @@ import {
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
   seriesKey,
@@ -33,13 +35,15 @@ import {
 import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
 import MetricTabs from "./MetricTabs";
 import { formatValue } from "../services/format";
+import { toDailyAggregates } from "../services/dailyAggregation";
 
 function tooltipFormatter(value: unknown, name: unknown): [string, string] {
   const formatted = formatValue(typeof value === "number" ? value : Number(value), 1);
-  // Forecast series are named with a "Forecast" dataKey suffix (chartData.ts's forecastKey) —
-  // surface that as a "(forecast)" tooltip label so a prediction is identifiable without
-  // relying on the dashed line alone (FR-010).
-  const label = typeof name === "string" && name.endsWith(" (forecast)") ? name : String(name);
+  // Forecast series are named with a "(forecast)"/"(forecast, alt. source)" suffix
+  // (chartData.ts's forecastKey) — surface that in the tooltip label so a prediction (and,
+  // per 006, a source mismatch) is identifiable without relying on the dashed line alone
+  // (FR-010, FR-007).
+  const label = typeof name === "string" && name.includes("(forecast") ? name : String(name);
   return [formatted, label];
 }
 
@@ -87,6 +91,11 @@ const TOOLTIP_CONTENT_STYLE: CSSProperties = {
 const TOOLTIP_ITEM_STYLE: CSSProperties = { color: "var(--text)" };
 const TOOLTIP_LABEL_STYLE: CSSProperties = { color: "var(--text)" };
 
+// The "now" marker (006-forecast-now-marker): a neutral color distinct from any series
+// color, so it never reads as "another data line."
+const NOW_MARKER_STROKE = "var(--text-muted)";
+const NOW_MARKER_LABEL = { value: "Now", position: "insideTopLeft" as const, fill: NOW_MARKER_STROKE };
+
 export default function ObservationChart({
   location,
   window,
@@ -102,6 +111,37 @@ export default function ObservationChart({
   const tempUnitLabel = unit === "imperial" ? "°F" : "°C";
   const precipUnitLabel = unit === "imperial" ? "in" : "mm";
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // "Now" marker position (006-forecast-now-marker): null when there's no forecast to
+  // divide, in which case no ReferenceLine is rendered anywhere below (FR-003).
+  const hourlyNowMarker =
+    series !== null && series.status === "ready"
+      ? forecastBoundaryValue(series.observations, "timestamp")
+      : null;
+  const dailyBucketCount = window !== "last-24-hours" ? DAILY_BUCKET_COUNT[window] : undefined;
+  const dailyNowMarker =
+    series !== null && series.status === "ready" && dailyBucketCount !== undefined
+      ? forecastBoundaryValue(toDailyAggregates(series.observations, dailyBucketCount), "bucketEnd")
+      : null;
+
+  // Forecast-unavailable state (006-forecast-now-marker, FR-005): the window expects a
+  // forecast but none was obtained from any source (the weatherApi.ts fallback already ran).
+  // Guarded on isMetricAvailable so this doesn't stack with the per-metric "not available"
+  // banner above when the current metric has no data at all — that's a more fundamental
+  // problem than "no forecast," and showing both would be confusing/redundant clutter.
+  const forecastUnavailable =
+    series !== null &&
+    series.status === "ready" &&
+    isMetricAvailable(series, metric) &&
+    window !== "last-30-days" &&
+    !series.observations.some((o) => o.isForecast);
+
+  // Source-mismatch indicator (006-forecast-now-marker, FR-007): visible in the legend
+  // (no hover required) whenever the forecast came from the fallback source rather than
+  // the same source as the observed data it continues.
+  const forecastLabelSuffix = series?.forecastFromFallbackSource
+    ? "(forecast, alt. source)"
+    : "(forecast)";
 
   useEffect(() => {
     // Mirrors ObservationDetails: move focus to this view's heading when it
@@ -148,6 +188,12 @@ export default function ObservationChart({
         </p>
       )}
 
+      {forecastUnavailable && (
+        <p className="error-banner" role="alert">
+          A forecast isn't available for this location right now.
+        </p>
+      )}
+
       {series !== null &&
         series.status === "ready" &&
         isMetricAvailable(series, metric) &&
@@ -180,6 +226,15 @@ export default function ObservationChart({
               labelStyle={TOOLTIP_LABEL_STYLE}
             />
             <Legend />
+            {hourlyNowMarker !== null && (
+              <ReferenceLine
+                x={hourlyNowMarker}
+                yAxisId="temp"
+                stroke={NOW_MARKER_STROKE}
+                strokeDasharray="2 2"
+                label={NOW_MARKER_LABEL}
+              />
+            )}
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitation"
@@ -189,7 +244,7 @@ export default function ObservationChart({
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitationForecast"
-              name={`${location.displayName} precipitation (forecast)`}
+              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
               fill="url(#precipGradient-24h)"
               fillOpacity={0.45}
             />
@@ -207,7 +262,7 @@ export default function ObservationChart({
               yAxisId="temp"
               type="monotone"
               dataKey="primaryForecast"
-              name={`${location.displayName} (forecast)`}
+              name={`${location.displayName} ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -270,6 +325,15 @@ export default function ObservationChart({
               labelStyle={TOOLTIP_LABEL_STYLE}
             />
             <Legend />
+            {dailyNowMarker !== null && (
+              <ReferenceLine
+                x={dailyNowMarker}
+                yAxisId="temp"
+                stroke={NOW_MARKER_STROKE}
+                strokeDasharray="2 2"
+                label={NOW_MARKER_LABEL}
+              />
+            )}
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitation"
@@ -279,7 +343,7 @@ export default function ObservationChart({
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitationForecast"
-              name={`${location.displayName} precipitation (forecast)`}
+              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
               fill="url(#precipGradient-daily)"
               fillOpacity={0.45}
             />
@@ -303,7 +367,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryHighForecast"
-                name={`${location.displayName} high (forecast)`}
+                name={`${location.displayName} high ${forecastLabelSuffix}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -328,7 +392,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryLowForecast"
-                name={`${location.displayName} low (forecast)`}
+                name={`${location.displayName} low ${forecastLabelSuffix}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -350,7 +414,7 @@ export default function ObservationChart({
               yAxisId="temp"
               type="monotone"
               dataKey="primaryAverageForecast"
-              name={`${location.displayName} average (forecast)`}
+              name={`${location.displayName} average ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -412,6 +476,14 @@ export default function ObservationChart({
               labelStyle={TOOLTIP_LABEL_STYLE}
             />
             <Legend />
+            {(window === "last-24-hours" ? hourlyNowMarker : dailyNowMarker) !== null && (
+              <ReferenceLine
+                x={window === "last-24-hours" ? hourlyNowMarker! : dailyNowMarker!}
+                stroke={NOW_MARKER_STROKE}
+                strokeDasharray="2 2"
+                label={NOW_MARKER_LABEL}
+              />
+            )}
             <Bar
               dataKey={seriesKey(0)}
               name={`${location.displayName} precipitation`}
@@ -419,7 +491,7 @@ export default function ObservationChart({
             />
             <Bar
               dataKey={forecastKey(seriesKey(0))}
-              name={`${location.displayName} precipitation (forecast)`}
+              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
               fill="url(#rainGradient)"
               fillOpacity={0.45}
             />
@@ -469,6 +541,14 @@ export default function ObservationChart({
               labelStyle={TOOLTIP_LABEL_STYLE}
             />
             <Legend />
+            {(window === "last-24-hours" ? hourlyNowMarker : dailyNowMarker) !== null && (
+              <ReferenceLine
+                x={window === "last-24-hours" ? hourlyNowMarker! : dailyNowMarker!}
+                stroke={NOW_MARKER_STROKE}
+                strokeDasharray="2 2"
+                label={NOW_MARKER_LABEL}
+              />
+            )}
             <Line
               type="monotone"
               dataKey={seriesKey(0)}
@@ -481,7 +561,7 @@ export default function ObservationChart({
             <Line
               type="monotone"
               dataKey={forecastKey(seriesKey(0))}
-              name={`${location.displayName} ${METRIC_LABELS[metric].name} (forecast)`}
+              name={`${location.displayName} ${METRIC_LABELS[metric].name} ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -534,6 +614,14 @@ export default function ObservationChart({
               labelStyle={TOOLTIP_LABEL_STYLE}
             />
             <Legend />
+            {dailyNowMarker !== null && (
+              <ReferenceLine
+                x={dailyNowMarker}
+                stroke={NOW_MARKER_STROKE}
+                strokeDasharray="2 2"
+                label={NOW_MARKER_LABEL}
+              />
+            )}
             {highLowVisible && (
               <Line
                 type="monotone"
@@ -549,7 +637,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="primaryHighForecast"
-                name={`${location.displayName} high (forecast)`}
+                name={`${location.displayName} high ${forecastLabelSuffix}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -572,7 +660,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="primaryLowForecast"
-                name={`${location.displayName} low (forecast)`}
+                name={`${location.displayName} low ${forecastLabelSuffix}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -592,7 +680,7 @@ export default function ObservationChart({
             <Line
               type="monotone"
               dataKey="primaryAverageForecast"
-              name={`${location.displayName} average (forecast)`}
+              name={`${location.displayName} average ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
