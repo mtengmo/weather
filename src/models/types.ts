@@ -21,6 +21,8 @@ export interface WeatherObservation {
   precipitation: number | null; // millimeters, as fetched from the provider
   windSpeed: number | null; // meters per second
   cloudCoverPercent: number | null; // 0-100
+  /** true for a predicted point; absent/false for a measured point (005-add-weather-forecast). */
+  isForecast?: boolean;
 }
 
 export type ObservationWindow = "last-24-hours" | "last-7-days" | "last-30-days";
@@ -49,6 +51,8 @@ export interface DailyAggregate {
   cloudAverage: number | null;
   windHigh: number | null;
   windLow: number | null;
+  /** true when this bucket's end time is in the future (005-add-weather-forecast). */
+  isForecast?: boolean;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

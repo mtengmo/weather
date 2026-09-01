@@ -64,4 +64,56 @@ describe("openMeteoProvider.getObservations", () => {
 
     expect(result.status).toBe("unavailable");
   });
+
+  describe("forecast (005-add-weather-forecast)", () => {
+    it("retains and tags rows at/after 'now' as forecast for last-24-hours, instead of trimming them", async () => {
+      // 2 hours in the past, "now", and 24 hours ahead.
+      const time = [
+        isoHoursBack(2),
+        isoHoursBack(1),
+        isoHoursBack(0),
+        ...Array.from({ length: 24 }, (_, i) => isoHoursBack(-(i + 1))),
+      ];
+      const temperature_2m = time.map((_, i) => i);
+
+      mockFetchOnce({ hourly: { time, temperature_2m, precipitation: time.map(() => 0) } });
+
+      const result = await getObservations({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+      const forecastPoints = result.observations.filter((o) => o.isForecast);
+      expect(forecastPoints.length).toBeGreaterThan(0);
+      expect(forecastPoints.every((o) => Date.parse(o.timestamp) > Date.now())).toBe(true);
+      const observedPoints = result.observations.filter((o) => !o.isForecast);
+      expect(observedPoints.every((o) => Date.parse(o.timestamp) <= Date.now())).toBe(true);
+    });
+
+    it("caps forecast points at 168 hours for last-7-days", async () => {
+      const time = [
+        isoHoursBack(1),
+        ...Array.from({ length: 200 }, (_, i) => isoHoursBack(-(i + 1))),
+      ];
+      const temperature_2m = time.map(() => 5);
+
+      mockFetchOnce({ hourly: { time, temperature_2m, precipitation: time.map(() => 0) } });
+
+      const result = await getObservations({ latitude: 1, longitude: 2 }, "last-7-days");
+
+      const forecastPoints = result.observations.filter((o) => o.isForecast);
+      expect(forecastPoints.length).toBeLessThanOrEqual(24 * 7);
+    });
+
+    it("includes no forecast points for last-30-days", async () => {
+      const time = [
+        isoHoursBack(1),
+        ...Array.from({ length: 5 }, (_, i) => isoHoursBack(-(i + 1))),
+      ];
+      const temperature_2m = time.map(() => 5);
+
+      mockFetchOnce({ hourly: { time, temperature_2m, precipitation: time.map(() => 0) } });
+
+      const result = await getObservations({ latitude: 1, longitude: 2 }, "last-30-days");
+
+      expect(result.observations.some((o) => o.isForecast)).toBe(false);
+    });
+  });
 });

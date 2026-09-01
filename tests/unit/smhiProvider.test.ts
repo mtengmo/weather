@@ -146,4 +146,99 @@ describe("smhiProvider", () => {
     const { getObservations } = await freshProvider();
     await expect(getObservations(STOCKHOLM, "last-24-hours")).rejects.toThrow();
   });
+
+  describe("forecast (005-add-weather-forecast)", () => {
+    function forecastBody(entries: { time: string; data: Record<string, number> }[]) {
+      return { timeSeries: entries };
+    }
+
+    function isoHourFromNow(hoursAhead: number): string {
+      const now = Date.now();
+      const hourMs = 3600_000;
+      return new Date((Math.floor(now / hourMs) + hoursAhead) * hourMs).toISOString();
+    }
+
+    const baseStations = {
+      "/parameter/1.json": stationListBody([
+        { key: "t1", name: "Temp", latitude: 59.331, longitude: 18.061, active: true },
+      ]),
+      "/parameter/7.json": stationListBody([
+        { key: "p1", name: "Precip", latitude: 59.331, longitude: 18.061, active: true },
+      ]),
+      "/parameter/1/station/t1/period/latest-day/data.json": { value: [] },
+      "/parameter/7/station/p1/period/latest-day/data.json": { value: [] },
+      "/parameter/1/station/t1/period/latest-months/data.json": { value: [] },
+      "/parameter/7/station/p1/period/latest-months/data.json": { value: [] },
+    };
+
+    it("appends 24 forecast hours past 'now', tagged isForecast, for last-24-hours", async () => {
+      mockFetchRouter({
+        ...baseStations,
+        "/category/snow1g/version/1/geotype/point": forecastBody(
+          Array.from({ length: 24 }, (_, i) => ({
+            time: isoHourFromNow(i + 1),
+            data: {
+              air_temperature: 10 + i,
+              wind_speed: 3,
+              precipitation_amount_mean: 0,
+              cloud_area_fraction: 4,
+            },
+          }))
+        ),
+      });
+
+      const { getObservations } = await freshProvider();
+      const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+      const forecastPoints = result.observations.filter((o) => o.isForecast);
+      expect(forecastPoints).toHaveLength(24);
+      expect(forecastPoints[0].temperature).toBe(10);
+      // Octas (0-8) converted to percent (0-100): 4 octas -> 50%.
+      expect(forecastPoints[0].cloudCoverPercent).toBe(50);
+    });
+
+    it("appends up to 168 forecast hours for last-7-days", async () => {
+      mockFetchRouter({
+        ...baseStations,
+        "/category/snow1g/version/1/geotype/point": forecastBody(
+          Array.from({ length: 10 }, (_, i) => ({
+            time: isoHourFromNow(i + 1),
+            data: { air_temperature: 5 },
+          }))
+        ),
+      });
+
+      const { getObservations } = await freshProvider();
+      const result = await getObservations(STOCKHOLM, "last-7-days");
+
+      const forecastPoints = result.observations.filter((o) => o.isForecast);
+      expect(forecastPoints).toHaveLength(24 * 7);
+      // Only the first 10 hours have provider data; the rest are gaps (nulls), not dropped.
+      expect(forecastPoints.filter((o) => o.temperature !== null)).toHaveLength(10);
+    });
+
+    it("appends no forecast points for last-30-days", async () => {
+      mockFetchRouter({
+        ...baseStations,
+        "/category/snow1g/version/1/geotype/point": forecastBody([
+          { time: isoHourFromNow(1), data: { air_temperature: 5 } },
+        ]),
+      });
+
+      const { getObservations } = await freshProvider();
+      const result = await getObservations(STOCKHOLM, "last-30-days");
+
+      expect(result.observations.some((o) => o.isForecast)).toBe(false);
+    });
+
+    it("degrades to no forecast points (not an error) when the forecast request fails", async () => {
+      mockFetchRouter(baseStations); // no handler for the forecast URL -> 404 in mockFetchRouter
+
+      const { getObservations } = await freshProvider();
+      const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+      expect(result.status).toBe("ready");
+      expect(result.observations.some((o) => o.isForecast)).toBe(false);
+    });
+  });
 });

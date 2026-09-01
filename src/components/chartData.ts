@@ -12,7 +12,30 @@ export function seriesKey(index: number): string {
   return index === 0 ? "primary" : `nearby${index}`;
 }
 
+/** The sibling data key holding a primary series' forecast continuation (005-add-weather-forecast). */
+export function forecastKey(key: string): string {
+  return `${key}Forecast`;
+}
+
 export type ChartRow = Record<string, number | string | null>;
+
+/**
+ * Duplicates the last observed row's value(s) into the matching forecast key(s) so the
+ * dashed forecast segment visually connects to the solid observed segment with no gap
+ * (research.md §4). No-op if there's no forecast (or no observed) data to bridge.
+ */
+function bridgeForecastBoundary(
+  rows: ChartRow[],
+  isForecastFlags: (boolean | undefined)[],
+  keys: string[]
+): void {
+  const boundaryIndex = isForecastFlags.findIndex((f) => f);
+  if (boundaryIndex <= 0) return;
+  const boundaryRow = rows[boundaryIndex - 1];
+  for (const key of keys) {
+    boundaryRow[forecastKey(key)] = boundaryRow[key];
+  }
+}
 
 export function buildHourlyRows(
   primary: ObservationSeries,
@@ -23,11 +46,15 @@ export function buildHourlyRows(
     (n) => new Map(n.series.observations.map((o) => [o.timestamp, o]))
   );
 
-  return primary.observations.map((obs) => {
+  const rows = primary.observations.map((obs) => {
+    const temperature = convertTemperature(obs.temperature, unit);
+    const precipitation = convertPrecipitation(obs.precipitation, unit);
     const row: ChartRow = {
       timestamp: obs.timestamp,
-      primary: convertTemperature(obs.temperature, unit),
-      primaryPrecipitation: convertPrecipitation(obs.precipitation, unit),
+      primary: obs.isForecast ? null : temperature,
+      primaryForecast: obs.isForecast ? temperature : null,
+      primaryPrecipitation: obs.isForecast ? null : precipitation,
+      primaryPrecipitationForecast: obs.isForecast ? precipitation : null,
     };
     nearbyByTimestamp.forEach((map, i) => {
       const match = map.get(obs.timestamp);
@@ -35,6 +62,14 @@ export function buildHourlyRows(
     });
     return row;
   });
+
+  bridgeForecastBoundary(
+    rows,
+    primary.observations.map((o) => o.isForecast),
+    ["primary", "primaryPrecipitation"]
+  );
+
+  return rows;
 }
 
 interface HighLowAverageFields {
@@ -57,18 +92,32 @@ export function buildHighLowAverageDailyRows(
     toDailyAggregates(n.series.observations, bucketCount)
   );
 
-  return primaryDaily.map((day, dayIndex) => {
+  const rows = primaryDaily.map((day, dayIndex) => {
+    const high = convert(day[fields.high], unit);
+    const low = convert(day[fields.low], unit);
+    const average = convert(day[fields.average], unit);
     const row: ChartRow = {
       bucketEnd: day.bucketEnd,
-      primaryHigh: convert(day[fields.high], unit),
-      primaryLow: convert(day[fields.low], unit),
-      primaryAverage: convert(day[fields.average], unit),
+      primaryHigh: day.isForecast ? null : high,
+      primaryHighForecast: day.isForecast ? high : null,
+      primaryLow: day.isForecast ? null : low,
+      primaryLowForecast: day.isForecast ? low : null,
+      primaryAverage: day.isForecast ? null : average,
+      primaryAverageForecast: day.isForecast ? average : null,
     };
     nearbyDaily.forEach((series, i) => {
       row[seriesKey(i + 1)] = convert(series[dayIndex]?.[fields.average] ?? null, unit);
     });
     return row;
   });
+
+  bridgeForecastBoundary(
+    rows,
+    primaryDaily.map((d) => d.isForecast),
+    ["primaryHigh", "primaryLow", "primaryAverage"]
+  );
+
+  return rows;
 }
 
 const TEMPERATURE_FIELDS: HighLowAverageFields = { high: "high", low: "low", average: "average" };
@@ -94,10 +143,22 @@ export function buildDailyRows(
   );
 
   const primaryDaily = toDailyAggregates(primary.observations, bucketCount);
-  return rows.map((row, i) => ({
-    ...row,
-    primaryPrecipitation: convertPrecipitation(primaryDaily[i].totalPrecipitation, unit),
-  }));
+  const precipRows = rows.map((row, i) => {
+    const precipitation = convertPrecipitation(primaryDaily[i].totalPrecipitation, unit);
+    return {
+      ...row,
+      primaryPrecipitation: primaryDaily[i].isForecast ? null : precipitation,
+      primaryPrecipitationForecast: primaryDaily[i].isForecast ? precipitation : null,
+    };
+  });
+
+  bridgeForecastBoundary(
+    precipRows,
+    primaryDaily.map((d) => d.isForecast),
+    ["primaryPrecipitation"]
+  );
+
+  return precipRows;
 }
 
 export function buildWindDailyRows(
@@ -146,10 +207,12 @@ export function buildMetricHourlyRows(
     (n) => new Map(n.series.observations.map((o) => [o.timestamp, o]))
   );
 
-  return primary.observations.map((obs) => {
+  const rows = primary.observations.map((obs) => {
+    const value = convert(obs[hourlyField], unit);
     const row: ChartRow = {
       timestamp: obs.timestamp,
-      [seriesKey(0)]: convert(obs[hourlyField], unit),
+      [seriesKey(0)]: obs.isForecast ? null : value,
+      [forecastKey(seriesKey(0))]: obs.isForecast ? value : null,
     };
     nearbyByTimestamp.forEach((map, i) => {
       const match = map.get(obs.timestamp);
@@ -157,6 +220,14 @@ export function buildMetricHourlyRows(
     });
     return row;
   });
+
+  bridgeForecastBoundary(
+    rows,
+    primary.observations.map((o) => o.isForecast),
+    [seriesKey(0)]
+  );
+
+  return rows;
 }
 
 export function buildMetricDailyRows(
@@ -172,13 +243,26 @@ export function buildMetricDailyRows(
     toDailyAggregates(n.series.observations, bucketCount)
   );
 
-  return primaryDaily.map((day, dayIndex) => {
-    const row: ChartRow = { bucketEnd: day.bucketEnd, [seriesKey(0)]: convert(day[dailyField], unit) };
+  const rows = primaryDaily.map((day, dayIndex) => {
+    const value = convert(day[dailyField], unit);
+    const row: ChartRow = {
+      bucketEnd: day.bucketEnd,
+      [seriesKey(0)]: day.isForecast ? null : value,
+      [forecastKey(seriesKey(0))]: day.isForecast ? value : null,
+    };
     nearbyDaily.forEach((series, i) => {
       row[seriesKey(i + 1)] = convert(series[dayIndex]?.[dailyField] ?? null, unit);
     });
     return row;
   });
+
+  bridgeForecastBoundary(
+    rows,
+    primaryDaily.map((d) => d.isForecast),
+    [seriesKey(0)]
+  );
+
+  return rows;
 }
 
 /** Whether the given metric has any non-null reading for the primary location (FR-004). */

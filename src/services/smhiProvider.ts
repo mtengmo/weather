@@ -7,10 +7,22 @@ const WIND_PARAM = 4;
 const CLOUD_PARAM = 16; // "procent" per SMHI's own parameter metadata — already 0-100, no conversion needed
 const COVERAGE_RADIUS_KM = 50;
 
+// Point-forecast API (lat/lon grid point, no station id) — replaces the deprecated
+// pmp3g/version/2 endpoint, which SMHI shut down 2026-03-31 (research.md §1).
+const FORECAST_BASE_URL = "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point";
+
 const WINDOW_HOURS: Record<ObservationWindow, number> = {
   "last-24-hours": 24,
   "last-7-days": 24 * 7,
   "last-30-days": 24 * 30,
+};
+
+// How many hours of forecast to append after "now", per window (research.md §5 / spec Assumptions:
+// last-30-days is out of scope for forecast).
+const FORECAST_HOURS: Record<ObservationWindow, number> = {
+  "last-24-hours": 24,
+  "last-7-days": 24 * 7,
+  "last-30-days": 0,
 };
 
 const SMHI_PERIOD: Record<ObservationWindow, string> = {
@@ -39,6 +51,23 @@ interface SmhiValue {
 
 interface SmhiDataResponse {
   value?: SmhiValue[];
+}
+
+// Forecast API response shape (verified live 2026-09-01, research.md §1 addendum).
+interface SmhiForecastData {
+  air_temperature?: number;
+  wind_speed?: number;
+  precipitation_amount_mean?: number;
+  cloud_area_fraction?: number; // octas, 0-8 — NOT the same 0-100 scale as the observation API
+}
+
+interface SmhiForecastTimeSeriesEntry {
+  time: string; // ISO 8601, the interval's end (valid) time
+  data: SmhiForecastData;
+}
+
+interface SmhiForecastResponse {
+  timeSeries?: SmhiForecastTimeSeriesEntry[];
 }
 
 function toRadians(deg: number): number {
@@ -165,6 +194,52 @@ function buildHourlySeries(
   return observations;
 }
 
+async function fetchForecastTimeSeries(
+  location: { latitude: number; longitude: number }
+): Promise<SmhiForecastTimeSeriesEntry[]> {
+  try {
+    const response = await fetch(
+      `${FORECAST_BASE_URL}/lon/${location.longitude}/lat/${location.latitude}/data.json`
+    );
+    if (!response.ok) return [];
+    const data = (await response.json()) as SmhiForecastResponse;
+    return data.timeSeries ?? [];
+  } catch {
+    // Forecast is a best-effort addition to an otherwise-complete observation
+    // series — degrade to "no forecast" rather than failing the whole request.
+    return [];
+  }
+}
+
+function buildForecastHourlySeries(
+  hoursNeeded: number,
+  timeSeries: SmhiForecastTimeSeriesEntry[]
+): WeatherObservation[] {
+  if (hoursNeeded === 0 || timeSeries.length === 0) return [];
+
+  const byHourEntry = new Map<number, SmhiForecastData>();
+  for (const entry of timeSeries) {
+    byHourEntry.set(Math.floor(Date.parse(entry.time) / 3600_000), entry.data);
+  }
+
+  const currentHour = Math.floor(Date.now() / 3600_000);
+  const forecast: WeatherObservation[] = [];
+  for (let i = 1; i <= hoursNeeded; i++) {
+    const hourKey = currentHour + i;
+    const timestamp = new Date(hourKey * 3600_000).toISOString();
+    const data = byHourEntry.get(hourKey);
+    forecast.push({
+      timestamp,
+      temperature: data?.air_temperature ?? null,
+      precipitation: data?.precipitation_amount_mean ?? null,
+      windSpeed: data?.wind_speed ?? null,
+      cloudCoverPercent: data?.cloud_area_fraction !== undefined ? data.cloud_area_fraction * 12.5 : null,
+      isForecast: true,
+    });
+  }
+  return forecast;
+}
+
 async function fetchParameterValues(
   parameter: number,
   location: { latitude: number; longitude: number },
@@ -205,6 +280,11 @@ export async function getObservations(
     cloudValues
   );
 
+  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastTimeSeries =
+    forecastHoursNeeded > 0 ? await fetchForecastTimeSeries(location) : [];
+  const forecastObservations = buildForecastHourlySeries(forecastHoursNeeded, forecastTimeSeries);
+
   return {
     location: {
       latitude: location.latitude,
@@ -213,7 +293,7 @@ export async function getObservations(
       source: "current-position",
     },
     window,
-    observations,
+    observations: [...observations, ...forecastObservations],
     status: "ready",
   };
 }

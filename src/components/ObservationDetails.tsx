@@ -71,6 +71,7 @@ export default function ObservationDetails({
             <thead>
               <tr>
                 <th>Time</th>
+                <th>Status</th>
                 <th>{location.displayName} temperature</th>
                 <th>{location.displayName} precipitation</th>
                 {nearbyStations.map((n) => (
@@ -84,8 +85,14 @@ export default function ObservationDetails({
               {series.observations.map((obs) => {
                 const isGap = obs.temperature === null && obs.precipitation === null;
                 return (
-                  <tr key={obs.timestamp} className={isGap ? "gap-point" : undefined}>
+                  <tr
+                    key={obs.timestamp}
+                    className={
+                      obs.isForecast ? "forecast-row" : isGap ? "gap-point" : undefined
+                    }
+                  >
                     <td>{new Date(obs.timestamp).toLocaleString()}</td>
+                    <td>{obs.isForecast ? "Forecast" : "Observed"}</td>
                     <td>{formatTemperature(convertTemperature(obs.temperature, unit), unit)}</td>
                     <td>
                       {formatPrecipitation(convertPrecipitation(obs.precipitation, unit), unit)}
@@ -115,6 +122,7 @@ export default function ObservationDetails({
             <thead>
               <tr>
                 <th>Day ending</th>
+                {window === "last-7-days" && <th>Status</th>}
                 <th>{location.displayName} high</th>
                 <th>{location.displayName} low</th>
                 <th>{location.displayName} average</th>
@@ -138,8 +146,16 @@ export default function ObservationDetails({
                 return primaryDaily.map((day, dayIndex) => {
                   const isGap = day.high === null && day.totalPrecipitation === null;
                   return (
-                    <tr key={day.bucketEnd} className={isGap ? "gap-point" : undefined}>
+                    <tr
+                      key={day.bucketEnd}
+                      className={
+                        day.isForecast ? "forecast-row" : isGap ? "gap-point" : undefined
+                      }
+                    >
                       <td>{new Date(day.bucketEnd).toLocaleDateString()}</td>
+                      {window === "last-7-days" && (
+                        <td>{day.isForecast ? "Forecast" : "Observed"}</td>
+                      )}
                       <td>{formatTemperature(convertTemperature(day.high, unit), unit)}</td>
                       <td>{formatTemperature(convertTemperature(day.low, unit), unit)}</td>
                       <td>{formatTemperature(convertTemperature(day.average, unit), unit)}</td>

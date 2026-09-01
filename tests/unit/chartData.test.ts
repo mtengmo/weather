@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDailyRows,
+  buildHourlyRows,
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  forecastKey,
   isMetricAvailable,
   seriesKey,
 } from "../../src/components/chartData";
@@ -137,6 +139,125 @@ describe("buildWindDailyRows (User Story 4: reuses the temperature high/low/aver
 
     const rows = buildWindDailyRows(primary, stations, "metric", 7);
     expect(rows[rows.length - 1][seriesKey(1)]).toBe(7);
+  });
+});
+
+describe("forecast continuation (005-add-weather-forecast)", () => {
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("buildHourlyRows: forecast key is null before the boundary and populated from the boundary point onward, with the boundary point duplicated into both keys", () => {
+    const observations = [
+      { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: null, cloudCoverPercent: null },
+      { timestamp: hoursFromNow(0), temperature: 12, precipitation: 2, windSpeed: null, cloudCoverPercent: null }, // boundary: last observed
+      { timestamp: hoursFromNow(1), temperature: 14, precipitation: 3, windSpeed: null, cloudCoverPercent: null, isForecast: true },
+      { timestamp: hoursFromNow(2), temperature: 16, precipitation: 4, windSpeed: null, cloudCoverPercent: null, isForecast: true },
+    ];
+    const primary = primarySeries(observations);
+
+    const rows = buildHourlyRows(primary, [], "metric");
+
+    expect(rows[0].primary).toBe(10);
+    expect(rows[0].primaryForecast).toBeNull();
+
+    // Boundary row: value present in both the observed and forecast keys.
+    expect(rows[1].primary).toBe(12);
+    expect(rows[1].primaryForecast).toBe(12);
+    expect(rows[1].primaryPrecipitation).toBe(2);
+    expect(rows[1].primaryPrecipitationForecast).toBe(2);
+
+    expect(rows[2].primary).toBeNull();
+    expect(rows[2].primaryForecast).toBe(14);
+    expect(rows[3].primary).toBeNull();
+    expect(rows[3].primaryForecast).toBe(16);
+  });
+
+  it("buildHourlyRows: nearby-station rows are unaffected by the primary series' forecast points", () => {
+    const t = hoursFromNow(1);
+    const primary = primarySeries([
+      obs({ timestamp: t, temperature: 20, isForecast: true }),
+    ]);
+    const stations = [nearby("a", [obs({ timestamp: t, temperature: 5 })])];
+
+    const rows = buildHourlyRows(primary, stations, "metric");
+
+    expect(rows[0][seriesKey(1)]).toBe(5);
+  });
+
+  it("buildHourlyRows: with no forecast points at all, forecast keys are all null (no boundary to bridge)", () => {
+    const primary = primarySeries([
+      obs({ timestamp: hoursFromNow(-1), temperature: 10 }),
+      obs({ timestamp: hoursFromNow(0), temperature: 12 }),
+    ]);
+
+    const rows = buildHourlyRows(primary, [], "metric");
+
+    expect(rows.every((r) => r.primaryForecast === null)).toBe(true);
+  });
+
+  it("buildDailyRows: forecast keys mirror the boundary-duplication behavior at daily granularity", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1 }), // most recent past bucket (index 0)
+      obs({ timestamp: hoursFromNow(1), temperature: 15, precipitation: 2, isForecast: true }), // first future bucket (index -1)
+    ];
+    const primary = primarySeries(observations);
+
+    const rows = buildDailyRows(primary, [], "metric", 7);
+    const pastRow = rows[rows.length - 2];
+    const forecastRow = rows[rows.length - 1];
+
+    expect(pastRow.primaryHigh).toBe(10);
+    expect(pastRow.primaryHighForecast).toBe(10); // boundary bridged forward
+    expect(forecastRow.primaryHigh).toBeNull();
+    expect(forecastRow.primaryHighForecast).toBe(15);
+    expect(forecastRow.primaryPrecipitationForecast).toBeCloseTo(2);
+  });
+
+  it("buildMetricDailyRows: forecast key present for a forecast-only bucket (rain)", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(1), precipitation: 4, isForecast: true }),
+    ];
+    const primary = primarySeries(observations);
+
+    const rows = buildMetricDailyRows(primary, [], "metric", "rain", 7);
+    const forecastRow = rows[rows.length - 1];
+
+    expect(forecastRow[seriesKey(0)]).toBeNull();
+    expect(forecastRow[forecastKey(seriesKey(0))]).toBeCloseTo(4);
+  });
+
+  it("does not fabricate forecast days beyond what the observations actually contain", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursFromNow(-1), temperature: 10 }),
+      obs({ timestamp: hoursFromNow(1), temperature: 12, isForecast: true }), // exactly 1 forecast day
+    ];
+    const primary = primarySeries(observations);
+
+    const rows = buildDailyRows(primary, [], "metric", 7);
+
+    // 7 past-window rows + exactly 1 forecast row.
+    expect(rows).toHaveLength(8);
+  });
+
+  it("buildMetricHourlyRows: forecast key mirrors the boundary-duplication behavior for a single-series metric (wind)", () => {
+    const observations = [
+      obs({ timestamp: hoursFromNow(-1), windSpeed: 3 }),
+      obs({ timestamp: hoursFromNow(0), windSpeed: 4 }), // boundary
+      obs({ timestamp: hoursFromNow(1), windSpeed: 5, isForecast: true }),
+    ];
+    const primary = primarySeries(observations);
+
+    const rows = buildMetricHourlyRows(primary, [], "metric", "wind");
+    const key = seriesKey(0);
+    const fKey = forecastKey(key);
+
+    expect(rows[0][key]).toBe(3);
+    expect(rows[0][fKey]).toBeNull();
+    expect(rows[1][key]).toBe(4);
+    expect(rows[1][fKey]).toBe(4); // boundary duplicated
+    expect(rows[2][key]).toBeNull();
+    expect(rows[2][fKey]).toBe(5);
   });
 });
 

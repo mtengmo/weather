@@ -160,6 +160,176 @@ describe("US1: ObservationChart + ObservationDetails", () => {
   });
 });
 
+describe("US1 (005): 24h forecast continuation", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("renders all four metric tabs without error when the series has trailing forecast points", async () => {
+    const observations = [
+      { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+      {
+        timestamp: hoursFromNow(1),
+        temperature: 12,
+        precipitation: 2,
+        windSpeed: 4,
+        cloudCoverPercent: 50,
+        isForecast: true,
+      },
+    ];
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours", observations));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    for (const tab of ["Temperature", "Wind", "Cloud coverage", "Rain"]) {
+      await user.click(screen.getByRole("button", { name: tab }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  });
+
+  it("marks upcoming hours as forecast and past hours as observed in the details table", async () => {
+    const observations = [
+      { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: null, cloudCoverPercent: null },
+      {
+        timestamp: hoursFromNow(1),
+        temperature: 12,
+        precipitation: 2,
+        windSpeed: null,
+        cloudCoverPercent: null,
+        isForecast: true,
+      },
+    ];
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours", observations));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    const viewDetails = await screen.findByRole("button", { name: "View details" });
+    await userEvent.setup().click(viewDetails);
+
+    expect(await screen.findByText("Observed")).toBeInTheDocument();
+    expect(screen.getByText("Forecast")).toBeInTheDocument();
+  });
+
+  it("renders normally with no error when observed data exists but the forecast fetch returned nothing", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed: 3, cloudCoverPercent: 40 },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("US2 (005): 7-day forecast continuation", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  function weeklyObservations(forecastDays: number) {
+    const past = Array.from({ length: 7 * 24 }, (_, i) => ({
+      timestamp: hoursFromNow(-(i + 1)),
+      temperature: 10,
+      precipitation: 1,
+      windSpeed: 3,
+      cloudCoverPercent: 40,
+    }));
+    const forecast = Array.from({ length: forecastDays * 24 }, (_, i) => ({
+      timestamp: hoursFromNow(i + 1),
+      temperature: 12,
+      precipitation: 2,
+      windSpeed: 4,
+      cloudCoverPercent: 50,
+      isForecast: true,
+    }));
+    return [...past, ...forecast];
+  }
+
+  it("renders the temperature and wind tabs' 7-day forecast continuation with highLowVisible on and off", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) =>
+      series(w, w === "last-7-days" ? weeklyObservations(7) : [])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Wind" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Toggle high/low" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows no fabricated forecast days beyond what the provider returned in the details table", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) =>
+      series(w, w === "last-7-days" ? weeklyObservations(3) : [])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    const user = userEvent.setup();
+
+    await screen.findByRole("button", { name: "View details" });
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    const viewDetails = await screen.findByRole("button", { name: "View details" });
+    await user.click(viewDetails);
+
+    const rows = await screen.findAllByRole("row");
+    // header + 7 observed days + exactly 3 forecast days.
+    expect(rows).toHaveLength(1 + 7 + 3);
+    expect(screen.getAllByText("Forecast")).toHaveLength(3);
+  });
+
+  it("does not render forecast continuation on the 30-day view even when observations happen to include isForecast points", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => {
+      if (w === "last-30-days") {
+        return series(w, weeklyObservations(2));
+      }
+      return series(w, []);
+    });
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+
+    function Harness30() {
+      return <ChartAndDetailsHarness location={stockholm} />;
+    }
+
+    render(<Harness30 />);
+    const user = userEvent.setup();
+    await screen.findByRole("button", { name: "View details" });
+    await user.click(screen.getByRole("button", { name: "Last 30 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-30-days"));
+
+    const viewDetails = await screen.findByRole("button", { name: "View details" });
+    await user.click(viewDetails);
+
+    await screen.findByRole("table");
+    expect(screen.queryByText("Forecast")).not.toBeInTheDocument();
+    expect(screen.queryByText("Status")).not.toBeInTheDocument();
+  });
+});
+
 describe("US4: nearby weather station comparison", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

@@ -25,6 +25,7 @@ import {
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  forecastKey,
   isMetricAvailable,
   seriesKey,
   type SingleSeriesMetric,
@@ -33,9 +34,18 @@ import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
 import MetricTabs from "./MetricTabs";
 import { formatValue } from "../services/format";
 
-function tooltipFormatter(value: unknown): string {
-  return formatValue(typeof value === "number" ? value : Number(value), 1);
+function tooltipFormatter(value: unknown, name: unknown): [string, string] {
+  const formatted = formatValue(typeof value === "number" ? value : Number(value), 1);
+  // Forecast series are named with a "Forecast" dataKey suffix (chartData.ts's forecastKey) —
+  // surface that as a "(forecast)" tooltip label so a prediction is identifiable without
+  // relying on the dashed line alone (FR-010).
+  const label = typeof name === "string" && name.endsWith(" (forecast)") ? name : String(name);
+  return [formatted, label];
 }
+
+// Shared forecast-segment styling: same color as the primary series, dashed (FR-004's
+// default), reusing the app's existing dashed-line convention for "not fully solid data."
+const FORECAST_DASH = "4 2";
 
 interface ObservationChartProps {
   location: Location;
@@ -176,12 +186,30 @@ export default function ObservationChart({
               name={`${location.displayName} precipitation`}
               fill="url(#precipGradient-24h)"
             />
+            <Bar
+              yAxisId="precip"
+              dataKey="primaryPrecipitationForecast"
+              name={`${location.displayName} precipitation (forecast)`}
+              fill="url(#precipGradient-24h)"
+              fillOpacity={0.45}
+            />
             <Line
               yAxisId="temp"
               type="monotone"
               dataKey="primary"
               name={location.displayName}
               stroke={seriesColor(0)}
+              connectNulls={false}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              yAxisId="temp"
+              type="monotone"
+              dataKey="primaryForecast"
+              name={`${location.displayName} (forecast)`}
+              stroke={seriesColor(0)}
+              strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={false}
               activeDot={{ r: 5 }}
@@ -248,6 +276,13 @@ export default function ObservationChart({
               name={`${location.displayName} precipitation`}
               fill="url(#precipGradient-daily)"
             />
+            <Bar
+              yAxisId="precip"
+              dataKey="primaryPrecipitationForecast"
+              name={`${location.displayName} precipitation (forecast)`}
+              fill="url(#precipGradient-daily)"
+              fillOpacity={0.45}
+            />
             {highLowVisible && (
               <Line
                 yAxisId="temp"
@@ -256,6 +291,22 @@ export default function ObservationChart({
                 name={`${location.displayName} high`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            {highLowVisible && (
+              // Forecast continuation of the high line — high/low already use a dashed
+              // stroke for a different reason, so forecast is distinguished here by
+              // reduced opacity instead of a second dash convention.
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="primaryHighForecast"
+                name={`${location.displayName} high (forecast)`}
+                stroke={HIGH_COLOR}
+                strokeDasharray="4 2"
+                strokeOpacity={0.5}
                 connectNulls={false}
                 dot={false}
               />
@@ -272,12 +323,36 @@ export default function ObservationChart({
                 dot={false}
               />
             )}
+            {highLowVisible && (
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="primaryLowForecast"
+                name={`${location.displayName} low (forecast)`}
+                stroke={LOW_COLOR}
+                strokeDasharray="4 2"
+                strokeOpacity={0.5}
+                connectNulls={false}
+                dot={false}
+              />
+            )}
             <Line
               yAxisId="temp"
               type="monotone"
               dataKey="primaryAverage"
               name={`${location.displayName} average`}
               stroke={seriesColor(0)}
+              connectNulls={false}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              yAxisId="temp"
+              type="monotone"
+              dataKey="primaryAverageForecast"
+              name={`${location.displayName} average (forecast)`}
+              stroke={seriesColor(0)}
+              strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={false}
               activeDot={{ r: 5 }}
@@ -342,6 +417,12 @@ export default function ObservationChart({
               name={`${location.displayName} precipitation`}
               fill="url(#rainGradient)"
             />
+            <Bar
+              dataKey={forecastKey(seriesKey(0))}
+              name={`${location.displayName} precipitation (forecast)`}
+              fill="url(#rainGradient)"
+              fillOpacity={0.45}
+            />
             {nearbyStations.map((n, i) => (
               <Bar
                 key={n.station.id}
@@ -393,6 +474,16 @@ export default function ObservationChart({
               dataKey={seriesKey(0)}
               name={`${location.displayName} ${METRIC_LABELS[metric].name}`}
               stroke={seriesColor(0)}
+              connectNulls={false}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              type="monotone"
+              dataKey={forecastKey(seriesKey(0))}
+              name={`${location.displayName} ${METRIC_LABELS[metric].name} (forecast)`}
+              stroke={seriesColor(0)}
+              strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={false}
               activeDot={{ r: 5 }}
@@ -457,10 +548,34 @@ export default function ObservationChart({
             {highLowVisible && (
               <Line
                 type="monotone"
+                dataKey="primaryHighForecast"
+                name={`${location.displayName} high (forecast)`}
+                stroke={HIGH_COLOR}
+                strokeDasharray="4 2"
+                strokeOpacity={0.5}
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            {highLowVisible && (
+              <Line
+                type="monotone"
                 dataKey="primaryLow"
                 name={`${location.displayName} low`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
+                connectNulls={false}
+                dot={false}
+              />
+            )}
+            {highLowVisible && (
+              <Line
+                type="monotone"
+                dataKey="primaryLowForecast"
+                name={`${location.displayName} low (forecast)`}
+                stroke={LOW_COLOR}
+                strokeDasharray="4 2"
+                strokeOpacity={0.5}
                 connectNulls={false}
                 dot={false}
               />
@@ -470,6 +585,16 @@ export default function ObservationChart({
               dataKey="primaryAverage"
               name={`${location.displayName} average`}
               stroke={seriesColor(0)}
+              connectNulls={false}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="primaryAverageForecast"
+              name={`${location.displayName} average (forecast)`}
+              stroke={seriesColor(0)}
+              strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={false}
               activeDot={{ r: 5 }}

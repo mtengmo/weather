@@ -123,6 +123,70 @@ describe("toDailyAggregates", () => {
     expect(result[result.length - 1].high).toBe(5); // most recent bucket last
   });
 
+  it("does not extend past bucketCount when there is no forecast data (unchanged length)", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursAgo(1), temperature: 10 }),
+    ];
+    expect(toDailyAggregates(observations, 7)).toHaveLength(7);
+  });
+
+  describe("forecast buckets (005-add-weather-forecast)", () => {
+    function hoursFromNow(h: number): string {
+      return new Date(Date.now() + h * 3600_000).toISOString();
+    }
+
+    it("marks a bucket entirely in the future as isForecast: true", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursFromNow(5), temperature: 20, isForecast: true }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const forecastBucket = result[result.length - 1]; // newest = the appended future bucket
+
+      expect(forecastBucket.isForecast).toBe(true);
+      expect(forecastBucket.high).toBe(20);
+    });
+
+    it("does not mark a past bucket as forecast", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursAgo(1), temperature: 10 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentPastBucket = result[result.length - 1];
+
+      expect(mostRecentPastBucket.isForecast).toBeUndefined();
+    });
+
+    it("extends only as far as the forecast data actually reaches (no fabricated days)", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursAgo(1), temperature: 10 }),
+        obs({ timestamp: hoursFromNow(20), temperature: 15, isForecast: true }), // 1 forecast day only
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+
+      // 7 past-window buckets + exactly 1 forecast bucket, not more.
+      expect(result).toHaveLength(8);
+      expect(result[result.length - 1].isForecast).toBe(true);
+      expect(result[result.length - 2].isForecast).toBeUndefined();
+    });
+
+    it("bridges observed and forecast buckets that straddle 'now' into adjacent output entries", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursAgo(1), temperature: 8 }), // most recent past bucket
+        obs({ timestamp: hoursFromNow(1), temperature: 9, isForecast: true }), // first future bucket
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+
+      expect(result[result.length - 2].isForecast).toBeUndefined();
+      expect(result[result.length - 2].high).toBe(8);
+      expect(result[result.length - 1].isForecast).toBe(true);
+      expect(result[result.length - 1].high).toBe(9);
+    });
+  });
+
   it("does not mutate the input array", () => {
     const observations: WeatherObservation[] = [
       obs({ timestamp: hoursAgo(1), temperature: 10, precipitation: 1 }),

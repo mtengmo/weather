@@ -89,6 +89,11 @@ body {
   font-style: italic;
 }
 
+.forecast-row {
+  color: var(--text-muted);
+  background: rgba(127, 127, 127, 0.08);
+}
+
 .error-banner {
   background: var(--error-bg);
   color: var(--error-text);
