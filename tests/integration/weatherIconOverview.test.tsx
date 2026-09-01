@@ -91,7 +91,7 @@ describe("US1: 24h icon overview", () => {
     expect(screen.getByText("No data")).toBeInTheDocument();
   });
 
-  it("shows a moon icon (not sun) for a clear night hour via its accessible label", async () => {
+  it("shows a moon icon (not sun) for a clear night hour", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -107,11 +107,16 @@ describe("US1: 24h icon overview", () => {
       ],
     });
 
-    render(<OverviewHarness location={stockholm} />);
+    // Query the icon itself (not the hour label's text) — toLocaleTimeString's hour
+    // format is locale-dependent (e.g. "23" on this machine, "11 PM" on CI's Linux
+    // runner), so asserting on that text broke the build in CI even though it passed
+    // locally. The lucide icon's class name is stable regardless of locale.
+    const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Clear");
 
-    const cell = await screen.findByLabelText(/23.*Clear/i);
-    expect(cell).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-moon")).toBeInTheDocument();
+    expect(container.querySelector("svg.lucide-sun")).not.toBeInTheDocument();
   });
 
   it("shows the unavailable message rather than a grid when the series status is unavailable", async () => {

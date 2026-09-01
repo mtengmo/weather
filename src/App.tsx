@@ -45,10 +45,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (currentLocation && selected === null) {
-      setSelected(currentLocation);
-    }
-  }, [currentLocation, selected]);
+    if (!currentLocation) return;
+    setSelected((prev) => {
+      if (prev === null) return currentLocation;
+      // Keep displayName in sync as useGeolocation's async name resolution improves it
+      // (005's station lookup, then 006's geocoding fallback) — otherwise this copy goes
+      // stale the moment it's first taken, and the improved name never reaches the UI.
+      const isSameCurrentPosition =
+        prev.source === "current-position" &&
+        prev.latitude === currentLocation.latitude &&
+        prev.longitude === currentLocation.longitude;
+      return isSameCurrentPosition && prev.displayName !== currentLocation.displayName
+        ? currentLocation
+        : prev;
+    });
+  }, [currentLocation]);
 
   function selectLocation(location: Location) {
     setSelected(location);
