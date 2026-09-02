@@ -548,6 +548,121 @@ describe("chance of rain (011-precipitation-chance)", () => {
   });
 });
 
+describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("gives each condition present in the series its own distinct class", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: "2026-08-31T23:00:00", temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }, // clear-night
+        { timestamp: hoursAgo(2), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 90 }, // cloudy
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // rainy
+        { timestamp: hoursAgo(0), temperature: -5, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // snowy
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Clear");
+
+    expect(container.querySelector(".weather-condition-clear-night")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-cloudy")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-rainy")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-snowy")).toBeInTheDocument();
+  });
+});
+
+describe("US2: chart rows colored and shaded like the mockup (010-timeline-visual-styling)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("gives the temperature, wind, and precipitation rows their own distinct class hooks", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 2, windSpeed: 3, cloudCoverPercent: 50 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-row-temperature")).toBeInTheDocument();
+    expect(container.querySelector(".weather-timeline-row-wind")).toBeInTheDocument();
+    expect(container.querySelector(".weather-timeline-row-precipitation")).toBeInTheDocument();
+  });
+});
+
+describe("US3: the 'now' column reads as a highlighted marker (010-timeline-visual-styling)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("marks exactly one cell per row as the now column when there's an observed/forecast boundary", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const nowLine = container.querySelector(".weather-timeline-now");
+    expect(nowLine).toBeInTheDocument();
+
+    const nowCells = container.querySelectorAll(".weather-timeline-now-column");
+    expect(nowCells.length).toBeGreaterThan(0);
+    // Every row-key class present should have exactly one now-column cell.
+    expect(container.querySelectorAll(".weather-timeline-row-temperature .weather-timeline-now-column")).toHaveLength(1);
+  });
+
+  it("marks no cell as the now column when there is no forecast boundary", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-now")).not.toBeInTheDocument();
+    expect(container.querySelectorAll(".weather-timeline-now-column")).toHaveLength(0);
+  });
+});
+
 describe("responsive layout", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

@@ -13,6 +13,19 @@
   --error-bg: #3a2323;
   --error-text: #f5c9c2;
   --error-border: #6b3a34;
+
+  /* Timeline restyle from the reference mockup (010-timeline-visual-styling, research.md §1). */
+  --wx-sun: #f6c453;
+  --wx-moon: #cbd0dc;
+  --wx-cloud: #9aa3b5;
+  --wx-rain: #5b9bd9;
+  --wx-snow: #dbe9f7;
+  --wx-windy: #8a93a6;
+  --row-temperature: #f2924a;
+  --row-wind: #4fb0a6;
+  --row-precipitation: #5b9bd9;
+  --row-snow: #dbe9f7;
+  --now-accent: #5fd0ff;
 }
 
 [data-theme="ivory"] {
@@ -29,6 +42,20 @@
   --error-bg: #ffe3e8;
   --error-text: #7a0930;
   --error-border: #ffb3c2;
+
+  /* Timeline restyle from the reference mockup (010-timeline-visual-styling, research.md §1) —
+     deeper/more saturated than the dark-theme values so they stay legible on a white background. */
+  --wx-sun: #c78a1f;
+  --wx-moon: #7d8494;
+  --wx-cloud: #6b7280;
+  --wx-rain: #2f72b8;
+  --wx-snow: #4a90c2;
+  --wx-windy: #5b6472;
+  --row-temperature: #c1590f;
+  --row-wind: #2f7a72;
+  --row-precipitation: #2f72b8;
+  --row-snow: #4a90c2;
+  --now-accent: #0369a1;
 }
 
 [data-theme="glass"] {
@@ -45,6 +72,19 @@
   --error-bg: rgba(239, 68, 68, 0.18);
   --error-text: #fecaca;
   --error-border: rgba(239, 68, 68, 0.35);
+
+  /* Timeline restyle from the reference mockup (010-timeline-visual-styling, research.md §1). */
+  --wx-sun: #facc15;
+  --wx-moon: #dbe4ff;
+  --wx-cloud: #a9b6d9;
+  --wx-rain: #7dd3fc;
+  --wx-snow: #e0f2ff;
+  --wx-windy: #9fb0d0;
+  --row-temperature: #fb923c;
+  --row-wind: #67e8f9;
+  --row-precipitation: #7dd3fc;
+  --row-snow: #e0f2ff;
+  --now-accent: #7dd3fc;
 }
 
 :root {
@@ -336,8 +376,30 @@ a {
   gap: 0.15rem;
 }
 
-.weather-timeline-condition svg {
-  color: var(--accent);
+/* Per-condition icon colors from the reference mockup (010-timeline-visual-styling, FR-001) —
+   each condition is distinguishable by color as well as shape, not a single uniform tone. */
+.weather-condition-clear-day svg {
+  color: var(--wx-sun);
+}
+
+.weather-condition-clear-night svg {
+  color: var(--wx-moon);
+}
+
+.weather-condition-cloudy svg {
+  color: var(--wx-cloud);
+}
+
+.weather-condition-rainy svg {
+  color: var(--wx-rain);
+}
+
+.weather-condition-snowy svg {
+  color: var(--wx-snow);
+}
+
+.weather-condition-windy svg {
+  color: var(--wx-windy);
 }
 
 .weather-timeline-condition-label {
@@ -384,18 +446,36 @@ a {
 
 .weather-timeline-line-observed {
   fill: none;
-  stroke: var(--accent);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
 .weather-timeline-line-forecast {
   fill: none;
-  stroke: var(--accent);
   stroke-width: 2;
   stroke-dasharray: 4 3;
   vector-effect: non-scaling-stroke;
   opacity: 0.7;
+}
+
+/* Per-row colors from the reference mockup (010-timeline-visual-styling, FR-002/FR-004/FR-005) —
+   each row uses its own token instead of the app's single shared --accent/--accent-2, while
+   keeping the same solid-observed / dashed-forecast distinction. */
+.weather-timeline-row-temperature .weather-timeline-line-observed,
+.weather-timeline-row-temperature .weather-timeline-line-forecast {
+  stroke: var(--row-temperature);
+}
+
+.weather-timeline-row-precipitation .weather-timeline-bar {
+  background: var(--row-precipitation);
+}
+
+.weather-timeline-row-snow .weather-timeline-bar {
+  background: var(--row-snow);
+}
+
+.weather-timeline-row-wind .weather-timeline-wind-arrow {
+  color: var(--row-wind);
 }
 
 .weather-timeline-row-bars {
@@ -416,7 +496,7 @@ a {
 .weather-timeline-bar {
   width: 60%;
   min-height: 2px;
-  background: var(--accent-2);
+  background: var(--text-muted); /* fallback; every currently-rendered bar row overrides this above */
   border-radius: 2px 2px 0 0;
 }
 
@@ -466,7 +546,7 @@ a {
 
 .weather-timeline-wind-arrow {
   display: inline-block;
-  color: var(--accent);
+  color: var(--text-muted); /* fallback; .weather-timeline-row-wind above overrides this */
 }
 
 .weather-timeline-gap {
@@ -480,9 +560,15 @@ a {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 2px dashed var(--text-muted);
+  border-left: 2px dashed var(--now-accent);
   z-index: 1;
   pointer-events: none;
+}
+
+/* The column immediately after the "now" line, across every row — matches the line's own
+   accent so it reads as a single highlighted marker (010-timeline-visual-styling, FR-006). */
+.weather-timeline-now-column {
+  color: var(--now-accent);
 }
 
 .weather-timeline-now-label {

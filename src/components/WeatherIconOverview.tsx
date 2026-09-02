@@ -31,6 +31,12 @@ function xPercent(index: number, count: number): number {
   return ((index + 0.5) / count) * 100;
 }
 
+/** The column immediately after the "now" marker line — the same index used to position
+ * `.weather-timeline-now` (010-timeline-visual-styling, FR-006/FR-007, research.md §2). */
+function isNowColumn(index: number, nowBoundaryIndex: number | null): boolean {
+  return nowBoundaryIndex !== null && index === nowBoundaryIndex + 1;
+}
+
 /** One shared grid row: N equal columns, matching every other row's column math exactly. */
 function PeriodGrid({
   periods,
@@ -95,6 +101,17 @@ function toPointsAttr(points: Pt[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(" ");
 }
 
+const AREA_BASELINE_Y = 90; // matches buildSegments's 10-90 vertical band's bottom edge
+
+/** Closes a line segment into a filled polygon down to the row's baseline, for the
+ * temperature row's gradient fill (010-timeline-visual-styling, FR-003). */
+function toAreaPointsAttr(points: Pt[]): string {
+  if (points.length < 2) return "";
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${first.x},${AREA_BASELINE_Y} ${toPointsAttr(points)} ${last.x},${AREA_BASELINE_Y}`;
+}
+
 /** Splits one contiguous (non-gap) segment into its observed/forecast sub-polylines,
  * bridging the boundary point so the dashed segment visually connects (006 convention). */
 function splitObservedForecast(segment: Pt[]): { observed: Pt[]; forecast: Pt[] } {
@@ -107,17 +124,41 @@ function splitObservedForecast(segment: Pt[]): { observed: Pt[]; forecast: Pt[] 
   };
 }
 
-function LineRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] }) {
+function LineRow({
+  row,
+  periods,
+  nowBoundaryIndex,
+}: {
+  row: TimelineRow;
+  periods: TimelinePeriod[];
+  nowBoundaryIndex: number | null;
+}) {
   if (!row.available) return null;
   const segments = buildSegments(row);
 
   return (
-    <div className="weather-timeline-row weather-timeline-row-label-wrap">
+    <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
       <div className="weather-timeline-row-title">
         {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
       </div>
       <div className="weather-timeline-line-area">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="weather-timeline-svg" aria-hidden="true">
+          {row.key === "temperature" && (
+            <defs>
+              <linearGradient id="weather-timeline-temperature-gradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--row-temperature)" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="var(--row-temperature)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+          )}
+          {row.key === "temperature" &&
+            segments.map((segment, si) => (
+              <polygon
+                key={`area-${si}`}
+                points={toAreaPointsAttr(segment)}
+                fill="url(#weather-timeline-temperature-gradient)"
+              />
+            ))}
           {segments.map((segment, si) => {
             const { observed, forecast } = splitObservedForecast(segment);
             return (
@@ -141,7 +182,12 @@ function LineRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
           }
           return (
             <span
-              className={point.interpolated ? "weather-timeline-interpolated" : undefined}
+              className={[
+                point.interpolated ? "weather-timeline-interpolated" : null,
+                isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined}
               title={point.interpolated ? "Estimated" : undefined}
             >
               {formatRowValue(row, point.value)}
@@ -153,13 +199,21 @@ function LineRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
   );
 }
 
-function BarRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] }) {
+function BarRow({
+  row,
+  periods,
+  nowBoundaryIndex,
+}: {
+  row: TimelineRow;
+  periods: TimelinePeriod[];
+  nowBoundaryIndex: number | null;
+}) {
   if (!row.available) return null;
   const values = row.points.map((p) => p.value).filter((v): v is number => v !== null);
   const max = values.length > 0 ? Math.max(...values, 0.001) : 1;
 
   return (
-    <div className="weather-timeline-row weather-timeline-row-label-wrap">
+    <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
       <div className="weather-timeline-row-title">
         {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
       </div>
@@ -177,7 +231,13 @@ function BarRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] 
                 style={{ height: `${heightPercent}%` }}
               />
               <span
-                className={`weather-timeline-bar-value${point.interpolated ? " weather-timeline-interpolated" : ""}`}
+                className={[
+                  "weather-timeline-bar-value",
+                  point.interpolated ? "weather-timeline-interpolated" : null,
+                  isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 title={point.interpolated ? "Estimated" : undefined}
               >
                 {formatRowValue(row, point.value)}
@@ -193,9 +253,17 @@ function BarRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] 
   );
 }
 
-function WindRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] }) {
+function WindRow({
+  row,
+  periods,
+  nowBoundaryIndex,
+}: {
+  row: TimelineRow;
+  periods: TimelinePeriod[];
+  nowBoundaryIndex: number | null;
+}) {
   return (
-    <div className="weather-timeline-row weather-timeline-row-label-wrap">
+    <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
       <div className="weather-timeline-row-title">
         {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
       </div>
@@ -226,7 +294,12 @@ function WindRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
                 </span>
               )}
               <span
-                className={point.interpolated ? "weather-timeline-interpolated" : undefined}
+                className={[
+                  point.interpolated ? "weather-timeline-interpolated" : null,
+                  isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined}
                 title={point.interpolated ? "Estimated" : undefined}
               >
                 {speedText}
@@ -239,14 +312,27 @@ function WindRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
   );
 }
 
-function ConditionRow({ periods }: { periods: TimelinePeriod[] }) {
+function ConditionRow({
+  periods,
+  nowBoundaryIndex,
+}: {
+  periods: TimelinePeriod[];
+  nowBoundaryIndex: number | null;
+}) {
   return (
     <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-condition">
-      {(period) => {
+      {(period, i) => {
         const iconInfo = period.condition !== null ? WEATHER_ICONS[period.condition] : null;
         return (
           <div
-            className={`weather-timeline-condition${period.isForecast ? " forecast-row" : ""}`}
+            className={[
+              "weather-timeline-condition",
+              period.isForecast ? "forecast-row" : null,
+              period.condition !== null ? `weather-condition-${period.condition}` : null,
+              isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
             aria-label={`${period.label}: ${iconInfo ? iconInfo.label : "No data"}${period.isForecast ? " (forecast)" : ""}`}
           >
             {iconInfo ? (
@@ -394,11 +480,11 @@ export default function WeatherIconOverview({
                 {(period) => <span>{period.label}</span>}
               </PeriodGrid>
 
-              <ConditionRow periods={timeline.periods} />
-              <LineRow row={timeline.temperature} periods={timeline.periods} />
-              <BarRow row={timeline.precipitation} periods={timeline.periods} />
-              <WindRow row={timeline.wind} periods={timeline.periods} />
-              <BarRow row={timeline.snow} periods={timeline.periods} />
+              <ConditionRow periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
             </div>
           </div>
         </>
