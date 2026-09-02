@@ -171,6 +171,9 @@ function BarRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] 
                 style={{ height: `${heightPercent}%` }}
               />
               <span className="weather-timeline-bar-value">{formatRowValue(row, point.value)}</span>
+              {point.chanceOfRain !== null && point.chanceOfRain !== undefined && (
+                <span className="weather-timeline-bar-chance">{Math.round(point.chanceOfRain)}%</span>
+              )}
             </div>
           );
         }}

@@ -29,6 +29,12 @@ export interface WeatherObservation {
   windGust?: number | null;
   /** Percent (0-100) — feels-like-temperature input only, not its own displayed row (008-timeline-dashboard-redesign). */
   relativeHumidity?: number | null;
+  /**
+   * Percent (0-100) chance of precipitation, when the source provider supplies it. Only
+   * meaningful for forecast points — always treated as absent for observed points regardless
+   * of what a provider returns (011-precipitation-chance).
+   */
+  chanceOfRain?: number | null;
 }
 
 export type ObservationWindow = "last-24-hours" | "last-7-days" | "last-30-days";
@@ -69,6 +75,8 @@ export interface DailyAggregate {
   windGustHigh?: number | null;
   /** Mean of the bucket's derived feels-like values (008-timeline-dashboard-redesign). */
   feelsLikeAverage?: number | null;
+  /** Max of the bucket's forecast chanceOfRain readings (011-precipitation-chance). */
+  chanceOfRainMax?: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

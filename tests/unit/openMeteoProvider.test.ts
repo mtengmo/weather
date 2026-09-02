@@ -48,6 +48,34 @@ describe("openMeteoProvider.getObservations", () => {
     expect(gapPoint?.precipitation).toBeNull();
   });
 
+  it("maps chanceOfRain from precipitation_probability when present, null when absent (011-precipitation-chance)", async () => {
+    const time = [isoHoursBack(1), isoHoursBack(0)];
+    mockFetchOnce({
+      hourly: {
+        time,
+        temperature_2m: [5, 6],
+        precipitation: [0, 0],
+        precipitation_probability: [30, null],
+      },
+    });
+
+    const result = await getObservations({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result.observations[0].chanceOfRain).toBe(30);
+    expect(result.observations[1].chanceOfRain).toBeNull();
+  });
+
+  it("maps chanceOfRain to null for every point when precipitation_probability is absent from the response", async () => {
+    const time = [isoHoursBack(1), isoHoursBack(0)];
+    mockFetchOnce({
+      hourly: { time, temperature_2m: [5, 6], precipitation: [0, 0] },
+    });
+
+    const result = await getObservations({ latitude: 1, longitude: 2 }, "last-24-hours");
+
+    expect(result.observations.every((o) => o.chanceOfRain === null)).toBe(true);
+  });
+
   it("returns status unavailable on network failure", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
 

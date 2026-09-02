@@ -318,6 +318,89 @@ describe("US3: sun/moon and enrichment rows", () => {
   });
 });
 
+describe("chance of rain (011-precipitation-chance)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("renders the chance-of-rain percentage beneath the mm amount for a forecast column with data", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 2,
+          windSpeed: 3,
+          cloudCoverPercent: 90,
+          isForecast: true,
+          chanceOfRain: 70,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("2.0 mm");
+
+    expect(screen.getByText("70%")).toBeInTheDocument();
+    expect(container.querySelector(".weather-timeline-bar-chance")?.textContent).toBe("70%");
+  });
+
+  it("renders no percentage for an observed column even when chanceOfRain data is present", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursAgo(1),
+          temperature: 10,
+          precipitation: 2,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          chanceOfRain: 90, // present on the raw point, but this hour is observed, not forecast
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("2.0 mm");
+
+    expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
+  });
+
+  it("renders no percentage for a forecast column without chance-of-rain data", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 2,
+          windSpeed: 3,
+          cloudCoverPercent: 90,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("2.0 mm");
+
+    expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
+  });
+});
+
 describe("responsive layout", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

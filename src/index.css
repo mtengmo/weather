@@ -411,6 +411,15 @@ a {
   color: var(--text-muted);
 }
 
+/* Chance-of-rain, shown beneath the bar's mm value — deliberately smaller/dimmer than
+   .weather-timeline-bar-value so it reads as a secondary reading, not a second amount
+   (011-precipitation-chance, FR-005). */
+.weather-timeline-bar-chance {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
 .weather-timeline-wind-cell {
   display: flex;
   flex-direction: column;

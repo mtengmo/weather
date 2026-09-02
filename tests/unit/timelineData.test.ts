@@ -113,6 +113,42 @@ describe("buildHourlyTimelineData", () => {
     expect(data.snow.available).toBe(true);
     expect(data.snow.points[0].value).toBe(2);
   });
+
+  describe("precipitation row chanceOfRain (011-precipitation-chance)", () => {
+    it("passes chanceOfRain through for a forecast point with data", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(1), precipitation: 2, isForecast: true, chanceOfRain: 70 })]),
+        "metric"
+      );
+      expect(data.precipitation.points[0].chanceOfRain).toBe(70);
+    });
+
+    it("is null for a forecast point without chanceOfRain data", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(1), precipitation: 2, isForecast: true })]),
+        "metric"
+      );
+      expect(data.precipitation.points[0].chanceOfRain).toBeNull();
+    });
+
+    it("is null for an observed point even when the underlying source value is non-null", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), precipitation: 2, isForecast: false, chanceOfRain: 90 }),
+        ]),
+        "metric"
+      );
+      expect(data.precipitation.points[0].chanceOfRain).toBeNull();
+    });
+
+    it("preserves a genuine 0 reading on a forecast point rather than treating it as absent", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(1), precipitation: 0, isForecast: true, chanceOfRain: 0 })]),
+        "metric"
+      );
+      expect(data.precipitation.points[0].chanceOfRain).toBe(0);
+    });
+  });
 });
 
 describe("buildDailyTimelineData", () => {
@@ -127,5 +163,22 @@ describe("buildDailyTimelineData", () => {
       "metric"
     );
     expect(data.wind.points.every((p) => p.direction === null)).toBe(true);
+  });
+
+  it("reflects the day's chanceOfRainMax on the precipitation row (011-precipitation-chance)", () => {
+    const data = buildDailyTimelineData(
+      series([
+        obs({
+          timestamp: hoursFromNow(25),
+          temperature: 9,
+          precipitation: 1,
+          isForecast: true,
+          chanceOfRain: 65,
+        }),
+      ]),
+      "metric"
+    );
+    const forecastPoint = data.precipitation.points[data.precipitation.points.length - 1];
+    expect(forecastPoint.chanceOfRain).toBe(65);
   });
 });

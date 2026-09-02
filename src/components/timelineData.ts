@@ -29,6 +29,8 @@ export interface TimelineRowPoint {
   value: number | null;
   /** Wind row only: direction in degrees, for the directional arrow. */
   direction?: number | null;
+  /** Precipitation row only: percent (0-100) chance of rain, when available (011-precipitation-chance). */
+  chanceOfRain?: number | null;
 }
 
 export type TimelineRowKind = "line" | "bar" | "wind";
@@ -87,6 +89,7 @@ interface RowSource {
   feelsLike: number | null;
   isSnowy: boolean;
   isForecast: boolean;
+  chanceOfRain?: number | null;
 }
 
 function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "periods" | "nowBoundaryIndex"> {
@@ -112,6 +115,9 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
     points: sources.map((s) => ({
       isForecast: s.isForecast,
       value: convertPrecipitation(s.precipitation, unit),
+      // Only ever carried for forecast points, regardless of what the raw source value is —
+      // an observed reading is measured, not a probability (011-precipitation-chance, FR-004).
+      chanceOfRain: s.isForecast ? s.chanceOfRain ?? null : null,
     })),
     available: true,
   };
@@ -218,6 +224,7 @@ export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSys
         timestamp: obs.timestamp,
       }) === "snowy",
     isForecast: obs.isForecast ?? false,
+    chanceOfRain: obs.chanceOfRain,
   }));
 
   return {
@@ -261,6 +268,7 @@ export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSyst
         cloudCoverPercent: day.cloudAverage,
       }) === "snowy",
     isForecast: day.isForecast ?? false,
+    chanceOfRain: day.chanceOfRainMax,
   }));
 
   return {

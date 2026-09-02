@@ -26,6 +26,7 @@ interface OpenMeteoHourlyResponse {
     wind_direction_10m?: (number | null)[];
     wind_gusts_10m?: (number | null)[];
     relative_humidity_2m?: (number | null)[];
+    precipitation_probability?: (number | null)[];
   };
 }
 
@@ -58,7 +59,7 @@ async function fetchHourlyPoints(
     latitude: String(location.latitude),
     longitude: String(location.longitude),
     hourly:
-      "temperature_2m,precipitation,wind_speed_10m,cloud_cover,wind_direction_10m,wind_gusts_10m,relative_humidity_2m",
+      "temperature_2m,precipitation,wind_speed_10m,cloud_cover,wind_direction_10m,wind_gusts_10m,relative_humidity_2m,precipitation_probability",
     wind_speed_unit: "ms",
     past_days: String(pastDaysFor(window)),
     forecast_days: String(forecastDaysFor(window)),
@@ -92,6 +93,7 @@ async function fetchHourlyPoints(
     wind_direction_10m,
     wind_gusts_10m,
     relative_humidity_2m,
+    precipitation_probability,
   } = data.hourly;
 
   return time.map((timestamp, i) => ({
@@ -103,6 +105,7 @@ async function fetchHourlyPoints(
     windDirection: wind_direction_10m?.[i] ?? null,
     windGust: wind_gusts_10m?.[i] ?? null,
     relativeHumidity: relative_humidity_2m?.[i] ?? null,
+    chanceOfRain: precipitation_probability?.[i] ?? null,
   }));
 }
 

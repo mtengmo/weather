@@ -187,6 +187,58 @@ describe("toDailyAggregates", () => {
     });
   });
 
+  describe("chanceOfRainMax (011-precipitation-chance)", () => {
+    function hoursFromNow(h: number): string {
+      return new Date(Date.now() + h * 3600_000).toISOString();
+    }
+
+    it("takes the bucket's forecast-only maximum chanceOfRain reading", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursFromNow(1), temperature: 9, isForecast: true, chanceOfRain: 20 }),
+        obs({ timestamp: hoursFromNow(2), temperature: 10, isForecast: true, chanceOfRain: 70 }),
+        obs({ timestamp: hoursFromNow(3), temperature: 11, isForecast: true, chanceOfRain: 40 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const forecastBucket = result[result.length - 1];
+
+      expect(forecastBucket.chanceOfRainMax).toBe(70);
+    });
+
+    it("ignores non-forecast (observed) chanceOfRain readings", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursAgo(1), temperature: 8, chanceOfRain: 90 }), // observed, not forecast
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.chanceOfRainMax).toBeNull();
+    });
+
+    it("is null when the bucket has no chanceOfRain readings at all", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursFromNow(1), temperature: 9, isForecast: true }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const forecastBucket = result[result.length - 1];
+
+      expect(forecastBucket.chanceOfRainMax).toBeNull();
+    });
+
+    it("preserves a genuine 0 reading rather than treating it as absent", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: hoursFromNow(1), temperature: 9, isForecast: true, chanceOfRain: 0 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const forecastBucket = result[result.length - 1];
+
+      expect(forecastBucket.chanceOfRainMax).toBe(0);
+    });
+  });
+
   it("does not mutate the input array", () => {
     const observations: WeatherObservation[] = [
       obs({ timestamp: hoursAgo(1), temperature: 10, precipitation: 1 }),

@@ -52,6 +52,9 @@ export function toDailyAggregates(
     const windSpeeds = nonNull(bucket.map((o) => o.windSpeed));
     const cloudCoverages = nonNull(bucket.map((o) => o.cloudCoverPercent));
     const windGusts = nonNull(bucket.map((o) => o.windGust ?? null));
+    const chancesOfRain = nonNull(
+      bucket.filter((o) => o.isForecast === true).map((o) => o.chanceOfRain ?? null)
+    );
     const feelsLikes = nonNull(
       bucket.map((o) =>
         deriveFeelsLike({
@@ -76,6 +79,7 @@ export function toDailyAggregates(
       windLow: windSpeeds.length > 0 ? Math.min(...windSpeeds) : null,
       windGustHigh: windGusts.length > 0 ? Math.max(...windGusts) : null,
       feelsLikeAverage: feelsLikes.length > 0 ? mean(feelsLikes) : null,
+      chanceOfRainMax: chancesOfRain.length > 0 ? Math.max(...chancesOfRain) : null,
     });
   }
 
