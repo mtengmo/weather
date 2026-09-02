@@ -56,7 +56,7 @@ function PeriodGrid({
 }
 
 function formatRowValue(row: TimelineRow, value: number): string {
-  const decimals = row.key === "temperature" || row.key === "feelsLike" || row.key === "cloud" ? 0 : 1;
+  const decimals = row.key === "temperature" ? 0 : 1;
   return `${formatValue(value, decimals)}${row.unitLabel === "%" ? row.unitLabel : ` ${row.unitLabel}`}`;
 }
 
@@ -136,10 +136,16 @@ function LineRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
       <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid">
         {(_period, i) => {
           const point = row.points[i];
-          return point.value === null ? (
-            <span className="weather-timeline-gap" aria-label="No data">—</span>
-          ) : (
-            <span>{formatRowValue(row, point.value)}</span>
+          if (point.value === null) {
+            return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+          }
+          return (
+            <span
+              className={point.interpolated ? "weather-timeline-interpolated" : undefined}
+              title={point.interpolated ? "Estimated" : undefined}
+            >
+              {formatRowValue(row, point.value)}
+            </span>
           );
         }}
       </PeriodGrid>
@@ -167,10 +173,15 @@ function BarRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[] 
           return (
             <div className="weather-timeline-bar-cell">
               <div
-                className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}`}
+                className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
                 style={{ height: `${heightPercent}%` }}
               />
-              <span className="weather-timeline-bar-value">{formatRowValue(row, point.value)}</span>
+              <span
+                className={`weather-timeline-bar-value${point.interpolated ? " weather-timeline-interpolated" : ""}`}
+                title={point.interpolated ? "Estimated" : undefined}
+              >
+                {formatRowValue(row, point.value)}
+              </span>
               {point.chanceOfRain !== null && point.chanceOfRain !== undefined && (
                 <span className="weather-timeline-bar-chance">{Math.round(point.chanceOfRain)}%</span>
               )}
@@ -197,6 +208,12 @@ function WindRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
           // Meteorological direction is where wind blows FROM — rotate +180deg so the arrow
           // visually points where the wind is blowing TOWARD (the intuitive reading).
           const arrowRotation = point.direction != null ? (point.direction + 180) % 360 : null;
+          // Gust folded into the wind row as a parenthetical, both whole numbers, no decimals
+          // (009-timeline-polish-and-header, FR-007/FR-008/FR-009).
+          const speedText =
+            point.gust != null
+              ? `${Math.round(point.value)} (${Math.round(point.gust)}) ${row.unitLabel}`
+              : `${Math.round(point.value)} ${row.unitLabel}`;
           return (
             <span className="weather-timeline-wind-cell">
               {arrowRotation !== null && (
@@ -208,7 +225,12 @@ function WindRow({ row, periods }: { row: TimelineRow; periods: TimelinePeriod[]
                   ↑
                 </span>
               )}
-              {formatRowValue(row, point.value)}
+              <span
+                className={point.interpolated ? "weather-timeline-interpolated" : undefined}
+                title={point.interpolated ? "Estimated" : undefined}
+              >
+                {speedText}
+              </span>
             </span>
           );
         }}
@@ -243,6 +265,34 @@ function ConditionRow({ periods }: { periods: TimelinePeriod[] }) {
   );
 }
 
+// A horizontally-scrolling container with no vertical overflow doesn't consume plain
+// vertical-wheel input by default (only trackpad swipe / dragged scrollbar work natively) — a
+// laptop with a conventional mouse otherwise can't pan it at all (009-timeline-polish-and-header,
+// FR-011, research.md §2). Redirect vertical wheel delta into horizontal scroll only when there's
+// actually something to scroll, so normal page-scroll is unaffected once the timeline fits.
+//
+// Attached as a native listener (not React's onWheel) because React registers wheel handlers as
+// passive by default, which silently no-ops preventDefault and logs a console warning.
+function useTimelineWheelScroll<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    function onWheel(event: WheelEvent) {
+      if (el!.scrollWidth <= el!.clientWidth || event.deltaY === 0) return;
+      el!.scrollLeft += event.deltaY;
+      event.preventDefault();
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  return ref;
+}
+
 function SunMoonSummary({ location, date }: { location: Location; date: Date }) {
   const { sunrise, sunset } = getSunTimes(location, date);
   const moonPhase = getMoonPhase(date);
@@ -270,6 +320,7 @@ export default function WeatherIconOverview({
   onBack,
 }: WeatherIconOverviewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
 
   useEffect(() => {
     // Mirrors ObservationChart/ObservationDetails: move focus to this view's heading when
@@ -324,7 +375,7 @@ export default function WeatherIconOverview({
       {timeline !== null && (
         <>
           <SunMoonSummary location={location} date={new Date()} />
-          <div className="weather-timeline-wrap">
+          <div className="weather-timeline-wrap" ref={timelineWrapRef}>
             <div className="weather-timeline">
               {nowLeftPercent !== null && (
                 <div
@@ -347,10 +398,7 @@ export default function WeatherIconOverview({
               <LineRow row={timeline.temperature} periods={timeline.periods} />
               <BarRow row={timeline.precipitation} periods={timeline.periods} />
               <WindRow row={timeline.wind} periods={timeline.periods} />
-              <LineRow row={timeline.cloud} periods={timeline.periods} />
-              <LineRow row={timeline.feelsLike} periods={timeline.periods} />
               <BarRow row={timeline.snow} periods={timeline.periods} />
-              <BarRow row={timeline.gust} periods={timeline.periods} />
             </div>
           </div>
         </>

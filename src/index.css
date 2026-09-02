@@ -69,10 +69,13 @@ body {
   padding: 1rem;
 }
 
+/* Consolidated header (009-timeline-polish-and-header): controls, search, and favorites all
+   sit together in one compact strip instead of a separate title row plus sections further down
+   the page (FR-001-FR-004). Wraps to a stacked column at narrow widths via the existing
+   @media rule below, so no control is ever clipped or unreachable. */
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -82,6 +85,12 @@ body {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.app-header .place-search,
+.app-header .favorites {
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
 .gap-point {
@@ -243,7 +252,16 @@ a {
 @media (max-width: 480px) {
   .app-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+
+  /* In a column flex container, flex-basis sizes height, not width — the row layout's
+     "1 1 220px" would otherwise force each section to a tall, mostly-empty ~220px box here
+     (009-timeline-polish-and-header, FR-004). */
+  .app-header .place-search,
+  .app-header .favorites {
+    flex: initial;
+    min-width: 0;
   }
 }
 
@@ -406,9 +424,27 @@ a {
   opacity: 0.45;
 }
 
+.weather-timeline-bar-interpolated {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--accent-2),
+    var(--accent-2) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
 .weather-timeline-bar-value {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+/* A value derived by interpolating the "now" boundary column's neighbors, rather than measured
+   or forecast directly (009-timeline-polish-and-header, FR-012). Italic + a dotted underline
+   distinguishes it from both plain observed/forecast text and from .weather-timeline-gap's dash. */
+.weather-timeline-interpolated {
+  font-style: italic;
+  border-bottom: 1px dotted var(--text-muted);
 }
 
 /* Chance-of-rain, shown beneath the bar's mm value — deliberately smaller/dimmer than

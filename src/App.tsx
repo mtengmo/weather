@@ -17,6 +17,7 @@ import HighLowToggle from "./components/HighLowToggle";
 import LocationSwitcher from "./components/LocationSwitcher";
 import FavoritesList from "./components/FavoritesList";
 import PlaceSearch from "./components/PlaceSearch";
+import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 
 type View = "graph" | "details" | "overview";
 
@@ -45,6 +46,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Restore the last-viewed location on load (009 FR-014-016) — only while nothing has been
+    // selected yet, so this never fights the currentLocation-sync effect below. A cached
+    // favorite is only trusted once it's confirmed to still exist in the loaded favorites list;
+    // a cached current-position result needs no such check.
+    if (selected !== null) return;
+    const cached = getCachedLocation();
+    if (!cached) return;
+    if (cached.source === "favorite") {
+      const stillFavorite = favorites.some(
+        (f) => f.latitude === cached.latitude && f.longitude === cached.longitude
+      );
+      if (!stillFavorite) return;
+    }
+    setSelected(cached);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favorites]);
+
+  useEffect(() => {
     if (!currentLocation) return;
     setSelected((prev) => {
       if (prev === null) return currentLocation;
@@ -63,6 +82,7 @@ export default function App() {
 
   function selectLocation(location: Location) {
     setSelected(location);
+    setCachedLocation(location);
     setView("graph");
   }
 
@@ -81,13 +101,38 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Weather History</h1>
         <div className="header-controls">
           <ThemePicker theme={theme} onChange={setTheme} />
           <UnitToggle unit={unit} onChange={setUnit} />
           <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
           <HighLowToggle visible={highLowVisible} onChange={setHighLowVisible} />
         </div>
+
+        <PlaceSearch onSelect={(candidate) => add(candidate)} />
+
+        <FavoritesList
+          favorites={favorites}
+          error={favoritesError}
+          selectedId={
+            favorites.find(
+              (f) =>
+                selected &&
+                f.latitude === selected.latitude &&
+                f.longitude === selected.longitude &&
+                selected.source === "favorite"
+            )?.id ?? null
+          }
+          onSelect={(place) =>
+            selectLocation({
+              latitude: place.latitude,
+              longitude: place.longitude,
+              displayName: place.displayName,
+              source: "favorite",
+            })
+          }
+          onRemove={remove}
+          onDismissError={clearError}
+        />
       </header>
 
       {locationUnavailable && (
@@ -142,32 +187,6 @@ export default function App() {
           onBack={() => setView("graph")}
         />
       )}
-
-      <PlaceSearch onSelect={(candidate) => add(candidate)} />
-
-      <FavoritesList
-        favorites={favorites}
-        error={favoritesError}
-        selectedId={
-          favorites.find(
-            (f) =>
-              selected &&
-              f.latitude === selected.latitude &&
-              f.longitude === selected.longitude &&
-              selected.source === "favorite"
-          )?.id ?? null
-        }
-        onSelect={(place) =>
-          selectLocation({
-            latitude: place.latitude,
-            longitude: place.longitude,
-            displayName: place.displayName,
-            source: "favorite",
-          })
-        }
-        onRemove={remove}
-        onDismissError={clearError}
-      />
     </div>
   );
 }

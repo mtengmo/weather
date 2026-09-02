@@ -75,26 +75,29 @@ describe("buildHourlyTimelineData", () => {
     expect(data.nowBoundaryIndex).toBeNull();
   });
 
-  it("marks a row unavailable when every point lacks that field, and available when at least one has it", () => {
-    const noGust = buildHourlyTimelineData(
-      series([obs({ timestamp: hoursFromNow(-1), temperature: 5, windGust: null })]),
-      "metric"
-    );
-    expect(noGust.gust.available).toBe(false);
-
-    const withGust = buildHourlyTimelineData(
-      series([obs({ timestamp: hoursFromNow(-1), temperature: 5, windGust: 12 })]),
-      "metric"
-    );
-    expect(withGust.gust.available).toBe(true);
-  });
-
-  it("core rows (temperature, precipitation, wind, cloud) stay available even when entirely gapped", () => {
+  it("core rows (temperature, precipitation, wind, snow) stay available even when entirely gapped", () => {
     const data = buildHourlyTimelineData(series([obs({ timestamp: hoursFromNow(-1) })]), "metric");
     expect(data.temperature.available).toBe(true);
     expect(data.precipitation.available).toBe(true);
     expect(data.wind.available).toBe(true);
-    expect(data.cloud.available).toBe(true);
+  });
+
+  describe("wind row gust (009-timeline-polish-and-header)", () => {
+    it("carries a null gust when the source has none", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(-1), temperature: 5, windSpeed: 3, windGust: null })]),
+        "metric"
+      );
+      expect(data.wind.points[0].gust).toBeNull();
+    });
+
+    it("carries the converted gust value when the source has one", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(-1), temperature: 5, windSpeed: 3, windGust: 12 })]),
+        "metric"
+      );
+      expect(data.wind.points[0].gust).toBe(12);
+    });
   });
 
   it("only includes a snow value when the point is classified snowy", () => {
@@ -147,6 +150,83 @@ describe("buildHourlyTimelineData", () => {
         "metric"
       );
       expect(data.precipitation.points[0].chanceOfRain).toBe(0);
+    });
+  });
+
+  describe("locale-independent hour label (009-timeline-polish-and-header, FR-010)", () => {
+    it("renders a plain 2-digit 24-hour label with no AM/PM marker", () => {
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]),
+        "metric"
+      );
+      expect(data.periods[0].label).toMatch(/^\d{2}$/);
+      expect(data.periods[0].label).not.toMatch(/AM|PM/i);
+    });
+  });
+
+  describe("now-boundary interpolation (009-timeline-polish-and-header, FR-012/FR-013)", () => {
+    it("interpolates the boundary column's value as the midpoint of its neighbors when both are present", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(1), temperature: null, isForecast: true }),
+          obs({ timestamp: hoursFromNow(2), temperature: 20, isForecast: true }),
+        ]),
+        "metric"
+      );
+      expect(data.nowBoundaryIndex).toBe(0);
+      expect(data.temperature.points[1].value).toBe(15);
+      expect(data.temperature.points[1].interpolated).toBe(true);
+    });
+
+    it("leaves the boundary column as a gap when the observed neighbor is missing", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), temperature: null, isForecast: false }),
+          obs({ timestamp: hoursFromNow(1), temperature: null, isForecast: true }),
+          obs({ timestamp: hoursFromNow(2), temperature: 20, isForecast: true }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[1].value).toBeNull();
+      expect(data.temperature.points[1].interpolated).toBeFalsy();
+    });
+
+    it("leaves the boundary column as a gap when the forecast neighbor is missing", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(1), temperature: null, isForecast: true }),
+          obs({ timestamp: hoursFromNow(2), temperature: null, isForecast: true }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[1].value).toBeNull();
+      expect(data.temperature.points[1].interpolated).toBeFalsy();
+    });
+
+    it("leaves the boundary column as a gap when there is no forecast neighbor at all", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(1), temperature: null, isForecast: true }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[1].value).toBeNull();
+      expect(data.temperature.points[1].interpolated).toBeFalsy();
+    });
+
+    it("does not interpolate in the daily builder", () => {
+      const data = buildDailyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-1), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(25), temperature: null, isForecast: true }),
+          obs({ timestamp: hoursFromNow(49), temperature: 20, isForecast: true }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points.every((p) => !p.interpolated)).toBe(true);
     });
   });
 });

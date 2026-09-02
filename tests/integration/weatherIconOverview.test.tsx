@@ -51,7 +51,7 @@ describe("US1: synchronized 24h timeline", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("renders the condition, temperature, precipitation, wind, and cloud rows, distinguishing forecast and gap columns", async () => {
+  it("renders the condition, temperature, precipitation, and wind rows, distinguishing forecast and gap columns", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -96,11 +96,12 @@ describe("US1: synchronized 24h timeline", () => {
     expect(screen.getByText("No data")).toBeInTheDocument();
     expect(screen.getAllByText("Forecast").length).toBeGreaterThan(0);
 
-    // The other core rows all render (labels come from timelineData.ts row titles).
+    // The other core rows all render (labels come from timelineData.ts row titles). No
+    // cloud-cover row (009-timeline-polish-and-header, FR-005).
     expect(screen.getByText(/Temperature/)).toBeInTheDocument();
     expect(screen.getByText(/Precipitation/)).toBeInTheDocument();
     expect(screen.getByText(/^Wind/)).toBeInTheDocument();
-    expect(screen.getByText(/Cloud cover/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cloud cover/)).not.toBeInTheDocument();
 
     // Exactly one shared "now" line spans every row.
     expect(container.querySelectorAll(".weather-timeline-now")).toHaveLength(1);
@@ -261,7 +262,7 @@ describe("US3: sun/moon and enrichment rows", () => {
     expect(screen.getByText(/Moon:/)).toBeInTheDocument();
   });
 
-  it("renders feels-like, snow, and gust rows when the underlying data supports them", async () => {
+  it("renders the snow row when the underlying data is classified snowy", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -281,18 +282,13 @@ describe("US3: sun/moon and enrichment rows", () => {
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
-    expect(await screen.findByText(/Feels like/)).toBeInTheDocument();
     // "Snow" also appears as the condition row's label for this snowy hour, so scope the
     // query to the row title rather than matching any "Snow" text on the page.
-    const snowTitle = screen.getAllByText(/Snow/).find((el) => el.className === "weather-timeline-row-title");
-    expect(snowTitle).toBeTruthy();
-    expect(screen.getByText(/Gusts/)).toBeInTheDocument();
+    const snowTitle = await screen.findAllByText(/Snow/);
+    expect(snowTitle.some((el) => el.className === "weather-timeline-row-title")).toBe(true);
   });
 
-  it("omits the snow and gust rows, and the feels-like row when temperature itself is absent", async () => {
-    // deriveFeelsLike falls back to the plain temperature whenever temperature is present
-    // (feelsLike.ts), so the feels-like row is only ever omitted when temperature is null
-    // for every point too — a series with wind/precip but no temperature exercises that.
+  it("omits the snow row when nothing in the series is classified snowy", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -306,8 +302,6 @@ describe("US3: sun/moon and enrichment rows", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await screen.findByText(/Temperature/);
 
-    expect(screen.queryByText(/Feels like/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Gusts/)).not.toBeInTheDocument();
     const snowTitle = screen
       .queryAllByText(/Snow/)
       .find((el) => el.className === "weather-timeline-row-title");
@@ -315,6 +309,159 @@ describe("US3: sun/moon and enrichment rows", () => {
 
     // The core rows from User Story 1 are unaffected by the omission.
     expect(screen.getByText(/Temperature/)).toBeInTheDocument();
+  });
+});
+
+describe("US2: a leaner set of timeline rows (009-timeline-polish-and-header)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("renders no cloud-cover row and no feels-like row for a fully-populated series", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursAgo(1),
+          temperature: 10,
+          precipitation: 0,
+          windSpeed: 3,
+          windGust: 6,
+          cloudCoverPercent: 50,
+        },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(screen.queryByText(/Cloud cover/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Feels like/)).not.toBeInTheDocument();
+  });
+
+  it("renders the wind row as whole-number speed with gust in parentheses when gust data is present", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursAgo(1),
+          temperature: 10,
+          precipitation: 0,
+          windSpeed: 12.4,
+          windGust: 17.6,
+          cloudCoverPercent: 50,
+        },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(await screen.findByText("12 (18) m/s")).toBeInTheDocument();
+  });
+
+  it("renders the wind row as plain whole-number speed when no gust data is present", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursAgo(1),
+          temperature: 10,
+          precipitation: 0,
+          windSpeed: 12.4,
+          cloudCoverPercent: 50,
+        },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(await screen.findByText("12 m/s")).toBeInTheDocument();
+  });
+});
+
+describe("US3: fix timeline display and navigation defects (009-timeline-polish-and-header)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows an interpolated estimate at the 'now' boundary column when both neighbors have data", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: null,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+        {
+          timestamp: hoursFromNow(2),
+          temperature: 20,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-interpolated")).toBeInTheDocument();
+    expect(screen.getByText("15 °C")).toBeInTheDocument();
+  });
+
+  it("leaves a plain gap at the 'now' boundary column when a neighbor is also missing", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: null, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: null,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+        {
+          timestamp: hoursFromNow(2),
+          temperature: 20,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelectorAll(".weather-timeline-interpolated").length).toBe(0);
   });
 });
 
