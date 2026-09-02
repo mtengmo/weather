@@ -23,6 +23,12 @@ export interface WeatherObservation {
   cloudCoverPercent: number | null; // 0-100
   /** true for a predicted point; absent/false for a measured point (005-add-weather-forecast). */
   isForecast?: boolean;
+  /** Degrees (0-360), direction the wind is blowing FROM (008-timeline-dashboard-redesign). */
+  windDirection?: number | null;
+  /** Meters per second, same scale as windSpeed (008-timeline-dashboard-redesign). */
+  windGust?: number | null;
+  /** Percent (0-100) — feels-like-temperature input only, not its own displayed row (008-timeline-dashboard-redesign). */
+  relativeHumidity?: number | null;
 }
 
 export type ObservationWindow = "last-24-hours" | "last-7-days" | "last-30-days";
@@ -59,6 +65,10 @@ export interface DailyAggregate {
   windLow: number | null;
   /** true when this bucket's end time is in the future (005-add-weather-forecast). */
   isForecast?: boolean;
+  /** Max of the bucket's windGust readings, mirroring windHigh (008-timeline-dashboard-redesign). */
+  windGustHigh?: number | null;
+  /** Mean of the bucket's derived feels-like values (008-timeline-dashboard-redesign). */
+  feelsLikeAverage?: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

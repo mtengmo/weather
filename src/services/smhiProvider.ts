@@ -5,6 +5,11 @@ const TEMPERATURE_PARAM = 1;
 const PRECIPITATION_PARAM = 7;
 const WIND_PARAM = 4;
 const CLOUD_PARAM = 16; // "procent" per SMHI's own parameter metadata — already 0-100, no conversion needed
+// Confirmed via SMHI's parameter catalog to share wind_param's exact cadence ("medelvärde 10
+// min, 1 gång/tim") — not the higher-frequency parameter 48 of the same name
+// (008-timeline-dashboard-redesign, contracts/provider-fields.md).
+const WIND_DIRECTION_PARAM = 3;
+const WIND_GUST_PARAM = 21; // "Byvind", max/hour, m/s
 const COVERAGE_RADIUS_KM = 50;
 
 // Point-forecast API (lat/lon grid point, no station id) — replaces the deprecated
@@ -53,10 +58,13 @@ interface SmhiDataResponse {
   value?: SmhiValue[];
 }
 
-// Forecast API response shape (verified live 2026-09-01, research.md §1 addendum).
+// Forecast API response shape (verified live 2026-09-01, research.md §1 addendum;
+// wind_from_direction/wind_speed_of_gust confirmed live 2026-09-02, 008 research.md §2).
 interface SmhiForecastData {
   air_temperature?: number;
   wind_speed?: number;
+  wind_from_direction?: number;
+  wind_speed_of_gust?: number;
   precipitation_amount_mean?: number;
   cloud_area_fraction?: number; // octas, 0-8 — NOT the same 0-100 scale as the observation API
 }
@@ -167,7 +175,9 @@ function buildHourlySeries(
   temperatureValues: SmhiValue[],
   precipitationValues: SmhiValue[],
   windValues: SmhiValue[],
-  cloudValues: SmhiValue[]
+  cloudValues: SmhiValue[],
+  windDirectionValues: SmhiValue[],
+  windGustValues: SmhiValue[]
 ): WeatherObservation[] {
   const now = Date.now();
   const hoursNeeded = WINDOW_HOURS[window];
@@ -177,6 +187,8 @@ function buildHourlySeries(
   const windByHour = byHour(windValues);
   // SMHI parameter 16 is already reported in percent — no conversion needed.
   const cloudByHour = byHour(cloudValues);
+  const windDirectionByHour = byHour(windDirectionValues);
+  const windGustByHour = byHour(windGustValues);
 
   const currentHour = Math.floor(now / 3600_000);
   const observations: WeatherObservation[] = [];
@@ -189,6 +201,8 @@ function buildHourlySeries(
       precipitation: precipByHour.has(hourKey) ? precipByHour.get(hourKey)! : null,
       windSpeed: windByHour.has(hourKey) ? windByHour.get(hourKey)! : null,
       cloudCoverPercent: cloudByHour.has(hourKey) ? cloudByHour.get(hourKey)! : null,
+      windDirection: windDirectionByHour.has(hourKey) ? windDirectionByHour.get(hourKey)! : null,
+      windGust: windGustByHour.has(hourKey) ? windGustByHour.get(hourKey)! : null,
     });
   }
   return observations;
@@ -234,6 +248,8 @@ function buildForecastHourlySeries(
       precipitation: data?.precipitation_amount_mean ?? null,
       windSpeed: data?.wind_speed ?? null,
       cloudCoverPercent: data?.cloud_area_fraction !== undefined ? data.cloud_area_fraction * 12.5 : null,
+      windDirection: data?.wind_from_direction ?? null,
+      windGust: data?.wind_speed_of_gust ?? null,
       isForecast: true,
     });
   }
@@ -265,11 +281,20 @@ export async function getObservations(
     throw new Error("No active SMHI temperature station found");
   }
 
-  const [temperatureValues, precipitationValues, windValues, cloudValues] = await Promise.all([
+  const [
+    temperatureValues,
+    precipitationValues,
+    windValues,
+    cloudValues,
+    windDirectionValues,
+    windGustValues,
+  ] = await Promise.all([
     fetchStationValues(TEMPERATURE_PARAM, nearestTemp[0].key, window),
     fetchParameterValues(PRECIPITATION_PARAM, location, window),
     fetchParameterValues(WIND_PARAM, location, window),
     fetchParameterValues(CLOUD_PARAM, location, window),
+    fetchParameterValues(WIND_DIRECTION_PARAM, location, window),
+    fetchParameterValues(WIND_GUST_PARAM, location, window),
   ]);
 
   const observations = buildHourlySeries(
@@ -277,7 +302,9 @@ export async function getObservations(
     temperatureValues,
     precipitationValues,
     windValues,
-    cloudValues
+    cloudValues,
+    windDirectionValues,
+    windGustValues
   );
 
   const forecastHoursNeeded = FORECAST_HOURS[window];

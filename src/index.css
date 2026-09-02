@@ -247,8 +247,9 @@ a {
   }
 }
 
-/* Weather Icon Overview (007-weather-icon-overview) — FR-011: breaks out of .app's 900px
-   cap to visibly use substantially more of the browser window than the fixed-height charts. */
+/* Weather Icon Overview / Timeline Dashboard (007-weather-icon-overview,
+   008-timeline-dashboard-redesign) — FR-011: breaks out of .app's 900px cap to visibly use
+   substantially more of the browser window than the fixed-height charts. */
 .weather-overview {
   width: 100vw;
   max-width: 100vw;
@@ -258,62 +259,197 @@ a {
   box-sizing: border-box;
 }
 
-.weather-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+.weather-timeline-sun-moon {
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
-  margin-top: 1rem;
+  margin: 0.75rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
-.weather-overview-cell {
+/* Scrolls horizontally on a narrow screen rather than shrinking columns illegibly
+   (008 FR-008, research.md §6) — same pattern as the existing .observation-table-wrap. */
+.weather-timeline-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.weather-timeline {
+  position: relative;
+  min-width: 900px;
+  padding: 0.5rem 0;
+}
+
+/* One shared row: every row uses the exact same grid-template-columns (set inline per
+   render, matching the period count), which is what guarantees pixel-aligned columns
+   across rows without a single mega-grid (008 research.md §1). */
+.weather-timeline-row-grid {
+  display: grid;
+}
+
+.weather-timeline-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  padding: 1.25rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
+  justify-content: center;
+  padding: 0.35rem 0.15rem;
   text-align: center;
+  font-size: 0.8rem;
+  min-height: 2rem;
 }
 
-.weather-overview-cell svg {
+.weather-timeline-row-time .weather-timeline-cell {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.weather-timeline-row-condition {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.weather-timeline-condition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.weather-timeline-condition svg {
   color: var(--accent);
 }
 
-.weather-overview-cell-label {
-  font-weight: 600;
+.weather-timeline-condition-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
 }
 
-.weather-overview-cell-forecast {
-  font-size: 0.75rem;
+.weather-timeline-cell-forecast {
+  font-size: 0.65rem;
   color: var(--text-muted);
   font-style: italic;
 }
 
-.weather-overview-cell-values {
+.weather-timeline-row-label-wrap {
+  border-bottom: 1px solid var(--border);
+  padding: 0.35rem 0;
+}
+
+.weather-timeline-row-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0 0.35rem;
+}
+
+.weather-timeline-row-unit {
+  font-weight: 400;
+}
+
+/* Line rows (temperature, cloud cover, feels-like): one SVG overlay sized to fill this
+   area, positioned by the exact same percentage-of-width math the value-label grid below
+   it also uses, so the line and its labels line up (008 research.md §1). */
+.weather-timeline-line-area {
+  position: relative;
+  height: 70px;
+}
+
+.weather-timeline-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.weather-timeline-line-observed {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.weather-timeline-line-forecast {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.7;
+}
+
+.weather-timeline-row-bars {
+  align-items: end;
+  height: 70px;
+}
+
+.weather-timeline-bar-cell {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+  width: 100%;
   gap: 0.15rem;
+}
+
+.weather-timeline-bar {
+  width: 60%;
+  min-height: 2px;
+  background: var(--accent-2);
+  border-radius: 2px 2px 0 0;
+}
+
+.weather-timeline-bar-forecast {
+  opacity: 0.45;
+}
+
+.weather-timeline-bar-value {
+  font-size: 0.7rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
-.weather-overview-no-data {
-  font-size: 2rem;
-  line-height: 40px;
-  height: 40px;
+.weather-timeline-wind-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.weather-timeline-wind-arrow {
+  display: inline-block;
+  color: var(--accent);
+}
+
+.weather-timeline-gap {
   color: var(--text-muted);
+  font-style: italic;
 }
 
-/* Higher specificity than the plain .weather-overview-cell rule above, so the forecast
-   tint always applies regardless of CSS source order (reuses the existing .forecast-row
-   convention from 004-chart-styling-fixes rather than introducing a new one). */
-.weather-overview-cell.forecast-row {
-  background: rgba(127, 127, 127, 0.08);
+/* The single shared "now" line — one element spans every row at once, since every row's
+   columns are guaranteed to share the same proportions (008 FR-003). */
+.weather-timeline-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px dashed var(--text-muted);
+  z-index: 1;
+  pointer-events: none;
 }
 
-[data-theme="glass"] .weather-overview-cell {
+.weather-timeline-now-label {
+  position: absolute;
+  top: -0.1rem;
+  left: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+[data-theme="glass"] .weather-timeline-wrap {
   background: var(--surface);
   backdrop-filter: blur(var(--surface-blur));
   -webkit-backdrop-filter: blur(var(--surface-blur));

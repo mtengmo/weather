@@ -23,6 +23,9 @@ interface OpenMeteoHourlyResponse {
     precipitation: (number | null)[];
     wind_speed_10m: (number | null)[];
     cloud_cover: (number | null)[];
+    wind_direction_10m?: (number | null)[];
+    wind_gusts_10m?: (number | null)[];
+    relative_humidity_2m?: (number | null)[];
   };
 }
 
@@ -54,7 +57,8 @@ async function fetchHourlyPoints(
   const params = new URLSearchParams({
     latitude: String(location.latitude),
     longitude: String(location.longitude),
-    hourly: "temperature_2m,precipitation,wind_speed_10m,cloud_cover",
+    hourly:
+      "temperature_2m,precipitation,wind_speed_10m,cloud_cover,wind_direction_10m,wind_gusts_10m,relative_humidity_2m",
     wind_speed_unit: "ms",
     past_days: String(pastDaysFor(window)),
     forecast_days: String(forecastDaysFor(window)),
@@ -79,7 +83,16 @@ async function fetchHourlyPoints(
 
   if (!data.hourly) return null;
 
-  const { time, temperature_2m, precipitation, wind_speed_10m, cloud_cover } = data.hourly;
+  const {
+    time,
+    temperature_2m,
+    precipitation,
+    wind_speed_10m,
+    cloud_cover,
+    wind_direction_10m,
+    wind_gusts_10m,
+    relative_humidity_2m,
+  } = data.hourly;
 
   return time.map((timestamp, i) => ({
     timestamp,
@@ -87,6 +100,9 @@ async function fetchHourlyPoints(
     precipitation: precipitation[i] ?? null,
     windSpeed: wind_speed_10m?.[i] ?? null,
     cloudCoverPercent: cloud_cover?.[i] ?? null,
+    windDirection: wind_direction_10m?.[i] ?? null,
+    windGust: wind_gusts_10m?.[i] ?? null,
+    relativeHumidity: relative_humidity_2m?.[i] ?? null,
   }));
 }
 

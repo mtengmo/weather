@@ -1,4 +1,5 @@
 import type { DailyAggregate, WeatherObservation } from "../models/types";
+import { deriveFeelsLike } from "./feelsLike";
 
 const BUCKET_MS = 24 * 3600_000;
 
@@ -50,6 +51,16 @@ export function toDailyAggregates(
     const precipitations = nonNull(bucket.map((o) => o.precipitation));
     const windSpeeds = nonNull(bucket.map((o) => o.windSpeed));
     const cloudCoverages = nonNull(bucket.map((o) => o.cloudCoverPercent));
+    const windGusts = nonNull(bucket.map((o) => o.windGust ?? null));
+    const feelsLikes = nonNull(
+      bucket.map((o) =>
+        deriveFeelsLike({
+          temperature: o.temperature,
+          windSpeed: o.windSpeed,
+          relativeHumidity: o.relativeHumidity ?? null,
+        })
+      )
+    );
 
     aggregates.push({
       bucketEnd,
@@ -63,6 +74,8 @@ export function toDailyAggregates(
       cloudAverage: cloudCoverages.length > 0 ? mean(cloudCoverages) : null,
       windHigh: windSpeeds.length > 0 ? Math.max(...windSpeeds) : null,
       windLow: windSpeeds.length > 0 ? Math.min(...windSpeeds) : null,
+      windGustHigh: windGusts.length > 0 ? Math.max(...windGusts) : null,
+      feelsLikeAverage: feelsLikes.length > 0 ? mean(feelsLikes) : null,
     });
   }
 
