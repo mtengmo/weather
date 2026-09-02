@@ -9,7 +9,7 @@ import {
 } from "./timelineData";
 import { WEATHER_ICONS } from "./weatherIcons";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
-import { formatValue } from "../services/format";
+import { dataSourceNote, formatValue } from "../services/format";
 
 interface WeatherIconOverviewProps {
   location: Location;
@@ -426,6 +426,21 @@ export default function WeatherIconOverview({
       ? ((timeline.nowBoundaryIndex + 1) / timeline.periods.length) * 100
       : null;
 
+  useEffect(() => {
+    // Center the "now" column in the visible area on a fresh render whenever the timeline
+    // overflows its container — otherwise the timeline opens scrolled to its leftmost (oldest)
+    // hour, requiring a manual swipe to reach "now" on a narrow viewport
+    // (013-overview-default-and-layout, FR-010/FR-011/FR-012, research.md §5).
+    const el = timelineWrapRef.current;
+    if (el === null || nowLeftPercent === null) return;
+    if (el.scrollWidth <= el.clientWidth) return;
+
+    const target = (el.scrollWidth * nowLeftPercent) / 100 - el.clientWidth / 2;
+    el.scrollLeft = Math.max(0, Math.min(target, el.scrollWidth - el.clientWidth));
+    // Reruns whenever the underlying series/window changes, not just on the very first mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [series, window, nowLeftPercent]);
+
   return (
     <section aria-label={`Weather overview for ${location.displayName}`} className="weather-overview">
       <div className="app-header">
@@ -449,6 +464,10 @@ export default function WeatherIconOverview({
           </button>
         ))}
       </div>
+
+      {series !== null && dataSourceNote(series) && (
+        <p className="data-source-note">{dataSourceNote(series)}</p>
+      )}
 
       {series === null && <p role="status">Loading weather overview…</p>}
 

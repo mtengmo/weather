@@ -95,6 +95,36 @@ describe("weatherApi.getObservations (provider orchestration)", () => {
 
     expect(openMeteoProvider.getObservations).toHaveBeenCalled();
   });
+
+  describe("primarySource (013-overview-default-and-layout)", () => {
+    it("is 'smhi' when SMHI serves the location", async () => {
+      vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+      vi.mocked(smhiProvider.getObservations).mockResolvedValue(series());
+
+      const result = await getObservations(location, "last-24-hours");
+
+      expect(result.primarySource).toBe("smhi");
+    });
+
+    it("is 'open-meteo' when the location isn't SMHI-covered", async () => {
+      vi.mocked(smhiProvider.isCovered).mockResolvedValue(false);
+      vi.mocked(openMeteoProvider.getObservations).mockResolvedValue(series());
+
+      const result = await getObservations(location, "last-24-hours");
+
+      expect(result.primarySource).toBe("open-meteo");
+    });
+
+    it("is 'open-meteo' when SMHI fails for an in-coverage location", async () => {
+      vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+      vi.mocked(smhiProvider.getObservations).mockRejectedValue(new Error("smhi down"));
+      vi.mocked(openMeteoProvider.getObservations).mockResolvedValue(series());
+
+      const result = await getObservations(location, "last-24-hours");
+
+      expect(result.primarySource).toBe("open-meteo");
+    });
+  });
 });
 
 describe("weatherApi.getObservations forecast-only fallback (006-forecast-now-marker)", () => {
@@ -125,6 +155,8 @@ describe("weatherApi.getObservations forecast-only fallback (006-forecast-now-ma
     expect(result.forecastFromFallbackSource).toBe(true);
     expect(result.observations.some((o) => o.isForecast)).toBe(true);
     expect(result.location).toEqual(smhiSeries.location);
+    // Observed data still came from SMHI even though the forecast fell back (013).
+    expect(result.primarySource).toBe("smhi");
   });
 
   it("leaves the flag unset and adds nothing when the fallback also finds no forecast", async () => {

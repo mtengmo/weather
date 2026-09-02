@@ -779,3 +779,164 @@ describe("US3: switching locations re-fetches the chart's data", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(paris, "last-24-hours"));
   });
 });
+
+describe("US5: mirrored axis and point dots (013-overview-default-and-layout)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function fullObservation(overrides: Partial<ObservationSeries["observations"][number]> = {}) {
+    return {
+      timestamp: new Date().toISOString(),
+      temperature: 10,
+      precipitation: 1,
+      windSpeed: 3,
+      cloudCoverPercent: 40,
+      ...overrides,
+    };
+  }
+
+  // Recharts' <ResponsiveContainer> never gets real dimensions under jsdom (confirmed: width
+  // resolves to 0), so it doesn't render its inner <svg>/axes/lines/dots at all — matching this
+  // repo's established precedent (008 research.md) that Recharts-based chart tests can only be
+  // smoke tests here, not structural assertions on axis/dot elements. These tests confirm the
+  // mirrored-axis and dot-marker JSX added for FR-015/FR-016 doesn't throw or regress any
+  // metric tab, for both the 24-hour and multi-day (high/low/average) code paths.
+  it("renders every single-scale metric tab without error at both 24h and 7-day windows", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [fullObservation(), fullObservation({ isForecast: true })])
+    );
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    for (const tab of ["Rain", "Wind", "Cloud coverage"]) {
+      await user.click(screen.getByRole("button", { name: tab }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    for (const tab of ["Rain", "Wind", "Cloud coverage"]) {
+      await user.click(screen.getByRole("button", { name: tab }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  });
+
+  it("renders the temperature chart (unmirrored, two distinct metric scales) without error", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [fullObservation(), fullObservation({ isForecast: true })])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(screen.getByRole("button", { name: "Temperature" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("US6: observed high/low note (013-overview-default-and-layout)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows the correct high and low with times for a window with observed data", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: "2026-09-01T04:00:00.000Z", temperature: 9, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: "2026-09-01T15:00:00.000Z", temperature: 24, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+
+    const note = await screen.findByText(/^High: /);
+    expect(note.textContent).toMatch(/High: 24°C/);
+    expect(note.textContent).toMatch(/Low: 9°C/);
+  });
+
+  it("shows no note for an all-forecast window", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 20,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(screen.queryByText(/^High: /)).not.toBeInTheDocument();
+  });
+
+  it("shows no note for a metric other than temperature", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: "2026-09-01T04:00:00.000Z", temperature: 9, precipitation: 1, windSpeed: 1, cloudCoverPercent: 5 },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Rain" }));
+
+    expect(screen.queryByText(/^High: /)).not.toBeInTheDocument();
+  });
+});
+
+describe("US4: data source note (013-overview-default-and-layout)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows 'Data: SMHI' when primarySource is smhi with no forecast fallback", async () => {
+    vi.mocked(getObservations).mockResolvedValue({ ...series("last-24-hours"), primarySource: "smhi" });
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+
+    expect(await screen.findByText("Data: SMHI")).toBeInTheDocument();
+  });
+
+  it("shows 'Data: SMHI (forecast: Open-Meteo)' when the forecast came from the fallback", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      ...series("last-24-hours"),
+      primarySource: "smhi",
+      forecastFromFallbackSource: true,
+    });
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+
+    expect(await screen.findByText("Data: SMHI (forecast: Open-Meteo)")).toBeInTheDocument();
+  });
+
+  it("shows 'Data: Open-Meteo' when primarySource is open-meteo", async () => {
+    vi.mocked(getObservations).mockResolvedValue({ ...series("last-24-hours"), primarySource: "open-meteo" });
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+
+    expect(await screen.findByText("Data: Open-Meteo")).toBeInTheDocument();
+  });
+
+  it("shows no note when primarySource is absent", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours"));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(screen.queryByText(/^Data:/)).not.toBeInTheDocument();
+  });
+});

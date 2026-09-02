@@ -663,6 +663,100 @@ describe("US3: the 'now' column reads as a highlighted marker (010-timeline-visu
   });
 });
 
+describe("center-on-now scroll behavior (013-overview-default-and-layout, US3)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    // jsdom always reports 0 for scrollWidth/clientWidth — stub them at the prototype level
+    // for the duration of each test, matching this repo's existing precedent (008/009) of
+    // structural-only assertions where jsdom can't compute real layout.
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+  });
+
+  function stubDimensions(scrollWidth: number, clientWidth: number) {
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, value: scrollWidth });
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value: clientWidth });
+  }
+
+  it("centers the 'now' column when the timeline overflows and a forecast boundary exists", async () => {
+    stubDimensions(2000, 400);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
+    expect(wrap.scrollLeft).toBeGreaterThan(0);
+  });
+
+  it("leaves scrollLeft at its default when the timeline fits within the container", async () => {
+    stubDimensions(400, 400);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
+    expect(wrap.scrollLeft).toBe(0);
+  });
+
+  it("leaves scrollLeft at its default when there is no forecast boundary to center on", async () => {
+    stubDimensions(2000, 400);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
+    expect(wrap.scrollLeft).toBe(0);
+  });
+});
+
 describe("responsive layout", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
@@ -690,5 +784,29 @@ describe("responsive layout", () => {
 
     expect(container.querySelector(".weather-timeline-wrap")).toBeInTheDocument();
     expect(container.querySelector(".recharts-responsive-container")).not.toBeInTheDocument();
+  });
+});
+
+describe("data source note (013-overview-default-and-layout, US4)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows the data-source note on the Overview", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      primarySource: "open-meteo",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+
+    expect(await screen.findByText("Data: Open-Meteo")).toBeInTheDocument();
   });
 });

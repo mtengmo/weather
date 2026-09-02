@@ -26,6 +26,7 @@ import {
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  findObservedExtremes,
   forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
@@ -34,8 +35,9 @@ import {
 } from "./chartData";
 import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
 import MetricTabs from "./MetricTabs";
-import { formatValue } from "../services/format";
+import { dataSourceNote, formatValue } from "../services/format";
 import { toDailyAggregates } from "../services/dailyAggregation";
+import { convertTemperature } from "../services/units";
 
 function tooltipFormatter(value: unknown, name: unknown): [string, string] {
   const formatted = formatValue(typeof value === "number" ? value : Number(value), 1);
@@ -151,6 +153,14 @@ export default function ObservationChart({
     headingRef.current?.focus();
   }, []);
 
+  // Observed high/low callout for the temperature chart (013-overview-default-and-layout,
+  // FR-018/FR-019/FR-020) — operates on raw observations so it applies to whichever window is
+  // currently displayed (research.md §8).
+  const observedExtremes =
+    metric === "temperature" && series !== null && series.status === "ready"
+      ? findObservedExtremes(series.observations)
+      : null;
+
   return (
     <section aria-label={`Observed weather for ${location.displayName}`}>
       <h2 ref={headingRef} tabIndex={-1}>
@@ -177,6 +187,28 @@ export default function ObservationChart({
       </div>
 
       <MetricTabs metric={metric} onChange={onMetricChange} />
+
+      {series !== null && dataSourceNote(series) && (
+        <p className="data-source-note">{dataSourceNote(series)}</p>
+      )}
+
+      {observedExtremes && (
+        <p className="observed-extremes-note">
+          High: {formatValue(convertTemperature(observedExtremes.high.value, unit), 0)}
+          {tempUnitLabel} at{" "}
+          {new Date(observedExtremes.high.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+          {" · "}
+          Low: {formatValue(convertTemperature(observedExtremes.low.value, unit), 0)}
+          {tempUnitLabel} at{" "}
+          {new Date(observedExtremes.low.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      )}
 
       {series === null && <p role="status">Loading observed weather…</p>}
 
@@ -260,7 +292,7 @@ export default function ObservationChart({
               name={location.displayName}
               stroke={seriesColor(0)}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             <Line
@@ -271,7 +303,7 @@ export default function ObservationChart({
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             {nearbyStations.map((n, i) => (
@@ -284,7 +316,7 @@ export default function ObservationChart({
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             ))}
           </ComposedChart>
@@ -361,7 +393,7 @@ export default function ObservationChart({
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -377,7 +409,7 @@ export default function ObservationChart({
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -389,7 +421,7 @@ export default function ObservationChart({
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -402,7 +434,7 @@ export default function ObservationChart({
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             <Line
@@ -412,7 +444,7 @@ export default function ObservationChart({
               name={`${location.displayName} average`}
               stroke={seriesColor(0)}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             <Line
@@ -423,7 +455,7 @@ export default function ObservationChart({
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             {nearbyStations.map((n, i) => (
@@ -436,7 +468,7 @@ export default function ObservationChart({
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             ))}
           </ComposedChart>
@@ -474,6 +506,9 @@ export default function ObservationChart({
               }
             />
             <YAxis label={{ value: precipUnitLabel, angle: -90, position: "insideLeft" }} />
+            {/* Mirrored right-edge scale (013-overview-default-and-layout, FR-015, research.md
+                §6) — same implicit axis id as the left YAxis above, so it shares its domain. */}
+            <YAxis orientation="right" label={{ value: precipUnitLabel, angle: 90, position: "insideRight" }} />
             <Tooltip
               formatter={tooltipFormatter}
               contentStyle={TOOLTIP_CONTENT_STYLE}
@@ -539,6 +574,12 @@ export default function ObservationChart({
             <YAxis
               label={{ value: METRIC_LABELS[metric].unit(unit), angle: -90, position: "insideLeft" }}
             />
+            {/* Mirrored right-edge scale (013-overview-default-and-layout, FR-015, research.md
+                §6) — same implicit axis id as the left YAxis above, so it shares its domain. */}
+            <YAxis
+              orientation="right"
+              label={{ value: METRIC_LABELS[metric].unit(unit), angle: 90, position: "insideRight" }}
+            />
             <Tooltip
               formatter={tooltipFormatter}
               contentStyle={TOOLTIP_CONTENT_STYLE}
@@ -560,7 +601,7 @@ export default function ObservationChart({
               name={`${location.displayName} ${METRIC_LABELS[metric].name}`}
               stroke={seriesColor(0)}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             <Line
@@ -570,7 +611,7 @@ export default function ObservationChart({
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             {nearbyStations.map((n, i) => (
@@ -582,7 +623,7 @@ export default function ObservationChart({
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             ))}
           </ComposedChart>
@@ -611,6 +652,12 @@ export default function ObservationChart({
             <YAxis
               label={{ value: METRIC_LABELS.wind.unit(unit), angle: -90, position: "insideLeft" }}
             />
+            {/* Mirrored right-edge scale (013-overview-default-and-layout, FR-015, research.md
+                §6) — same implicit axis id as the left YAxis above, so it shares its domain. */}
+            <YAxis
+              orientation="right"
+              label={{ value: METRIC_LABELS.wind.unit(unit), angle: 90, position: "insideRight" }}
+            />
             <Tooltip
               labelFormatter={(t) => new Date(String(t)).toLocaleDateString()}
               formatter={tooltipFormatter}
@@ -635,7 +682,7 @@ export default function ObservationChart({
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -647,7 +694,7 @@ export default function ObservationChart({
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -658,7 +705,7 @@ export default function ObservationChart({
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             {highLowVisible && (
@@ -670,7 +717,7 @@ export default function ObservationChart({
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             )}
             <Line
@@ -679,7 +726,7 @@ export default function ObservationChart({
               name={`${location.displayName} average`}
               stroke={seriesColor(0)}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             <Line
@@ -689,7 +736,7 @@ export default function ObservationChart({
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
-              dot={false}
+              dot={{ r: 3 }}
               activeDot={{ r: 5 }}
             />
             {nearbyStations.map((n, i) => (
@@ -701,7 +748,7 @@ export default function ObservationChart({
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
-                dot={false}
+                dot={{ r: 3 }}
               />
             ))}
           </ComposedChart>

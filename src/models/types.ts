@@ -47,6 +47,12 @@ export interface ObservationSeries {
   observations: WeatherObservation[];
   status: ObservationStatus;
   /**
+   * Which provider supplied this series' observed data (013-overview-default-and-layout).
+   * Optional (like `forecastFromFallbackSource` below) so existing test fixtures/mocks that
+   * predate this field keep compiling — every real series `weatherApi.ts` produces sets it.
+   */
+  primarySource?: "smhi" | "open-meteo";
+  /**
    * true when this series' forecast points came from the secondary source via the
    * forecast-only fallback rather than directly from the primary source that supplied the
    * observed data (006-forecast-now-marker). Absent/false in the common case.

@@ -127,15 +127,65 @@ body {
   flex-wrap: wrap;
 }
 
-.app-header .place-search,
-.app-header .favorites {
-  flex: 1 1 220px;
-  min-width: 220px;
+/* Location Panel (013-overview-default-and-layout): consolidates current-location/favorites/
+   search behind a single "Change location" toggle instead of always-visible header sections
+   (research.md §2). Anchored relative to the toggle button so it works the same way at every
+   viewport width (FR-009), not a different layout per breakpoint. */
+.location-panel {
+  position: relative;
+}
+
+.location-panel-content {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(90vw, 360px);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.location-panel-content .place-search,
+.location-panel-content .favorites {
+  flex: initial;
+  min-width: 0;
+  width: 100%;
+}
+
+.location-panel-close {
+  align-self: flex-end;
+  line-height: 1;
+  padding: 0.25rem 0.6rem;
 }
 
 .gap-point {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Data-source note (013-overview-default-and-layout, FR-013): a small, always-visible caption,
+   not an error/warning — reuses the app's muted-text convention rather than the error-banner
+   treatment. */
+.data-source-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+/* Observed high/low callout on the temperature chart (013-overview-default-and-layout,
+   FR-018/FR-019). */
+.observed-extremes-note {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
 }
 
 .forecast-row {
@@ -279,8 +329,7 @@ a {
    the flat --surface color the other themes use. */
 [data-theme="glass"] .app-header,
 [data-theme="glass"] .observation-table-wrap,
-[data-theme="glass"] .favorites,
-[data-theme="glass"] .place-search,
+[data-theme="glass"] .location-panel-content,
 [data-theme="glass"] .error-banner {
   background: var(--surface);
   backdrop-filter: blur(var(--surface-blur));
@@ -295,13 +344,8 @@ a {
     align-items: stretch;
   }
 
-  /* In a column flex container, flex-basis sizes height, not width — the row layout's
-     "1 1 220px" would otherwise force each section to a tall, mostly-empty ~220px box here
-     (009-timeline-polish-and-header, FR-004). */
-  .app-header .place-search,
-  .app-header .favorites {
-    flex: initial;
-    min-width: 0;
+  .location-panel-content {
+    width: 90vw;
   }
 }
 
@@ -337,6 +381,13 @@ a {
 
 .weather-timeline {
   position: relative;
+  /* width: max-content (not just min-width) so this box actually grows to match its grid-row
+     children's true rendered width — otherwise a normal block box stays pinned at min-width
+     while wide content silently overflows it, and any percentage-based child positioned
+     against this box (the "now" marker line, and 013's scroll-centering math which reads this
+     same overflow width) resolves against the wrong, too-narrow reference frame
+     (013-overview-default-and-layout, discovered via US3's center-on-now testing). */
+  width: max-content;
   min-width: 900px;
   padding: 0.5rem 0;
 }

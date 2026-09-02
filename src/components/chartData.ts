@@ -299,3 +299,40 @@ export function isMetricAvailable(
   if (series.observations.length === 0) return true;
   return series.observations.some((o) => o[field] !== null);
 }
+
+export interface ObservedExtreme {
+  value: number; // Celsius — unit-converted at display time, like every other chart value
+  timestamp: string; // ISO 8601, from the source WeatherObservation
+}
+
+export interface ObservedExtremes {
+  high: ObservedExtreme;
+  low: ObservedExtreme;
+}
+
+/**
+ * The single highest and lowest *observed* (non-forecast) temperature reading in a series
+ * (013-overview-default-and-layout, FR-018/FR-019/FR-020). Operates on raw observations, not
+ * daily-bucketed aggregates, so it applies uniformly regardless of which chart granularity is
+ * currently displayed (research.md §8). Returns `null` when no observation both is observed
+ * (`isForecast` not true) and has a non-null `temperature` — never a fabricated placeholder. A
+ * tie resolves to the first (oldest) occurrence, since `observations` is already ordered
+ * oldest→newest throughout this codebase.
+ */
+export function findObservedExtremes(observations: WeatherObservation[]): ObservedExtremes | null {
+  let high: ObservedExtreme | null = null;
+  let low: ObservedExtreme | null = null;
+
+  for (const o of observations) {
+    if (o.isForecast === true || o.temperature === null) continue;
+    if (high === null || o.temperature > high.value) {
+      high = { value: o.temperature, timestamp: o.timestamp };
+    }
+    if (low === null || o.temperature < low.value) {
+      low = { value: o.temperature, timestamp: o.timestamp };
+    }
+  }
+
+  if (high === null || low === null) return null;
+  return { high, low };
+}

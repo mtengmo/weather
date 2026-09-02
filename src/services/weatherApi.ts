@@ -43,18 +43,19 @@ export async function getObservations(
             ...smhiResult,
             observations: [...smhiResult.observations, ...fallbackForecast],
             forecastFromFallbackSource: true,
+            primarySource: "smhi",
           };
         }
       }
 
-      return smhiResult;
+      return { ...smhiResult, primarySource: "smhi" };
     } catch {
       // SMHI failed for an in-coverage location — silently fall back to Open-Meteo
       // rather than surfacing an error (the user asked for SMHI *with* a fallback).
     }
   }
 
-  return openMeteoProvider.getObservations(location, window);
+  return { ...(await openMeteoProvider.getObservations(location, window)), primarySource: "open-meteo" };
 }
 
 export async function getNearbyStationSeries(

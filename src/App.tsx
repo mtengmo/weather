@@ -14,9 +14,7 @@ import UnitToggle from "./components/UnitToggle";
 import ThemePicker from "./components/ThemePicker";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import HighLowToggle from "./components/HighLowToggle";
-import LocationSwitcher from "./components/LocationSwitcher";
-import FavoritesList from "./components/FavoritesList";
-import PlaceSearch from "./components/PlaceSearch";
+import LocationPanel from "./components/LocationPanel";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 
 type View = "graph" | "details" | "overview";
@@ -35,7 +33,9 @@ export default function App() {
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
   const [metric, setMetric] = useState<WeatherMetric>(DEFAULT_METRIC);
-  const [view, setView] = useState<View>("graph");
+  // Overview is the primary, most digestible view of current conditions — the app opens on it
+  // whenever a location resolves, rather than the classic line-graph (013, FR-001).
+  const [view, setView] = useState<View>("overview");
 
   const { series, nearbyStations } = useObservationData(selected, obsWindow, nearbyStationCount);
 
@@ -83,7 +83,8 @@ export default function App() {
   function selectLocation(location: Location) {
     setSelected(location);
     setCachedLocation(location);
-    setView("graph");
+    // Land on the Overview, consistent with the same default this app opens on (013, research.md §1).
+    setView("overview");
   }
 
   function viewOverview() {
@@ -108,30 +109,15 @@ export default function App() {
           <HighLowToggle visible={highLowVisible} onChange={setHighLowVisible} />
         </div>
 
-        <PlaceSearch onSelect={(candidate) => add(candidate)} />
-
-        <FavoritesList
+        <LocationPanel
+          currentLocation={currentLocation}
           favorites={favorites}
-          error={favoritesError}
-          selectedId={
-            favorites.find(
-              (f) =>
-                selected &&
-                f.latitude === selected.latitude &&
-                f.longitude === selected.longitude &&
-                selected.source === "favorite"
-            )?.id ?? null
-          }
-          onSelect={(place) =>
-            selectLocation({
-              latitude: place.latitude,
-              longitude: place.longitude,
-              displayName: place.displayName,
-              source: "favorite",
-            })
-          }
-          onRemove={remove}
-          onDismissError={clearError}
+          favoritesError={favoritesError}
+          selected={selected}
+          onSelect={selectLocation}
+          onAddFavorite={(candidate) => add(candidate)}
+          onRemoveFavorite={remove}
+          onDismissFavoritesError={clearError}
         />
       </header>
 
@@ -141,13 +127,6 @@ export default function App() {
           favorite, to see its weather history instead.
         </p>
       )}
-
-      <LocationSwitcher
-        currentLocation={currentLocation}
-        favorites={favorites}
-        selected={selected}
-        onSelect={selectLocation}
-      />
 
       {selected && view === "graph" && (
         <ObservationChart

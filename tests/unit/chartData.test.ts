@@ -5,6 +5,7 @@ import {
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  findObservedExtremes,
   forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
@@ -358,5 +359,64 @@ describe("isMetricAvailable", () => {
 
   it("treats zero observations as available (a different, already-handled state)", () => {
     expect(isMetricAvailable(primarySeries([]), "wind")).toBe(true);
+  });
+});
+
+describe("findObservedExtremes (013-overview-default-and-layout)", () => {
+  function hoursAgo(h: number): string {
+    return new Date(Date.now() - h * 3600_000).toISOString();
+  }
+
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("finds the correct high and low among observed points", () => {
+    const t3 = hoursAgo(3);
+    const t2 = hoursAgo(2);
+    const t1 = hoursAgo(1);
+    const result = findObservedExtremes([
+      obs({ timestamp: t3, temperature: 10 }),
+      obs({ timestamp: t2, temperature: 22 }),
+      obs({ timestamp: t1, temperature: 3 }),
+    ]);
+
+    expect(result?.high).toEqual({ value: 22, timestamp: t2 });
+    expect(result?.low).toEqual({ value: 3, timestamp: t1 });
+  });
+
+  it("excludes forecast points even when more extreme than any observed point", () => {
+    const result = findObservedExtremes([
+      obs({ timestamp: hoursAgo(1), temperature: 10 }),
+      obs({ timestamp: hoursFromNow(1), temperature: 40, isForecast: true }),
+      obs({ timestamp: hoursFromNow(2), temperature: -40, isForecast: true }),
+    ]);
+
+    expect(result?.high.value).toBe(10);
+    expect(result?.low.value).toBe(10);
+  });
+
+  it("returns null for an empty series", () => {
+    expect(findObservedExtremes([])).toBeNull();
+  });
+
+  it("returns null when every observation is forecast or has a null temperature", () => {
+    const result = findObservedExtremes([
+      obs({ timestamp: hoursAgo(1), temperature: null }),
+      obs({ timestamp: hoursFromNow(1), temperature: 20, isForecast: true }),
+    ]);
+
+    expect(result).toBeNull();
+  });
+
+  it("resolves a tie to the first (oldest) occurrence", () => {
+    const t2 = hoursAgo(2);
+    const result = findObservedExtremes([
+      obs({ timestamp: t2, temperature: 15 }),
+      obs({ timestamp: hoursAgo(1), temperature: 15 }),
+    ]);
+
+    expect(result?.high.timestamp).toBe(t2);
+    expect(result?.low.timestamp).toBe(t2);
   });
 });
