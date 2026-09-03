@@ -162,16 +162,20 @@ export function toSubDayAndDailyBuckets(
 
   const today = new Date(now);
   const tomorrow = new Date(now + BUCKET_MS);
+  // The exact bucketEnd values toDailyAggregates itself computes for index 0 and index -1 —
+  // matched by value rather than by array position, since forecast reaching further than
+  // "tomorrow" (index -2, -3, ...) appends MORE entries after them, so "today"/"tomorrow" are
+  // not always literally the array's last one or two entries.
+  const todayBucketEnd = new Date(now).toISOString();
+  const tomorrowBucketEnd = new Date(now + BUCKET_MS).toISOString();
 
-  // `toDailyAggregates` orders oldest -> newest, so "today" (and "tomorrow", if present) are
-  // always its last one or two entries — slice them off and replace with sub-day buckets.
   const daily = toDailyAggregates(observations, dailyBucketCount);
-  const keepCount = daily.length - (hasTomorrow ? 2 : 1);
-  const remainingDays = daily.slice(0, Math.max(0, keepCount));
+  const todaySubDayBuckets = subDayBucketsForDate(today, observations, now);
+  const tomorrowSubDayBuckets = hasTomorrow ? subDayBucketsForDate(tomorrow, observations, now) : null;
 
-  return [
-    ...remainingDays,
-    ...subDayBucketsForDate(today, observations, now),
-    ...(hasTomorrow ? subDayBucketsForDate(tomorrow, observations, now) : []),
-  ];
+  return daily.flatMap((day) => {
+    if (day.bucketEnd === todayBucketEnd) return todaySubDayBuckets;
+    if (tomorrowSubDayBuckets !== null && day.bucketEnd === tomorrowBucketEnd) return tomorrowSubDayBuckets;
+    return [day];
+  });
 }
