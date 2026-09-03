@@ -14,7 +14,7 @@ vi.mock("../../src/services/openMeteoProvider", () => ({
 
 import * as smhiProvider from "../../src/services/smhiProvider";
 import * as openMeteoProvider from "../../src/services/openMeteoProvider";
-import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
 
 const location = { latitude: 59.33, longitude: 18.06 };
 
@@ -234,6 +234,55 @@ describe("weatherApi.getNearbyStationSeries", () => {
     vi.mocked(smhiProvider.getNearestStations).mockRejectedValue(new Error("list unreachable"));
 
     const result = await getNearbyStationSeries(location, "last-24-hours", 4);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7)", () => {
+  beforeEach(() => {
+    vi.mocked(smhiProvider.isCovered).mockReset();
+    vi.mocked(smhiProvider.getObservations).mockReset();
+    vi.mocked(openMeteoProvider.getForecastOnly).mockReset();
+  });
+
+  it("returns both sources when both have forecast data", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", [forecastPoint()]));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result.map((r) => r.source).sort()).toEqual(["open-meteo", "smhi"]);
+  });
+
+  it("omits SMHI when the location isn't SMHI-covered, without failing the whole call", async () => {
+    const point = forecastPoint();
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(false);
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([point]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result).toEqual([{ source: "open-meteo", observations: [point] }]);
+  });
+
+  it("omits a source that rejects, without failing the other", async () => {
+    const point = forecastPoint();
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockRejectedValue(new Error("smhi down"));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([point]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result).toEqual([{ source: "open-meteo", observations: [point] }]);
+  });
+
+  it("returns an empty array when neither source has forecast data", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", []));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
 
     expect(result).toEqual([]);
   });

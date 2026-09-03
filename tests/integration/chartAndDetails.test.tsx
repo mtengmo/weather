@@ -16,9 +16,10 @@ import type {
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
+  getMultiSourceForecast: vi.fn(),
 }));
 
-import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
 
 const stockholm: Location = {
   latitude: 59.33,
@@ -53,20 +54,35 @@ function nearbyStation(id: string, distanceKm: number): NearbyStationSeries {
 function ChartAndDetailsHarness({
   location,
   initialHighLowVisible = true,
+  initialCombineForecastSources = false,
 }: {
   location: Location;
   initialHighLowVisible?: boolean;
+  initialCombineForecastSources?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
   const [metric, setMetric] = useState<WeatherMetric>("temperature");
   const [highLowVisible, setHighLowVisible] = useState(initialHighLowVisible);
+  const [combineForecastSources, setCombineForecastSources] = useState(initialCombineForecastSources);
   const [view, setView] = useState<"graph" | "details">("graph");
-  const { series: primary, nearbyStations } = useObservationData(location, window, 4);
+  const { series: primary, nearbyStations, multiSourceForecast } = useObservationData(
+    location,
+    window,
+    4,
+    combineForecastSources
+  );
 
   return view === "graph" ? (
     <>
       <button type="button" aria-pressed={highLowVisible} onClick={() => setHighLowVisible((v) => !v)}>
         Toggle high/low
+      </button>
+      <button
+        type="button"
+        aria-pressed={combineForecastSources}
+        onClick={() => setCombineForecastSources((v) => !v)}
+      >
+        Toggle combine forecast sources
       </button>
       <ObservationChart
         location={location}
@@ -78,6 +94,8 @@ function ChartAndDetailsHarness({
         unit="metric"
         series={primary}
         nearbyStations={nearbyStations}
+        combineForecastSources={combineForecastSources}
+        multiSourceForecast={multiSourceForecast}
         onViewDetails={() => setView("details")}
         onViewOverview={() => {}}
       />
@@ -938,5 +956,108 @@ describe("US4: data source note (013-overview-default-and-layout)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
     expect(screen.queryByText(/^Data:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Combine forecast sources (014-dashboard-usability-fixes, US7)", () => {
+  // Same jsdom/Recharts limitation noted throughout this file — these are smoke tests
+  // confirming the toggle wires up and renders without error, not structural line assertions.
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+  });
+
+  it("fetches multi-source forecasts only once the toggle is switched on", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours"));
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    expect(getMultiSourceForecast).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Toggle combine forecast sources" }));
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+  });
+
+  it("renders without error when two sources are returned", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: new Date().toISOString(), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([
+      {
+        source: "smhi",
+        observations: [
+          {
+            timestamp: new Date(Date.now() + 3600_000).toISOString(),
+            temperature: 10,
+            precipitation: 0,
+            windSpeed: null,
+            cloudCoverPercent: null,
+            isForecast: true,
+          },
+        ],
+      },
+      {
+        source: "open-meteo",
+        observations: [
+          {
+            timestamp: new Date(Date.now() + 3600_000).toISOString(),
+            temperature: 12,
+            precipitation: 0,
+            windSpeed: null,
+            cloudCoverPercent: null,
+            isForecast: true,
+          },
+        ],
+      },
+    ]);
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} initialCombineForecastSources />);
+    await screen.findByRole("button", { name: "View details" });
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    // Turning it off leaves the ordinary single-source rendering unaffected.
+    await user.click(screen.getByRole("button", { name: "Toggle combine forecast sources" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders without error when only one source has data (no misleading average)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: new Date().toISOString(), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([{ source: "smhi", observations: [] }]);
+
+    render(<ChartAndDetailsHarness location={stockholm} initialCombineForecastSources />);
+    await screen.findByRole("button", { name: "View details" });
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

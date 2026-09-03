@@ -83,6 +83,9 @@ export interface DailyAggregate {
   feelsLikeAverage?: number | null;
   /** Max of the bucket's forecast chanceOfRain readings (011-precipitation-chance). */
   chanceOfRainMax?: number | null;
+  /** Set only for a sub-day period bucket (e.g. "Morning"), used as its column label instead
+   *  of the weekday name (014-dashboard-usability-fixes, FR-018). */
+  subDayLabel?: string;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

@@ -20,17 +20,20 @@ import type {
   UnitSystem,
   WeatherMetric,
 } from "../models/types";
+import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import {
   buildDailyRows,
   buildHourlyRows,
   buildMetricDailyRows,
   buildMetricHourlyRows,
   buildWindDailyRows,
+  mergeMultiSourceForecastIntoRows,
   findObservedExtremes,
   forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
   seriesKey,
+  sourceKey,
   type SingleSeriesMetric,
 } from "./chartData";
 import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
@@ -63,9 +66,16 @@ interface ObservationChartProps {
   unit: UnitSystem;
   series: ObservationSeries | null; // null while loading
   nearbyStations: NearbyStationSeries[];
+  combineForecastSources: boolean;
+  multiSourceForecast: MultiSourceForecastEntry[];
   onViewDetails: () => void;
   onViewOverview: () => void;
 }
+
+const SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
+  smhi: "SMHI",
+  "open-meteo": "Open-Meteo",
+};
 
 const METRIC_LABELS: Record<SingleSeriesMetric, { name: string; unit: (unit: UnitSystem) => string }> = {
   rain: { name: "precipitation", unit: (u) => (u === "imperial" ? "in" : "mm") },
@@ -109,6 +119,8 @@ export default function ObservationChart({
   unit,
   series,
   nearbyStations,
+  combineForecastSources,
+  multiSourceForecast,
   onViewDetails,
   onViewOverview,
 }: ObservationChartProps) {
@@ -160,6 +172,20 @@ export default function ObservationChart({
     metric === "temperature" && series !== null && series.status === "ready"
       ? findObservedExtremes(series.observations)
       : null;
+
+  // Only shown on the 24h temperature chart. Nothing renders with 0-1 sources — never a
+  // misleading single-source "average" (FR-017). Merged onto the primary hourly rows by
+  // timestamp (see mergeMultiSourceForecastIntoRows) rather than handed to Recharts as a
+  // second `data` array — a child `<Line>` with its own differently-shaped data silently
+  // stretches the shared category axis (confirmed via live testing, 014).
+  const hourlyRows =
+    series !== null && series.status === "ready" && metric === "temperature" && window === "last-24-hours"
+      ? buildHourlyRows(series, nearbyStations, unit)
+      : null;
+  if (hourlyRows !== null && combineForecastSources) {
+    mergeMultiSourceForecastIntoRows(hourlyRows, multiSourceForecast, unit);
+  }
+  const showCombinedForecast = combineForecastSources && multiSourceForecast.length > 1;
 
   return (
     <section aria-label={`Observed weather for ${location.displayName}`}>
@@ -237,7 +263,7 @@ export default function ObservationChart({
         metric === "temperature" &&
         window === "last-24-hours" && (
         <ResponsiveContainer width="100%" height={320}>
-          <ComposedChart data={buildHourlyRows(series, nearbyStations, unit)}>
+          <ComposedChart data={hourlyRows ?? buildHourlyRows(series, nearbyStations, unit)}>
             <defs>
               <linearGradient id="precipGradient-24h" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--accent-2)" stopOpacity={0.55} />
@@ -319,6 +345,34 @@ export default function ObservationChart({
                 dot={{ r: 3 }}
               />
             ))}
+            {showCombinedForecast &&
+              multiSourceForecast.map((entry, i) => (
+                // Offset past the indices nearby-station comparison lines already use, so the
+                // two features never collide on the same color (014, contracts/multi-source-forecast.md).
+                <Line
+                  key={entry.source}
+                  yAxisId="temp"
+                  type="monotone"
+                  dataKey={sourceKey(i)}
+                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  stroke={seriesColor(nearbyStations.length + i + 1)}
+                  strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
+                  connectNulls={false}
+                  dot={{ r: 3 }}
+                />
+              ))}
+            {showCombinedForecast && (
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="combinedAverage"
+                name="Combined average forecast"
+                stroke="var(--text)"
+                strokeWidth={2}
+                connectNulls={false}
+                dot={{ r: 3 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}

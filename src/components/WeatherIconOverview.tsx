@@ -18,6 +18,8 @@ interface WeatherIconOverviewProps {
   unit: UnitSystem;
   series: ObservationSeries | null; // null while loading
   onBack: () => void;
+  /** Mirrors the app-wide High/Low toggle already used by the graph view (014, FR-009). */
+  highLowVisible: boolean;
 }
 
 // The overview only supports 24h/7d (007 spec Edge Cases, unchanged by 008) — 30-day is out
@@ -128,10 +130,12 @@ function LineRow({
   row,
   periods,
   nowBoundaryIndex,
+  highLowVisible,
 }: {
   row: TimelineRow;
   periods: TimelinePeriod[];
   nowBoundaryIndex: number | null;
+  highLowVisible: boolean;
 }) {
   if (!row.available) return null;
   const segments = buildSegments(row);
@@ -190,7 +194,9 @@ function LineRow({
                 .join(" ") || undefined}
               title={point.interpolated ? "Estimated" : undefined}
             >
-              {formatRowValue(row, point.value)}
+              {highLowVisible && point.high != null && point.low != null
+                ? `${formatRowValue(row, point.value)} (${formatValue(point.high, 0)}°/${formatValue(point.low, 0)}°)`
+                : formatRowValue(row, point.value)}
             </span>
           );
         }}
@@ -404,6 +410,7 @@ export default function WeatherIconOverview({
   unit,
   series,
   onBack,
+  highLowVisible,
 }: WeatherIconOverviewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
@@ -481,7 +488,9 @@ export default function WeatherIconOverview({
         <>
           <SunMoonSummary location={location} date={new Date()} />
           <div className="weather-timeline-wrap" ref={timelineWrapRef}>
-            <div className="weather-timeline">
+            <div
+              className={`weather-timeline${window === "last-7-days" ? " weather-timeline-fill" : ""}`}
+            >
               {nowLeftPercent !== null && (
                 <div
                   className="weather-timeline-now"
@@ -500,7 +509,7 @@ export default function WeatherIconOverview({
               </PeriodGrid>
 
               <ConditionRow periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
-              <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} highLowVisible={highLowVisible} />
               <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
               <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
               <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />

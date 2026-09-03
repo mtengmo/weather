@@ -5,6 +5,7 @@ import type {
   UnitSystem,
   WeatherObservation,
 } from "../models/types";
+import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { toDailyAggregates } from "../services/dailyAggregation";
 import { convertPrecipitation, convertTemperature, convertWindSpeed } from "../services/units";
 
@@ -335,4 +336,68 @@ export function findObservedExtremes(observations: WeatherObservation[]): Observ
 
   if (high === null || low === null) return null;
   return { high, low };
+}
+
+/** Data key for one combined-forecast-sources entry's own line (014, FR-015). */
+export function sourceKey(index: number): string {
+  return `source${index}`;
+}
+
+/**
+ * One row per distinct forecast timestamp across every source, each carrying every source's
+ * own value under its `sourceKey` plus an `average` of whichever sources have a value at that
+ * timestamp (014-dashboard-usability-fixes, FR-014/FR-016). Forecast-only, by construction —
+ * `entries` only ever holds forecast observations (weatherApi.ts's `getMultiSourceForecast`).
+ */
+export function buildMultiSourceForecastRows(
+  entries: MultiSourceForecastEntry[],
+  unit: UnitSystem
+): ChartRow[] {
+  const byTimestamp = new Map<string, ChartRow>();
+
+  entries.forEach((entry, i) => {
+    for (const obs of entry.observations) {
+      const row = byTimestamp.get(obs.timestamp) ?? { timestamp: obs.timestamp };
+      row[sourceKey(i)] = convertTemperature(obs.temperature, unit);
+      byTimestamp.set(obs.timestamp, row);
+    }
+  });
+
+  for (const row of byTimestamp.values()) {
+    const values = entries
+      .map((_, i) => row[sourceKey(i)])
+      .filter((v): v is number => typeof v === "number");
+    row.average = values.length > 0 ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+  }
+
+  return Array.from(byTimestamp.values()).sort((a, b) =>
+    String(a.timestamp).localeCompare(String(b.timestamp))
+  );
+}
+
+/**
+ * Merges each source's value onto the SAME row objects the chart's primary hourly data already
+ * uses, matched by `timestamp` — rather than handing Recharts a second `data` array with its own
+ * timestamps. Recharts' shared category axis only cleanly aligns two datasets when they're
+ * exactly the same array; a child `<Line>` with its own differently-shaped `data` silently
+ * unions in extra category ticks and stretches the whole axis (found via live testing, 014).
+ * A source's hour with no matching primary row is simply dropped, not fabricated as a new column.
+ */
+export function mergeMultiSourceForecastIntoRows(
+  primaryRows: ChartRow[],
+  entries: MultiSourceForecastEntry[],
+  unit: UnitSystem
+): void {
+  if (entries.length < 2) return;
+  const sourceRows = buildMultiSourceForecastRows(entries, unit);
+  const byTimestamp = new Map(sourceRows.map((r) => [String(r.timestamp), r]));
+
+  for (const row of primaryRows) {
+    const match = byTimestamp.get(String(row.timestamp));
+    if (!match) continue;
+    entries.forEach((_entry, i) => {
+      row[sourceKey(i)] = match[sourceKey(i)] ?? null;
+    });
+    row.combinedAverage = match.average ?? null;
+  }
 }

@@ -18,6 +18,44 @@ function bucketIndexOf(obs: WeatherObservation, now: number): number {
   return Math.floor((now - Date.parse(obs.timestamp)) / BUCKET_MS);
 }
 
+/** The per-bucket aggregation math shared by every bucket shape (rolling 24h day, or sub-day
+ *  period) — factored out so `toSubDayAndDailyBuckets` reuses it exactly rather than
+ *  duplicating it (014-dashboard-usability-fixes, research.md §8). */
+function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bucketEnd" | "isForecast"> {
+  const temperatures = nonNull(bucket.map((o) => o.temperature));
+  const precipitations = nonNull(bucket.map((o) => o.precipitation));
+  const windSpeeds = nonNull(bucket.map((o) => o.windSpeed));
+  const cloudCoverages = nonNull(bucket.map((o) => o.cloudCoverPercent));
+  const windGusts = nonNull(bucket.map((o) => o.windGust ?? null));
+  const chancesOfRain = nonNull(
+    bucket.filter((o) => o.isForecast === true).map((o) => o.chanceOfRain ?? null)
+  );
+  const feelsLikes = nonNull(
+    bucket.map((o) =>
+      deriveFeelsLike({
+        temperature: o.temperature,
+        windSpeed: o.windSpeed,
+        relativeHumidity: o.relativeHumidity ?? null,
+      })
+    )
+  );
+
+  return {
+    high: temperatures.length > 0 ? Math.max(...temperatures) : null,
+    low: temperatures.length > 0 ? Math.min(...temperatures) : null,
+    average: temperatures.length > 0 ? mean(temperatures) : null,
+    totalPrecipitation:
+      precipitations.length > 0 ? precipitations.reduce((sum, p) => sum + p, 0) : null,
+    windAverage: windSpeeds.length > 0 ? mean(windSpeeds) : null,
+    cloudAverage: cloudCoverages.length > 0 ? mean(cloudCoverages) : null,
+    windHigh: windSpeeds.length > 0 ? Math.max(...windSpeeds) : null,
+    windLow: windSpeeds.length > 0 ? Math.min(...windSpeeds) : null,
+    windGustHigh: windGusts.length > 0 ? Math.max(...windGusts) : null,
+    feelsLikeAverage: feelsLikes.length > 0 ? mean(feelsLikes) : null,
+    chanceOfRainMax: chancesOfRain.length > 0 ? Math.max(...chancesOfRain) : null,
+  };
+}
+
 export function toDailyAggregates(
   observations: WeatherObservation[],
   bucketCount: number
@@ -47,41 +85,93 @@ export function toDailyAggregates(
     const bucketEndMs = now - index * BUCKET_MS;
     const bucketEnd = new Date(bucketEndMs).toISOString();
     const isForecast = bucketEndMs > now;
-    const temperatures = nonNull(bucket.map((o) => o.temperature));
-    const precipitations = nonNull(bucket.map((o) => o.precipitation));
-    const windSpeeds = nonNull(bucket.map((o) => o.windSpeed));
-    const cloudCoverages = nonNull(bucket.map((o) => o.cloudCoverPercent));
-    const windGusts = nonNull(bucket.map((o) => o.windGust ?? null));
-    const chancesOfRain = nonNull(
-      bucket.filter((o) => o.isForecast === true).map((o) => o.chanceOfRain ?? null)
-    );
-    const feelsLikes = nonNull(
-      bucket.map((o) =>
-        deriveFeelsLike({
-          temperature: o.temperature,
-          windSpeed: o.windSpeed,
-          relativeHumidity: o.relativeHumidity ?? null,
-        })
-      )
-    );
 
     aggregates.push({
       bucketEnd,
       ...(isForecast ? { isForecast: true } : {}),
-      high: temperatures.length > 0 ? Math.max(...temperatures) : null,
-      low: temperatures.length > 0 ? Math.min(...temperatures) : null,
-      average: temperatures.length > 0 ? mean(temperatures) : null,
-      totalPrecipitation:
-        precipitations.length > 0 ? precipitations.reduce((sum, p) => sum + p, 0) : null,
-      windAverage: windSpeeds.length > 0 ? mean(windSpeeds) : null,
-      cloudAverage: cloudCoverages.length > 0 ? mean(cloudCoverages) : null,
-      windHigh: windSpeeds.length > 0 ? Math.max(...windSpeeds) : null,
-      windLow: windSpeeds.length > 0 ? Math.min(...windSpeeds) : null,
-      windGustHigh: windGusts.length > 0 ? Math.max(...windGusts) : null,
-      feelsLikeAverage: feelsLikes.length > 0 ? mean(feelsLikes) : null,
-      chanceOfRainMax: chancesOfRain.length > 0 ? Math.max(...chancesOfRain) : null,
+      ...aggregateBucket(bucket),
     });
   }
 
   return aggregates;
+}
+
+export type SubDayPeriod = "morning" | "lunch" | "afternoon" | "evening" | "night";
+
+interface SubDayBoundary {
+  period: SubDayPeriod;
+  label: string;
+  startHour: number; // local hour, inclusive
+  endHour: number; // local hour, exclusive (>24 means it wraps past midnight)
+}
+
+// A common, fixed convention (014-dashboard-usability-fixes, Assumptions) — not user-configurable.
+export const SUB_DAY_PERIODS: SubDayBoundary[] = [
+  { period: "morning", label: "Morning", startHour: 6, endHour: 11 },
+  { period: "lunch", label: "Lunch", startHour: 11, endHour: 13 },
+  { period: "afternoon", label: "Afternoon", startHour: 13, endHour: 17 },
+  { period: "evening", label: "Evening", startHour: 17, endHour: 21 },
+  { period: "night", label: "Night", startHour: 21, endHour: 30 }, // 21:00 through 06:00 next day
+];
+
+function subDayBucketsForDate(
+  baseDate: Date,
+  observations: WeatherObservation[],
+  now: number
+): DailyAggregate[] {
+  const dayStart = new Date(baseDate);
+  dayStart.setHours(0, 0, 0, 0);
+
+  return SUB_DAY_PERIODS.map(({ label, startHour, endHour }) => {
+    const startMs = dayStart.getTime() + startHour * 3600_000;
+    const endMs = dayStart.getTime() + endHour * 3600_000;
+    const bucket = observations.filter((o) => {
+      const t = Date.parse(o.timestamp);
+      return t >= startMs && t < endMs;
+    });
+    return {
+      bucketEnd: new Date(endMs).toISOString(),
+      // Same wall-clock rule `toDailyAggregates` already uses for its own buckets — a
+      // still-to-come sub-day period of "today" is forecast the same way a still-to-come hour
+      // of "today" already is in the hourly view (spec Edge Cases).
+      ...(endMs > now ? { isForecast: true } : {}),
+      subDayLabel: label,
+      ...aggregateBucket(bucket),
+    };
+  });
+}
+
+/**
+ * Like `toDailyAggregates`, but the two most recent days ("today" and, when forecast data
+ * reaches that far, "tomorrow") are each broken into 5 fixed local-time sub-day periods instead
+ * of one column — the near-term forecast is detailed enough to show it, unlike the daily-only
+ * granularity further out (014-dashboard-usability-fixes, FR-018/FR-019). Days 3+ are produced
+ * by the exact same rolling-24h-bucket math `toDailyAggregates` uses, unmodified.
+ */
+export function toSubDayAndDailyBuckets(
+  observations: WeatherObservation[],
+  dailyBucketCount: number
+): DailyAggregate[] {
+  const now = Date.now();
+  const indices = observations.map((o) => bucketIndexOf(o, now));
+  const minIndex = indices.length > 0 ? Math.min(...indices) : 0;
+  const forwardBucketCount = minIndex < 0 ? -minIndex : 0;
+  // Only break "tomorrow" into sub-day periods when forecast data actually reaches that far —
+  // never fabricate a placeholder future day (same rule toDailyAggregates already follows).
+  const hasTomorrow = forwardBucketCount >= 1;
+
+  const today = new Date(now);
+  const tomorrow = new Date(now + BUCKET_MS);
+
+  // `toDailyAggregates` orders oldest -> newest, so "today" (and "tomorrow", if present) are
+  // always its last one or two entries — slice them off and replace with sub-day buckets.
+  const daily = toDailyAggregates(observations, dailyBucketCount);
+  const keepCount = daily.length - (hasTomorrow ? 2 : 1);
+  const remainingDays = daily.slice(0, Math.max(0, keepCount));
+
+  return [
+    ...remainingDays,
+    ...subDayBucketsForDate(today, observations, now),
+    ...(hasTomorrow ? subDayBucketsForDate(tomorrow, observations, now) : []),
+  ];
 }

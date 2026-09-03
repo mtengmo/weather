@@ -392,6 +392,14 @@ a {
   padding: 0.5rem 0;
 }
 
+/* Lets the 7-day view's columns stretch to fill a wide viewport instead of hugging the left
+   edge — overrides the base rule's width: max-content. min-width: 900px still wins over this
+   on a narrow viewport (CSS spec), so the horizontal-scroll fallback above is unaffected
+   (014-dashboard-usability-fixes, FR-006/FR-007). */
+.weather-timeline-fill {
+  width: 100%;
+}
+
 /* One shared row: every row uses the exact same grid-template-columns (set inline per
    render, matching the period count), which is what guarantees pixel-aligned columns
    across rows without a single mega-grid (008 research.md §1). */

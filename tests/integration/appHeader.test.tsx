@@ -290,3 +290,142 @@ describe("Cached location restore (009-timeline-polish-and-header, US4)", () => 
     expect(screen.queryByRole("heading", { name: /Stockholm/ })).not.toBeInTheDocument();
   });
 });
+
+describe("View a search result without favoriting (014-dashboard-usability-fixes, US1)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("views a search result's weather without adding it to favorites", async () => {
+    const { searchPlaces } = await import("../../src/services/geocodingApi");
+    vi.mocked(searchPlaces).mockResolvedValue([
+      { latitude: 48.85, longitude: 2.35, displayName: "Paris, France" },
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.type(screen.getByLabelText("Search for a place"), "Paris");
+    await user.click(await screen.findByRole("button", { name: "View" }));
+
+    expect(await screen.findByRole("heading", { name: /Paris.*overview/i })).toBeInTheDocument();
+    // Viewing must not implicitly favorite it (FR-002) — reopen the panel and confirm it's absent.
+    await user.click(screen.getByRole("button", { name: "Change location" }));
+    expect(screen.queryByText("Paris, France")).not.toBeInTheDocument();
+  });
+
+  it("still supports adding a search result to favorites as a separate action", async () => {
+    const { searchPlaces } = await import("../../src/services/geocodingApi");
+    vi.mocked(searchPlaces).mockResolvedValue([
+      { latitude: 48.85, longitude: 2.35, displayName: "Paris, France" },
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.type(screen.getByLabelText("Search for a place"), "Paris");
+    await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
+
+    expect(await screen.findByText("Paris, France")).toBeInTheDocument();
+  });
+});
+
+describe("Retry current location after denial (014-dashboard-usability-fixes, US2)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("offers a way to retry current location after the permission prompt is denied", async () => {
+    mockGeolocation("unavailable"); // simulates a denial via the mocked error callback
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Change location" }));
+
+    expect(screen.getByRole("button", { name: "Use current location" })).toBeInTheDocument();
+  });
+
+  it("retrying current location shows that location's weather once granted", async () => {
+    mockGeolocation("unavailable");
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: "Use current location" }));
+
+    // Second request behaves like the first — switch the mock to "success" and re-fire it.
+    mockGeolocation("success");
+    await user.click(screen.getByRole("button", { name: "Use current location" }));
+
+    expect(await screen.findByRole("button", { name: "Current Location" })).toBeInTheDocument();
+  });
+});
+
+describe("Nearby-stations control hidden on the Overview (014-dashboard-usability-fixes, US5)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("hides the nearby-stations control on the Overview and shows it on the graph", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    expect(screen.queryByLabelText(/nearby stations/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back to graph" }));
+    expect(screen.getByLabelText(/nearby stations/i)).toBeInTheDocument();
+  });
+});

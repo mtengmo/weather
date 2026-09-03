@@ -4,13 +4,18 @@ import {
   buildHourlyRows,
   buildMetricDailyRows,
   buildMetricHourlyRows,
+  buildMultiSourceForecastRows,
   buildWindDailyRows,
   findObservedExtremes,
   forecastBoundaryValue,
   forecastKey,
   isMetricAvailable,
+  mergeMultiSourceForecastIntoRows,
   seriesKey,
+  sourceKey,
+  type ChartRow,
 } from "../../src/components/chartData";
+import type { MultiSourceForecastEntry } from "../../src/services/weatherApi";
 import type {
   DailyAggregate,
   NearbyStationSeries,
@@ -418,5 +423,127 @@ describe("findObservedExtremes (013-overview-default-and-layout)", () => {
 
     expect(result?.high.timestamp).toBe(t2);
     expect(result?.low.timestamp).toBe(t2);
+  });
+});
+
+describe("buildMultiSourceForecastRows (014-dashboard-usability-fixes, US7)", () => {
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("averages across every source that has a value at a given timestamp", () => {
+    const t = hoursFromNow(1);
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [obs({ timestamp: t, temperature: 10, isForecast: true })] },
+      { source: "open-meteo", observations: [obs({ timestamp: t, temperature: 20, isForecast: true })] },
+    ];
+
+    const rows = buildMultiSourceForecastRows(entries, "metric");
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0][sourceKey(0)]).toBe(10);
+    expect(rows[0][sourceKey(1)]).toBe(20);
+    expect(rows[0].average).toBe(15);
+  });
+
+  it("averages over whichever sources have a value when timestamps don't fully overlap", () => {
+    const t1 = hoursFromNow(1);
+    const t2 = hoursFromNow(2);
+    const entries: MultiSourceForecastEntry[] = [
+      {
+        source: "smhi",
+        observations: [
+          obs({ timestamp: t1, temperature: 10, isForecast: true }),
+          obs({ timestamp: t2, temperature: 12, isForecast: true }),
+        ],
+      },
+      { source: "open-meteo", observations: [obs({ timestamp: t1, temperature: 20, isForecast: true })] },
+    ];
+
+    const rows = buildMultiSourceForecastRows(entries, "metric");
+    const row2 = rows.find((r) => r.timestamp === t2);
+
+    expect(row2?.[sourceKey(1)]).toBeUndefined();
+    expect(row2?.average).toBe(12);
+  });
+
+  it("converts temperatures to the requested unit", () => {
+    const t = hoursFromNow(1);
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [obs({ timestamp: t, temperature: 0, isForecast: true })] },
+    ];
+
+    const rows = buildMultiSourceForecastRows(entries, "imperial");
+
+    expect(rows[0][sourceKey(0)]).toBe(32);
+  });
+
+  it("sorts rows chronologically by timestamp", () => {
+    const t1 = hoursFromNow(1);
+    const t2 = hoursFromNow(2);
+    const entries: MultiSourceForecastEntry[] = [
+      {
+        source: "smhi",
+        observations: [
+          obs({ timestamp: t2, temperature: 12, isForecast: true }),
+          obs({ timestamp: t1, temperature: 10, isForecast: true }),
+        ],
+      },
+    ];
+
+    const rows = buildMultiSourceForecastRows(entries, "metric");
+
+    expect(rows.map((r) => r.timestamp)).toEqual([t1, t2]);
+  });
+});
+
+describe("mergeMultiSourceForecastIntoRows (014-dashboard-usability-fixes, US7)", () => {
+  function hoursFromNow(h: number): string {
+    return new Date(Date.now() + h * 3600_000).toISOString();
+  }
+
+  it("merges each source's value and the average onto the matching primary row by timestamp", () => {
+    const t = hoursFromNow(1);
+    const rows: ChartRow[] = [{ timestamp: t, primary: null, primaryForecast: 8 }];
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [obs({ timestamp: t, temperature: 10, isForecast: true })] },
+      { source: "open-meteo", observations: [obs({ timestamp: t, temperature: 20, isForecast: true })] },
+    ];
+
+    mergeMultiSourceForecastIntoRows(rows, entries, "metric");
+
+    expect(rows[0][sourceKey(0)]).toBe(10);
+    expect(rows[0][sourceKey(1)]).toBe(20);
+    expect(rows[0].combinedAverage).toBe(15);
+    // The row's own existing keys are untouched.
+    expect(rows[0].primaryForecast).toBe(8);
+  });
+
+  it("leaves a row untouched when no source has a value at its timestamp", () => {
+    const t = hoursFromNow(1);
+    const otherT = hoursFromNow(5);
+    const rows: ChartRow[] = [{ timestamp: t, primary: 5 }];
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [obs({ timestamp: otherT, temperature: 10, isForecast: true })] },
+      { source: "open-meteo", observations: [obs({ timestamp: otherT, temperature: 20, isForecast: true })] },
+    ];
+
+    mergeMultiSourceForecastIntoRows(rows, entries, "metric");
+
+    expect(rows[0][sourceKey(0)]).toBeUndefined();
+    expect(rows[0].combinedAverage).toBeUndefined();
+  });
+
+  it("does nothing with fewer than 2 sources (no misleading single-source average)", () => {
+    const t = hoursFromNow(1);
+    const rows: ChartRow[] = [{ timestamp: t, primary: 5 }];
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [obs({ timestamp: t, temperature: 10, isForecast: true })] },
+    ];
+
+    mergeMultiSourceForecastIntoRows(rows, entries, "metric");
+
+    expect(rows[0][sourceKey(0)]).toBeUndefined();
+    expect(rows[0].combinedAverage).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@ import type {
   WeatherObservation,
 } from "../models/types";
 import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
-import { toDailyAggregates } from "../services/dailyAggregation";
+import { toSubDayAndDailyBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
   convertTemperature,
@@ -32,6 +32,9 @@ export interface TimelineRowPoint {
   gust?: number | null;
   /** Precipitation row only: percent (0-100) chance of rain, when available (011-precipitation-chance). */
   chanceOfRain?: number | null;
+  /** Temperature row only, daily view: the day's high/low, alongside the plain average (014, FR-009). */
+  high?: number | null;
+  low?: number | null;
   /**
    * true when `value` was derived by interpolating this row's neighboring points at the
    * observed/forecast boundary, rather than measured/forecast directly
@@ -88,6 +91,8 @@ interface RowSource {
   isSnowy: boolean;
   isForecast: boolean;
   chanceOfRain?: number | null;
+  high?: number | null;
+  low?: number | null;
 }
 
 function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "periods" | "nowBoundaryIndex"> {
@@ -101,6 +106,8 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
     points: sources.map((s) => ({
       isForecast: s.isForecast,
       value: convertTemperature(s.temperature, unit),
+      high: convertTemperature(s.high ?? null, unit),
+      low: convertTemperature(s.low ?? null, unit),
     })),
     available: true, // core row, always shown even if all-gap (FR-006 shows the gap, not omission)
   };
@@ -229,11 +236,13 @@ export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSys
 
 /** Builds the synchronized daily timeline (7-day view) from an already-loaded series. */
 export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
-  const days: DailyAggregate[] = toDailyAggregates(series.observations, DAILY_BUCKET_COUNT);
+  const days: DailyAggregate[] = toSubDayAndDailyBuckets(series.observations, DAILY_BUCKET_COUNT);
 
   const periods: TimelinePeriod[] = days.map((day) => ({
     key: day.bucketEnd,
-    label: new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" }),
+    // Sub-day buckets (first two days, 014 FR-018) label themselves by period name instead of
+    // weekday — every other bucket keeps the existing weekday label.
+    label: day.subDayLabel ?? new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" }),
     isForecast: day.isForecast ?? false,
     // No timestamp passed: a clear day always shows the sun, never the moon (007/008
     // research.md §3) — a whole day inherently spans both.
@@ -261,6 +270,8 @@ export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSyst
       }) === "snowy",
     isForecast: day.isForecast ?? false,
     chanceOfRain: day.chanceOfRainMax,
+    high: day.high,
+    low: day.low,
   }));
 
   // No boundary-column interpolation at daily granularity — "now" isn't a single well-defined

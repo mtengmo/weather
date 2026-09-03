@@ -6,6 +6,7 @@ import { useUnitPreference } from "./hooks/useUnitPreference";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
 import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
+import { useCombineForecastSourcesPreference } from "./hooks/useCombineForecastSourcesPreference";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
@@ -14,6 +15,7 @@ import UnitToggle from "./components/UnitToggle";
 import ThemePicker from "./components/ThemePicker";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import HighLowToggle from "./components/HighLowToggle";
+import CombineForecastToggle from "./components/CombineForecastToggle";
 import LocationPanel from "./components/LocationPanel";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 
@@ -29,6 +31,8 @@ export default function App() {
     useNearbyStationCountPreference();
   const { visible: highLowVisible, setVisible: setHighLowVisible } =
     useHighLowVisibilityPreference();
+  const { combineForecastSources, setCombineForecastSources } =
+    useCombineForecastSourcesPreference();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -37,7 +41,12 @@ export default function App() {
   // whenever a location resolves, rather than the classic line-graph (013, FR-001).
   const [view, setView] = useState<View>("overview");
 
-  const { series, nearbyStations } = useObservationData(selected, obsWindow, nearbyStationCount);
+  const { series, nearbyStations, multiSourceForecast } = useObservationData(
+    selected,
+    obsWindow,
+    nearbyStationCount,
+    combineForecastSources
+  );
 
   useEffect(() => {
     requestLocation();
@@ -105,8 +114,14 @@ export default function App() {
         <div className="header-controls">
           <ThemePicker theme={theme} onChange={setTheme} />
           <UnitToggle unit={unit} onChange={setUnit} />
-          <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
+          {view !== "overview" && (
+            <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
+          )}
           <HighLowToggle visible={highLowVisible} onChange={setHighLowVisible} />
+          <CombineForecastToggle
+            combined={combineForecastSources}
+            onChange={setCombineForecastSources}
+          />
         </div>
 
         <LocationPanel
@@ -118,6 +133,8 @@ export default function App() {
           onAddFavorite={(candidate) => add(candidate)}
           onRemoveFavorite={remove}
           onDismissFavoritesError={clearError}
+          geoStatus={geoStatus}
+          onRequestCurrentLocation={requestLocation}
         />
       </header>
 
@@ -139,6 +156,8 @@ export default function App() {
           unit={unit}
           series={series}
           nearbyStations={nearbyStations}
+          combineForecastSources={combineForecastSources}
+          multiSourceForecast={multiSourceForecast}
           onViewDetails={() => setView("details")}
           onViewOverview={viewOverview}
         />
@@ -164,6 +183,7 @@ export default function App() {
           unit={unit}
           series={series}
           onBack={() => setView("graph")}
+          highLowVisible={highLowVisible}
         />
       )}
     </div>

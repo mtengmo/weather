@@ -3,10 +3,11 @@ import type { PlaceCandidate } from "../services/geocodingApi";
 import { searchPlaces } from "../services/geocodingApi";
 
 interface PlaceSearchProps {
-  onSelect: (place: PlaceCandidate) => void;
+  onAddFavorite: (place: PlaceCandidate) => void;
+  onView: (place: PlaceCandidate) => void;
 }
 
-export default function PlaceSearch({ onSelect }: PlaceSearchProps) {
+export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceCandidate[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -66,7 +67,17 @@ export default function PlaceSearch({ onSelect }: PlaceSearchProps) {
               <button
                 type="button"
                 onClick={() => {
-                  onSelect(candidate);
+                  onView(candidate);
+                  setQuery("");
+                  setResults([]);
+                }}
+              >
+                View
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onAddFavorite(candidate);
                   setQuery("");
                   setResults([]);
                 }}

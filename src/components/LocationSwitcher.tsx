@@ -1,10 +1,13 @@
 import type { FavoritePlace, Location } from "../models/types";
+import type { GeolocationStatus } from "../hooks/useGeolocation";
 
 interface LocationSwitcherProps {
   currentLocation: Location | null;
   favorites: FavoritePlace[];
   selected: Location | null;
   onSelect: (location: Location) => void;
+  geoStatus: GeolocationStatus;
+  onRequestCurrentLocation: () => void;
 }
 
 function favoriteToLocation(place: FavoritePlace): Location {
@@ -25,10 +28,12 @@ export default function LocationSwitcher({
   favorites,
   selected,
   onSelect,
+  geoStatus,
+  onRequestCurrentLocation,
 }: LocationSwitcherProps) {
   return (
     <nav aria-label="Select location" className="location-switcher">
-      {currentLocation && (
+      {currentLocation ? (
         <button
           type="button"
           aria-pressed={isSameLocation(selected, currentLocation)}
@@ -36,6 +41,14 @@ export default function LocationSwitcher({
         >
           Current Location
         </button>
+      ) : (
+        (geoStatus === "denied" || geoStatus === "unavailable") && (
+          // Without this, declining the browser's permission prompt once permanently hides
+          // any way back to current-location from within the app (014, FR-004).
+          <button type="button" onClick={onRequestCurrentLocation}>
+            Use current location
+          </button>
+        )
       )}
       {favorites.map((place) => {
         const location = favoriteToLocation(place);

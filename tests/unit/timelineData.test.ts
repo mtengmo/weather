@@ -233,8 +233,12 @@ describe("buildHourlyTimelineData", () => {
 
 describe("buildDailyTimelineData", () => {
   it("does not fabricate forecast days beyond what toDailyAggregates returns", () => {
+    // Today's own sub-day periods (014, FR-018) may legitimately be forecast for the parts of
+    // today still to come — this only checks the regular days 3-7, produced unchanged by
+    // toDailyAggregates, never get a forecast flag without backing data.
     const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
-    expect(data.periods.some((p) => p.isForecast)).toBe(false);
+    const regularDayPeriods = data.periods.filter((_, i) => data.periods.length - i > 5);
+    expect(regularDayPeriods.some((p) => p.isForecast)).toBe(false);
   });
 
   it("sets windDirection to null for every daily wind point", () => {
@@ -260,5 +264,34 @@ describe("buildDailyTimelineData", () => {
     );
     const forecastPoint = data.precipitation.points[data.precipitation.points.length - 1];
     expect(forecastPoint.chanceOfRain).toBe(65);
+  });
+
+  describe("sub-day periods (014-dashboard-usability-fixes, US8)", () => {
+    it("labels today's last 5 periods with sub-day names instead of the weekday", () => {
+      const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+      const lastFiveLabels = data.periods.slice(-5).map((p) => p.label);
+
+      expect(lastFiveLabels).toEqual(["Morning", "Lunch", "Afternoon", "Evening", "Night"]);
+    });
+
+    it("keeps the standard weekday label for days 3+", () => {
+      const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+      const regularDayPeriods = data.periods.slice(0, data.periods.length - 5);
+
+      expect(regularDayPeriods.every((p) => !["Morning", "Lunch", "Afternoon", "Evening", "Night"].includes(p.label))).toBe(
+        true
+      );
+    });
+
+    it("carries high/low onto a sub-day temperature point the same way a regular day does", () => {
+      const data = buildDailyTimelineData(
+        series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]),
+        "metric"
+      );
+      const lastPoint = data.temperature.points[data.temperature.points.length - 1];
+
+      expect(lastPoint.high).not.toBeUndefined();
+      expect(lastPoint.low).not.toBeUndefined();
+    });
   });
 });

@@ -5,6 +5,7 @@ import type {
   ObservationSeries,
   ObservationWindow,
   StationInfo,
+  WeatherObservation,
 } from "../models/types";
 import * as openMeteoProvider from "./openMeteoProvider";
 import * as smhiProvider from "./smhiProvider";
@@ -92,4 +93,37 @@ export async function getNearbyStationSeries(
   return results
     .filter((r): r is PromiseFulfilledResult<NearbyStationSeries> => r.status === "fulfilled")
     .map((r) => r.value);
+}
+
+export interface MultiSourceForecastEntry {
+  source: "smhi" | "open-meteo";
+  observations: WeatherObservation[];
+}
+
+/**
+ * Every source's own forecast-only observations for a location, fetched independently so one
+ * source's failure never blocks the other (014-dashboard-usability-fixes, FR-013–FR-017).
+ * Forecast-only, by design — combining observed/historical data isn't in scope.
+ */
+export async function getMultiSourceForecast(
+  location: Pick<Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<MultiSourceForecastEntry[]> {
+  const [smhiResult, openMeteoResult] = await Promise.allSettled([
+    (async () => {
+      if (!(await isSmhiCovered(location))) return [];
+      const series = await smhiProvider.getObservations(location, window);
+      return series.observations.filter((o) => o.isForecast === true);
+    })(),
+    openMeteoProvider.getForecastOnly(location, window),
+  ]);
+
+  const entries: MultiSourceForecastEntry[] = [];
+  if (smhiResult.status === "fulfilled" && smhiResult.value.length > 0) {
+    entries.push({ source: "smhi", observations: smhiResult.value });
+  }
+  if (openMeteoResult.status === "fulfilled" && openMeteoResult.value.length > 0) {
+    entries.push({ source: "open-meteo", observations: openMeteoResult.value });
+  }
+  return entries;
 }

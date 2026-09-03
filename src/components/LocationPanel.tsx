@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FavoritePlace, Location } from "../models/types";
 import type { PlaceCandidate } from "../services/geocodingApi";
+import type { GeolocationStatus } from "../hooks/useGeolocation";
 import LocationSwitcher from "./LocationSwitcher";
 import PlaceSearch from "./PlaceSearch";
 import FavoritesList from "./FavoritesList";
@@ -14,6 +15,17 @@ interface LocationPanelProps {
   onAddFavorite: (candidate: PlaceCandidate) => void;
   onRemoveFavorite: (id: string) => void;
   onDismissFavoritesError: () => void;
+  geoStatus: GeolocationStatus;
+  onRequestCurrentLocation: () => void;
+}
+
+function candidateToLocation(place: PlaceCandidate): Location {
+  return {
+    latitude: place.latitude,
+    longitude: place.longitude,
+    displayName: place.displayName,
+    source: "favorite",
+  };
 }
 
 /**
@@ -31,6 +43,8 @@ export default function LocationPanel({
   onAddFavorite,
   onRemoveFavorite,
   onDismissFavoritesError,
+  geoStatus,
+  onRequestCurrentLocation,
 }: LocationPanelProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -93,9 +107,14 @@ export default function LocationPanel({
             favorites={[]}
             selected={selected}
             onSelect={selectAndClose}
+            geoStatus={geoStatus}
+            onRequestCurrentLocation={onRequestCurrentLocation}
           />
 
-          <PlaceSearch onSelect={onAddFavorite} />
+          <PlaceSearch
+            onAddFavorite={onAddFavorite}
+            onView={(place) => selectAndClose(candidateToLocation(place))}
+          />
 
           <FavoritesList
             favorites={favorites}

@@ -36,6 +36,8 @@ describe("US3: LocationSwitcher — switching between current location and favor
         favorites={favorites}
         selected={currentLocation}
         onSelect={onSelect}
+        geoStatus="granted"
+        onRequestCurrentLocation={vi.fn()}
       />
     );
 
@@ -61,6 +63,8 @@ describe("US3: LocationSwitcher — switching between current location and favor
         favorites={favorites}
         selected={{ ...favorites[0], source: "favorite" } as unknown as Location}
         onSelect={vi.fn()}
+        geoStatus="granted"
+        onRequestCurrentLocation={vi.fn()}
       />
     );
 
@@ -76,7 +80,7 @@ function FavoritesHarness() {
   const { favorites, error, add, remove, clearError } = useFavorites();
   return (
     <div>
-      <PlaceSearch onSelect={(candidate) => add(candidate)} />
+      <PlaceSearch onAddFavorite={(candidate) => add(candidate)} onView={() => {}} />
       <FavoritesList
         favorites={favorites}
         error={error}
