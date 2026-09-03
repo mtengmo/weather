@@ -19,8 +19,8 @@ function bucketIndexOf(obs: WeatherObservation, now: number): number {
 }
 
 /** The per-bucket aggregation math shared by every bucket shape (rolling 24h day, or sub-day
- *  period) — factored out so `toSubDayAndDailyBuckets` reuses it exactly rather than
- *  duplicating it (014-dashboard-usability-fixes, research.md §8). */
+ *  period) — factored out so `toSubDayBuckets` reuses it exactly rather than duplicating it
+ *  (014-dashboard-usability-fixes, research.md §8). */
 function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bucketEnd" | "isForecast"> {
   const temperatures = nonNull(bucket.map((o) => o.temperature));
   const precipitations = nonNull(bucket.map((o) => o.precipitation));
@@ -142,40 +142,28 @@ function subDayBucketsForDate(
 }
 
 /**
- * Like `toDailyAggregates`, but the two most recent days ("today" and, when forecast data
- * reaches that far, "tomorrow") are each broken into 5 fixed local-time sub-day periods instead
- * of one column — the near-term forecast is detailed enough to show it, unlike the daily-only
- * granularity further out (014-dashboard-usability-fixes, FR-018/FR-019). Days 3+ are produced
- * by the exact same rolling-24h-bucket math `toDailyAggregates` uses, unmodified.
+ * Every day from "today" through `dayCount - 1` days ahead, each broken into the same 5 fixed
+ * sub-day periods — a single, uniform resolution throughout, never mixed with plain daily columns
+ * (015-overview-3day-resolution-fix, FR-003/FR-004). A day beyond how far the underlying
+ * observations' forecast actually reaches is omitted entirely, never fabricated (FR-005) —
+ * mirrors `toDailyAggregates`' own `forwardBucketCount` convention.
  */
-export function toSubDayAndDailyBuckets(
+export function toSubDayBuckets(
   observations: WeatherObservation[],
-  dailyBucketCount: number
+  dayCount: number
 ): DailyAggregate[] {
   const now = Date.now();
   const indices = observations.map((o) => bucketIndexOf(o, now));
   const minIndex = indices.length > 0 ? Math.min(...indices) : 0;
   const forwardBucketCount = minIndex < 0 ? -minIndex : 0;
-  // Only break "tomorrow" into sub-day periods when forecast data actually reaches that far —
-  // never fabricate a placeholder future day (same rule toDailyAggregates already follows).
-  const hasTomorrow = forwardBucketCount >= 1;
+  // Day 0 ("today") always renders, same as toDailyAggregates' index 0 always existing; day N
+  // (N >= 1) only renders when forecast data reaches at least N days out.
+  const availableDayCount = Math.min(dayCount, 1 + forwardBucketCount);
 
-  const today = new Date(now);
-  const tomorrow = new Date(now + BUCKET_MS);
-  // The exact bucketEnd values toDailyAggregates itself computes for index 0 and index -1 —
-  // matched by value rather than by array position, since forecast reaching further than
-  // "tomorrow" (index -2, -3, ...) appends MORE entries after them, so "today"/"tomorrow" are
-  // not always literally the array's last one or two entries.
-  const todayBucketEnd = new Date(now).toISOString();
-  const tomorrowBucketEnd = new Date(now + BUCKET_MS).toISOString();
-
-  const daily = toDailyAggregates(observations, dailyBucketCount);
-  const todaySubDayBuckets = subDayBucketsForDate(today, observations, now);
-  const tomorrowSubDayBuckets = hasTomorrow ? subDayBucketsForDate(tomorrow, observations, now) : null;
-
-  return daily.flatMap((day) => {
-    if (day.bucketEnd === todayBucketEnd) return todaySubDayBuckets;
-    if (tomorrowSubDayBuckets !== null && day.bucketEnd === tomorrowBucketEnd) return tomorrowSubDayBuckets;
-    return [day];
-  });
+  const buckets: DailyAggregate[] = [];
+  for (let dayOffset = 0; dayOffset < availableDayCount; dayOffset++) {
+    const date = new Date(now + dayOffset * BUCKET_MS);
+    buckets.push(...subDayBucketsForDate(date, observations, now));
+  }
+  return buckets;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toDailyAggregates, toSubDayAndDailyBuckets } from "../../src/services/dailyAggregation";
+import { toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
 import type { WeatherObservation } from "../../src/models/types";
 
 function hoursAgo(h: number): string {
@@ -251,20 +251,19 @@ describe("toDailyAggregates", () => {
   });
 });
 
-describe("toSubDayAndDailyBuckets (014-dashboard-usability-fixes, US8)", () => {
-  function daysAgo(d: number): string {
-    // Midday, safely inside "today"'s afternoon window regardless of local test-run time.
+describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
+  function daysFromNow(d: number): string {
+    // Midday, safely inside that day's afternoon window regardless of local test-run time.
     const date = new Date();
-    date.setDate(date.getDate() - d);
+    date.setDate(date.getDate() + d);
     date.setHours(14, 0, 0, 0);
     return date.toISOString();
   }
 
-  it("returns 5 sub-day buckets for today when there is no forecast data", () => {
-    const result = toSubDayAndDailyBuckets([obs({ timestamp: daysAgo(3), temperature: 5 })], 7);
-    const subDayBuckets = result.filter((b) => b.subDayLabel !== undefined);
-
-    expect(subDayBuckets.map((b) => b.subDayLabel)).toEqual([
+  it("returns exactly 5 sub-day buckets for today when there is no forecast data", () => {
+    const result = toSubDayBuckets([], 3);
+    expect(result).toHaveLength(5);
+    expect(result.map((b) => b.subDayLabel)).toEqual([
       "Morning",
       "Lunch",
       "Afternoon",
@@ -273,28 +272,27 @@ describe("toSubDayAndDailyBuckets (014-dashboard-usability-fixes, US8)", () => {
     ]);
   });
 
-  it("leaves days 3+ unaffected, identical to toDailyAggregates' own output", () => {
-    const observations: WeatherObservation[] = [obs({ timestamp: daysAgo(3), temperature: 5 })];
+  it("returns 10 buckets when forecast reaches 1 day out", () => {
+    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(1), temperature: 5, isForecast: true })], 3);
+    expect(result).toHaveLength(10);
+  });
 
-    const subDayResult = toSubDayAndDailyBuckets(observations, 7);
-    const plainResult = toDailyAggregates(observations, 7);
+  it("returns 15 buckets when forecast reaches 2+ days out (the full 3-day view)", () => {
+    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(2), temperature: 5, isForecast: true })], 3);
+    expect(result).toHaveLength(15);
+  });
 
-    const regularSubDayBuckets = subDayResult.filter((b) => b.subDayLabel === undefined);
-    // toDailyAggregates' own last entry ("today") is replaced by 5 sub-day buckets, so compare
-    // everything except that last entry. bucketEnd is omitted from the comparison: each call
-    // computes it from its own Date.now() snapshot, which can drift by a millisecond between
-    // the two calls above even though both mean "right now."
-    expect(regularSubDayBuckets.map(({ bucketEnd: _bucketEnd, ...rest }) => rest)).toEqual(
-      plainResult.slice(0, -1).map(({ bucketEnd: _bucketEnd, ...rest }) => rest)
-    );
+  it("never exceeds dayCount * 5 buckets even when forecast reaches much further out", () => {
+    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(6), temperature: 5, isForecast: true })], 3);
+    expect(result).toHaveLength(15);
   });
 
   it("aggregates a sub-day bucket's own observations (high/low/average)", () => {
     const observations: WeatherObservation[] = [
-      obs({ timestamp: daysAgo(0), temperature: 10 }), // lands in the "Afternoon" window (14:00)
+      obs({ timestamp: daysFromNow(0), temperature: 10 }), // lands in the "Afternoon" window (14:00)
     ];
 
-    const result = toSubDayAndDailyBuckets(observations, 7);
+    const result = toSubDayBuckets(observations, 3);
     const afternoon = result.find((b) => b.subDayLabel === "Afternoon");
 
     expect(afternoon?.high).toBe(10);
@@ -302,16 +300,8 @@ describe("toSubDayAndDailyBuckets (014-dashboard-usability-fixes, US8)", () => {
     expect(afternoon?.average).toBe(10);
   });
 
-  it("never fabricates a 'tomorrow' sub-day breakdown when no forecast reaches that far", () => {
-    const result = toSubDayAndDailyBuckets([obs({ timestamp: daysAgo(1), temperature: 5 })], 7);
-    const subDayBuckets = result.filter((b) => b.subDayLabel !== undefined);
-
-    // Exactly one day's worth (5) of sub-day buckets — today only, no fabricated tomorrow.
-    expect(subDayBuckets).toHaveLength(5);
-  });
-
-  it("always returns exactly bucketCount + 4 entries when there's no forecast (5 sub-day buckets replacing 1 daily bucket)", () => {
-    const result = toSubDayAndDailyBuckets([], 7);
-    expect(result).toHaveLength(7 + 4);
+  it("always returns exactly dayCount * 5 entries when a smaller dayCount is requested", () => {
+    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(4), temperature: 5, isForecast: true })], 1);
+    expect(result).toHaveLength(5);
   });
 });

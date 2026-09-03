@@ -5,7 +5,7 @@ import type {
   WeatherObservation,
 } from "../models/types";
 import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
-import { toSubDayAndDailyBuckets } from "../services/dailyAggregation";
+import { toDailyAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
   convertTemperature,
@@ -234,14 +234,16 @@ export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSys
   };
 }
 
-/** Builds the synchronized daily timeline (7-day view) from an already-loaded series. */
-export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
-  const days: DailyAggregate[] = toSubDayAndDailyBuckets(series.observations, DAILY_BUCKET_COUNT);
-
+/**
+ * Shared by `buildDailyTimelineData` and `build3DayTimelineData` — both map a `DailyAggregate[]`
+ * (one plain-daily, one sub-day) into a `TimelineData` the exact same way; only the function that
+ * produces the `days` array differs (015-overview-3day-resolution-fix, contracts/overview-resolution-split.md).
+ */
+function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineData {
   const periods: TimelinePeriod[] = days.map((day) => ({
     key: day.bucketEnd,
-    // Sub-day buckets (first two days, 014 FR-018) label themselves by period name instead of
-    // weekday — every other bucket keeps the existing weekday label.
+    // A sub-day bucket (3-day view) labels itself by period name instead of weekday; a plain
+    // daily bucket (7-day view) never carries subDayLabel, so it always falls through.
     label: day.subDayLabel ?? new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" }),
     isForecast: day.isForecast ?? false,
     // No timestamp passed: a clear day always shows the sun, never the moon (007/008
@@ -258,7 +260,7 @@ export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSyst
     temperature: day.average,
     precipitation: day.totalPrecipitation,
     windSpeed: day.windAverage,
-    windDirection: null, // no meaningful "average direction" at daily granularity
+    windDirection: null, // no meaningful "average direction" at daily/sub-day granularity
     windGust: day.windGustHigh,
     cloudCoverPercent: day.cloudAverage,
     isSnowy:
@@ -274,11 +276,25 @@ export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSyst
     low: day.low,
   }));
 
-  // No boundary-column interpolation at daily granularity — "now" isn't a single well-defined
-  // column boundary in the same sense here (009-timeline-polish-and-header Edge Cases).
+  // No boundary-column interpolation at daily/sub-day granularity — "now" isn't a single
+  // well-defined column boundary in the same sense here (009-timeline-polish-and-header Edge Cases).
   return {
     periods,
     nowBoundaryIndex: boundaryIndex(periods.map((p) => p.isForecast)),
     ...buildRows(sources, unit),
   };
+}
+
+/** Builds the synchronized daily timeline (7-day view) from an already-loaded series — always
+ *  one column per day, at a single consistent resolution (015, FR-001/FR-002). */
+export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
+  return daysToTimelineData(toDailyAggregates(series.observations, DAILY_BUCKET_COUNT), unit);
+}
+
+const SUB_DAY_VIEW_DAY_COUNT = 3;
+
+/** Builds the synchronized sub-day timeline (3-day view) from an already-loaded series — every
+ *  day at the same sub-day resolution, never mixed with plain daily columns (015, FR-003/FR-004). */
+export function build3DayTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
+  return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit);
 }

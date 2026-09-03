@@ -325,6 +325,148 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
   });
 });
 
+describe("7-day view never mixes resolutions (015-overview-3day-resolution-fix, US1)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows no sub-day (Morning/Lunch/Afternoon/Evening/Night) labels on the 7-day view", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    for (const label of ["Morning", "Lunch", "Afternoon", "Evening", "Night"]) {
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
+  });
+});
+
+describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("offers a 'Last 3 days' option alongside 24h and 7-day", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    expect(screen.getByRole("button", { name: "Last 3 days" })).toBeInTheDocument();
+  });
+
+  it("shows sub-day columns, not full-day columns, when switched to the 3-day view", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    expect(await screen.findByText("Morning")).toBeInTheDocument();
+  });
+
+  it("does not fetch again when switching between 'Last 3 days' and 'Last 7 days'", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    const callsAfter7Day = vi.mocked(getObservations).mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await screen.findByText("Morning");
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+
+    expect(vi.mocked(getObservations).mock.calls.length).toBe(callsAfter7Day);
+  });
+});
+
+describe("High/Low regression across all display modes (015-overview-3day-resolution-fix, US3)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows high/low on the 3-day view when the toggle is on", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: hoursAgo(2), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: hoursAgo(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+            ]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} highLowVisible />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    expect(await screen.findByText(/15°\/5°/)).toBeInTheDocument();
+  });
+
+  it("shows no high/low on the 24-hour view even when the toggle is on (no day-level concept for a single hour)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} highLowVisible />);
+    await screen.findByText(/Temperature/);
+
+    expect(screen.queryByText(/°\/.*°\)/)).not.toBeInTheDocument();
+  });
+});
+
 describe("US3: sun/moon and enrichment rows", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

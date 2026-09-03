@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Location, ObservationSeries, ObservationWindow, UnitSystem } from "../models/types";
 import {
+  build3DayTimelineData,
   buildDailyTimelineData,
   buildHourlyTimelineData,
   type TimelineData,
@@ -22,10 +23,16 @@ interface WeatherIconOverviewProps {
   highLowVisible: boolean;
 }
 
-// The overview only supports 24h/7d (007 spec Edge Cases, unchanged by 008) — 30-day is out
+// The overview only supports 24h/3d/7d (007 spec Edge Cases, extended by 015) — 30-day is out
 // of scope, so its own window toggle never offers that option.
-const OVERVIEW_WINDOWS: { value: ObservationWindow; label: string }[] = [
+type OverviewDisplayMode = "last-24-hours" | "last-3-days" | "last-7-days";
+
+// "Last 3 days" and "Last 7 days" both fetch via the same shared ObservationWindow
+// ("last-7-days") — this is a purely client-side display choice over already-fetched data, so
+// switching between them never triggers a new fetch (015, research.md §3, SC-004).
+const OVERVIEW_WINDOWS: { value: OverviewDisplayMode; label: string }[] = [
   { value: "last-24-hours", label: "Last 24 hours" },
+  { value: "last-3-days", label: "Last 3 days" },
   { value: "last-7-days", label: "Last 7 days" },
 ];
 
@@ -415,6 +422,29 @@ export default function WeatherIconOverview({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
 
+  // Local display choice, independent of the shared fetch `window` — "last-3-days" and
+  // "last-7-days" both fetch via "last-7-days" (015, research.md §3), so this alone decides
+  // which build*TimelineData function runs and which button is highlighted.
+  const [displayMode, setDisplayMode] = useState<OverviewDisplayMode>(
+    window === "last-24-hours" ? "last-24-hours" : "last-7-days"
+  );
+
+  useEffect(() => {
+    // Keeps displayMode in sync if `window` changes for a reason outside this component's own
+    // buttons (e.g. the shared window falling back from last-30-days elsewhere in the app).
+    if (window === "last-24-hours" && displayMode !== "last-24-hours") {
+      setDisplayMode("last-24-hours");
+    } else if (window !== "last-24-hours" && displayMode === "last-24-hours") {
+      setDisplayMode("last-7-days");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [window]);
+
+  function selectDisplayMode(mode: OverviewDisplayMode) {
+    setDisplayMode(mode);
+    onWindowChange(mode === "last-24-hours" ? "last-24-hours" : "last-7-days");
+  }
+
   useEffect(() => {
     // Mirrors ObservationChart/ObservationDetails: move focus to this view's heading when
     // it becomes the active view.
@@ -423,9 +453,11 @@ export default function WeatherIconOverview({
 
   const timeline: TimelineData | null =
     series !== null && series.status === "ready"
-      ? window === "last-24-hours"
+      ? displayMode === "last-24-hours"
         ? buildHourlyTimelineData(series, unit)
-        : buildDailyTimelineData(series, unit)
+        : displayMode === "last-3-days"
+          ? build3DayTimelineData(series, unit)
+          : buildDailyTimelineData(series, unit)
       : null;
 
   const nowLeftPercent =
@@ -444,9 +476,10 @@ export default function WeatherIconOverview({
 
     const target = (el.scrollWidth * nowLeftPercent) / 100 - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, Math.min(target, el.scrollWidth - el.clientWidth));
-    // Reruns whenever the underlying series/window changes, not just on the very first mount.
+    // Reruns whenever the underlying series/window/displayMode changes, not just on the very
+    // first mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [series, window, nowLeftPercent]);
+  }, [series, window, displayMode, nowLeftPercent]);
 
   return (
     <section aria-label={`Weather overview for ${location.displayName}`} className="weather-overview">
@@ -464,8 +497,8 @@ export default function WeatherIconOverview({
           <button
             key={w.value}
             type="button"
-            aria-pressed={window === w.value}
-            onClick={() => onWindowChange(w.value)}
+            aria-pressed={displayMode === w.value}
+            onClick={() => selectDisplayMode(w.value)}
           >
             {w.label}
           </button>
@@ -489,7 +522,7 @@ export default function WeatherIconOverview({
           <SunMoonSummary location={location} date={new Date()} />
           <div className="weather-timeline-wrap" ref={timelineWrapRef}>
             <div
-              className={`weather-timeline${window === "last-7-days" ? " weather-timeline-fill" : ""}`}
+              className={`weather-timeline${displayMode !== "last-24-hours" ? " weather-timeline-fill" : ""}`}
             >
               {nowLeftPercent !== null && (
                 <div

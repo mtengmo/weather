@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyTimelineData, buildHourlyTimelineData } from "../../src/components/timelineData";
+import {
+  build3DayTimelineData,
+  buildDailyTimelineData,
+  buildHourlyTimelineData,
+} from "../../src/components/timelineData";
 import type { ObservationSeries, WeatherObservation } from "../../src/models/types";
 
 const LOCATION = { latitude: 59.33, longitude: 18.07, displayName: "Stockholm", source: "favorite" as const };
@@ -233,12 +237,18 @@ describe("buildHourlyTimelineData", () => {
 
 describe("buildDailyTimelineData", () => {
   it("does not fabricate forecast days beyond what toDailyAggregates returns", () => {
-    // Today's own sub-day periods (014, FR-018) may legitimately be forecast for the parts of
-    // today still to come — this only checks the regular days 3-7, produced unchanged by
-    // toDailyAggregates, never get a forecast flag without backing data.
     const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
-    const regularDayPeriods = data.periods.filter((_, i) => data.periods.length - i > 5);
-    expect(regularDayPeriods.some((p) => p.isForecast)).toBe(false);
+    expect(data.periods.some((p) => p.isForecast)).toBe(false);
+  });
+
+  it("always returns exactly one column per day, all weekday-labeled — never a sub-day column (015-overview-3day-resolution-fix, FR-001/FR-002)", () => {
+    const data = buildDailyTimelineData(
+      series([obs({ timestamp: hoursFromNow(-1), temperature: 5, isForecast: false })]),
+      "metric"
+    );
+    const subDayLabels = ["Morning", "Lunch", "Afternoon", "Evening", "Night"];
+    expect(data.periods).toHaveLength(7);
+    expect(data.periods.every((p) => !subDayLabels.includes(p.label))).toBe(true);
   });
 
   it("sets windDirection to null for every daily wind point", () => {
@@ -266,32 +276,35 @@ describe("buildDailyTimelineData", () => {
     expect(forecastPoint.chanceOfRain).toBe(65);
   });
 
-  describe("sub-day periods (014-dashboard-usability-fixes, US8)", () => {
-    it("labels today's last 5 periods with sub-day names instead of the weekday", () => {
-      const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
-      const lastFiveLabels = data.periods.slice(-5).map((p) => p.label);
+});
 
-      expect(lastFiveLabels).toEqual(["Morning", "Lunch", "Afternoon", "Evening", "Night"]);
-    });
+describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", () => {
+  it("labels every period with a sub-day name, never a weekday", () => {
+    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+    const subDayLabels = ["Morning", "Lunch", "Afternoon", "Evening", "Night"];
+    expect(data.periods.length).toBeGreaterThan(0);
+    expect(data.periods.every((p) => subDayLabels.includes(p.label))).toBe(true);
+  });
 
-    it("keeps the standard weekday label for days 3+", () => {
-      const data = buildDailyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
-      const regularDayPeriods = data.periods.slice(0, data.periods.length - 5);
+  it("never returns more than 15 periods (3 days x 5 sub-day periods)", () => {
+    const data = build3DayTimelineData(
+      series([obs({ timestamp: hoursFromNow(24 * 6), temperature: 5, isForecast: true })]),
+      "metric"
+    );
+    expect(data.periods.length).toBeLessThanOrEqual(15);
+  });
 
-      expect(regularDayPeriods.every((p) => !["Morning", "Lunch", "Afternoon", "Evening", "Night"].includes(p.label))).toBe(
-        true
-      );
-    });
+  it("carries high/low onto a sub-day temperature point the same way a daily point does (015, FR-007)", () => {
+    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+    const populatedPoint = data.temperature.points.find((p) => p.value !== null);
 
-    it("carries high/low onto a sub-day temperature point the same way a regular day does", () => {
-      const data = buildDailyTimelineData(
-        series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]),
-        "metric"
-      );
-      const lastPoint = data.temperature.points[data.temperature.points.length - 1];
+    expect(populatedPoint?.high).not.toBeUndefined();
+    expect(populatedPoint?.low).not.toBeUndefined();
+  });
 
-      expect(lastPoint.high).not.toBeUndefined();
-      expect(lastPoint.low).not.toBeUndefined();
-    });
+  it("does not fabricate a day beyond what the observations' forecast actually reaches", () => {
+    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+    // No forecast at all — only "today"'s 5 sub-day periods should exist.
+    expect(data.periods).toHaveLength(5);
   });
 });
