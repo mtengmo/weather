@@ -39,7 +39,12 @@ function OverviewHarness({
   combineForecastSources?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
-  const { series, multiSourceForecast } = useObservationData(location, window, 0, combineForecastSources);
+  const { series, multiSourceForecast, weeklySeries } = useObservationData(
+    location,
+    window,
+    0,
+    combineForecastSources
+  );
 
   return (
     <WeatherIconOverview
@@ -51,6 +56,7 @@ function OverviewHarness({
       highLowVisible={highLowVisible}
       combineForecastSources={combineForecastSources}
       multiSourceForecast={multiSourceForecast}
+      weeklySeries={weeklySeries}
     />
   );
 }
@@ -108,10 +114,14 @@ describe("US1: synchronized 24h timeline", () => {
     expect(screen.getAllByText("Forecast").length).toBeGreaterThan(0);
 
     // The other core rows all render (labels come from timelineData.ts row titles). No
-    // cloud-cover row (009-timeline-polish-and-header, FR-005).
+    // cloud-cover row (009-timeline-polish-and-header, FR-005). Scoped to the sticky
+    // row-title column since the persistent Today card (018-dashboard-visual-redesign) also
+    // renders its own "Wind ..." text elsewhere on the page.
     expect(screen.getByText(/Temperature/)).toBeInTheDocument();
     expect(screen.getByText(/Precipitation/)).toBeInTheDocument();
-    expect(screen.getByText(/^Wind/)).toBeInTheDocument();
+    expect(
+      container.querySelector(".weather-timeline-row-wind .weather-timeline-row-title")
+    ).toHaveTextContent(/^Wind/);
     expect(screen.queryByText(/Cloud cover/)).not.toBeInTheDocument();
 
     // Exactly one shared "now" line spans every row.
@@ -147,8 +157,13 @@ describe("US1: synchronized 24h timeline", () => {
 
     // lucide-react's per-icon class suffix has changed across versions (e.g. "lucide-moon"
     // vs. "lucide-moon-icon") — match by prefix so this doesn't break on a dependency bump.
-    expect(container.querySelector('svg[class*="lucide-moon"]')).toBeInTheDocument();
-    expect(container.querySelector('svg[class*="lucide-sun"]')).not.toBeInTheDocument();
+    // Scoped to the hourly condition cell: the persistent Today card
+    // (018-dashboard-visual-redesign) derives its own day-level condition (no timestamp, so
+    // a clear day always renders as clear-day/sun per research.md §3) and legitimately shows
+    // its own sun icon elsewhere on the page for this same clear series.
+    const conditionCell = container.querySelector(".weather-timeline-condition");
+    expect(conditionCell?.querySelector('svg[class*="lucide-moon"]')).toBeInTheDocument();
+    expect(conditionCell?.querySelector('svg[class*="lucide-sun"]')).not.toBeInTheDocument();
   });
 
   it("shows the unavailable message rather than the timeline when the series status is unavailable", async () => {
@@ -638,8 +653,13 @@ describe("High/Low regression across all display modes (015-overview-3day-resolu
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: hoursAgo(2), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              // Minutes apart, not hours — the 3-day view's sub-day buckets are 2-9 hours wide
+              // (dailyAggregation.ts's SUB_DAY_PERIODS), so two points an hour or more apart can
+              // straddle a bucket boundary depending on the wall-clock time the suite runs at,
+              // landing in separate cells instead of combining into one high/low. Minutes-apart
+              // timestamps stay safely within the same bucket regardless of when this runs.
+              { timestamp: hoursAgo(0.2), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: hoursAgo(0.1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
             ]
           : [],
     }));
@@ -1241,5 +1261,242 @@ describe("data source note (013-overview-default-and-layout, US4)", () => {
     render(<OverviewHarness location={stockholm} />);
 
     expect(await screen.findByText("Data: Open-Meteo")).toBeInTheDocument();
+  });
+});
+
+describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows both 'Observed' and 'Forecast' section labels when forecast data exists", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursFromNow(1), temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-section-observed")).toHaveTextContent("Observed");
+    expect(container.querySelector(".weather-timeline-section-forecast")).toHaveTextContent("Forecast");
+  });
+
+  it("shows only 'Observed' when there is no forecast data", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-section-observed")).toHaveTextContent("Observed");
+    expect(container.querySelector(".weather-timeline-section-forecast")).not.toBeInTheDocument();
+  });
+});
+
+describe("Sticky row-label column (018-dashboard-visual-redesign, US3)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows a 'Probability' sub-label on Rain and 'Gusts' on Wind, and a 'Weather' title on the condition row", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 1, windSpeed: 2, windGust: 4, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(
+      container.querySelector(".weather-timeline-row-precipitation .weather-timeline-row-sublabel")
+    ).toHaveTextContent("Probability");
+    expect(
+      container.querySelector(".weather-timeline-row-wind .weather-timeline-row-sublabel")
+    ).toHaveTextContent("Gusts");
+    expect(
+      container.querySelector(".weather-timeline-row-condition .weather-timeline-row-title")
+    ).toHaveTextContent("Weather");
+  });
+
+  it("gives every timeline row a sticky title-column element", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 1, windSpeed: 2, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const titles = container.querySelectorAll(".weather-timeline-row-title");
+    // Time-label placeholder, Weather, Temperature, Rain, Wind — at minimum.
+    expect(titles.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows icon/high-low/description/rain/wind-with-compass/sunrise-sunset for today", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: hoursAgo(2), temperature: 5, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
+              { timestamp: hoursAgo(1), temperature: 15, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent("15° / 5°");
+    expect(card).toHaveTextContent(/Rain/);
+    expect(card).toHaveTextContent(/Wind.*E/);
+    expect(card).toHaveTextContent(/Sunrise/);
+    expect(card).toHaveTextContent(/Sunset/);
+  });
+
+  it("shows the gap indicator, not a fabricated value, for missing fields", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? [{ timestamp: hoursAgo(1), temperature: null, precipitation: null, windSpeed: null, cloudCoverPercent: null }] : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card.textContent).toContain("—");
+  });
+
+  it("stays visible across all three tabs (24h/3d/7d)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }] : [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    expect(await screen.findByRole("region", { name: "Today" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    expect(screen.getByRole("region", { name: "Today" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    expect(screen.getByRole("region", { name: "Today" })).toBeInTheDocument();
+  });
+});
+
+describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows exactly as many cards as toDailyAggregates returned, never fabricated", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }] : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    expect(strip.querySelectorAll(".weekly-forecast-day")).toHaveLength(7);
+  });
+
+  it("is visible on all three tabs", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }] : [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    expect(await screen.findByRole("region", { name: "7 day forecast" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    expect(screen.getByRole("region", { name: "7 day forecast" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    expect(screen.getByRole("region", { name: "7 day forecast" })).toBeInTheDocument();
+  });
+
+  it("triggers no duplicate getObservations call for last-7-days when switching to/from the 7-day tab", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: [],
+    }));
+
+    const user = userEvent.setup();
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    // The always-on weekly fetch already covers last-7-days once the 24h tab has loaded.
+    const sevenDayCallsBeforeSwitch = vi
+      .mocked(getObservations)
+      .mock.calls.filter(([, w]) => w === "last-7-days").length;
+    expect(sevenDayCallsBeforeSwitch).toBe(1);
+
+    // Switching the active window to "last-7-days" makes a genuinely new primary fetch (a
+    // fresh call with that window is expected here) — the dedup only avoids a *second*,
+    // redundant weeklySeries fetch alongside it.
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => {
+      const sevenDayCallsAfterSwitch = vi
+        .mocked(getObservations)
+        .mock.calls.filter(([, w]) => w === "last-7-days").length;
+      expect(sevenDayCallsAfterSwitch).toBe(2);
+    });
   });
 });

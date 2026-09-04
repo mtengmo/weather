@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatValue } from "../../src/services/format";
+import { dataSourceDisclosure, directionToCompass, formatValue } from "../../src/services/format";
 
 describe("formatValue", () => {
   it("returns an em dash for null", () => {
@@ -17,5 +17,52 @@ describe("formatValue", () => {
   it("supports a custom decimal count", () => {
     expect(formatValue(1.005, 2)).toBe("1.00"); // toFixed's standard float rounding, not a bug in formatValue
     expect(formatValue(3.14159, 3)).toBe("3.142");
+  });
+});
+
+describe("directionToCompass (018-dashboard-visual-redesign)", () => {
+  it("maps all 8 compass points", () => {
+    expect(directionToCompass(0)).toBe("N");
+    expect(directionToCompass(45)).toBe("NE");
+    expect(directionToCompass(90)).toBe("E");
+    expect(directionToCompass(135)).toBe("SE");
+    expect(directionToCompass(180)).toBe("S");
+    expect(directionToCompass(225)).toBe("SW");
+    expect(directionToCompass(270)).toBe("W");
+    expect(directionToCompass(315)).toBe("NW");
+  });
+
+  it("wraps around near 360/0", () => {
+    expect(directionToCompass(359)).toBe("N");
+    expect(directionToCompass(361 % 360)).toBe("N");
+    expect(directionToCompass(348)).toBe("N"); // rounds up to 360 -> wraps to index 8 % 8 = 0
+  });
+});
+
+describe("dataSourceDisclosure (018-dashboard-visual-redesign)", () => {
+  it("returns null when primarySource is absent", () => {
+    expect(dataSourceDisclosure({})).toBeNull();
+  });
+
+  it("describes SMHI observations with SMHI forecast when not on fallback", () => {
+    expect(dataSourceDisclosure({ primarySource: "smhi" })).toBe("SMHI observations · SMHI forecast");
+  });
+
+  it("describes SMHI observations with Open-Meteo forecast when on fallback", () => {
+    expect(dataSourceDisclosure({ primarySource: "smhi", forecastFromFallbackSource: true })).toBe(
+      "SMHI observations · Open-Meteo forecast"
+    );
+  });
+
+  it("describes Open-Meteo observations with Open-Meteo forecast when not on fallback", () => {
+    expect(dataSourceDisclosure({ primarySource: "open-meteo" })).toBe(
+      "Open-Meteo observations · Open-Meteo forecast"
+    );
+  });
+
+  it("describes Open-Meteo observations with SMHI forecast when on fallback", () => {
+    expect(dataSourceDisclosure({ primarySource: "open-meteo", forecastFromFallbackSource: true })).toBe(
+      "Open-Meteo observations · SMHI forecast"
+    );
   });
 });

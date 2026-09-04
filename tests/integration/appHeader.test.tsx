@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App";
 import type { Location } from "../../src/models/types";
@@ -488,5 +488,72 @@ describe("Change location reachable from every screen (016-dashboard-polish-roun
 
     await user.click(screen.getByRole("button", { name: "Map" }));
     expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+  });
+});
+
+describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      primarySource: "smhi",
+      observations: [
+        { timestamp: new Date().toISOString(), temperature: 12, precipitation: 0, windSpeed: 2, cloudCoverPercent: 10, relativeHumidity: 60 },
+      ],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the current temperature, condition, and feels-like reading inline in the header", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    render(<App />);
+
+    const header = screen.getByRole("banner");
+    await waitFor(() => expect(header).toHaveTextContent("12°"));
+    expect(header).toHaveTextContent(/Feels like/);
+  });
+
+  it("opens the Display menu to reveal theme/unit/high-low controls, and toggles the unit", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Display" }));
+
+    expect(screen.getByRole("button", { name: /Fahrenheit|°F/i })).toBeInTheDocument();
+  });
+
+  it("offers Automatic/Combined via the Forecast sources control, replacing the old two-button toggle", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const control = screen.getByRole("button", { name: /Forecast sources: Automatic/ });
+    await user.click(control);
+    expect(screen.getByRole("listbox", { name: "Forecast sources" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Combined" }));
+    expect(screen.getByRole("button", { name: /Forecast sources: Combined/ })).toBeInTheDocument();
+  });
+
+  it("keeps Map and Details reachable from the header", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    render(<App />);
+
+    expect(await screen.findByRole("button", { name: "Details" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
   });
 });

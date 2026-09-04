@@ -86,6 +86,28 @@ describe("toDailyAggregates", () => {
     expect(mostRecentBucket.low).toBeNull();
   });
 
+  it("takes the bucket's most recent non-null windDirection reading (018-dashboard-visual-redesign)", () => {
+    const observations: WeatherObservation[] = [
+      obs({ timestamp: hoursAgo(3), windDirection: 90 }),
+      obs({ timestamp: hoursAgo(2), windDirection: null }),
+      obs({ timestamp: hoursAgo(1), windDirection: 270 }),
+    ];
+
+    const result = toDailyAggregates(observations, 7);
+    const mostRecentBucket = result[result.length - 1];
+
+    expect(mostRecentBucket.windDirection).toBe(270);
+  });
+
+  it("nulls windDirection when the bucket has no windDirection readings at all", () => {
+    const observations: WeatherObservation[] = [obs({ timestamp: hoursAgo(1), temperature: 10 })];
+
+    const result = toDailyAggregates(observations, 7);
+    const mostRecentBucket = result[result.length - 1];
+
+    expect(mostRecentBucket.windDirection).toBeNull();
+  });
+
   it("nulls windHigh/windLow independently when the bucket has no wind readings", () => {
     const observations: WeatherObservation[] = [
       obs({ timestamp: hoursAgo(1), temperature: 10 }),

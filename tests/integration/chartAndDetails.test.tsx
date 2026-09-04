@@ -615,7 +615,10 @@ describe("003 US2/US3: metric tabs and Rain-tab comparison bars", () => {
 
     render(<ChartAndDetailsHarness location={stockholm} />);
     await screen.findByRole("button", { name: "View details" });
-    expect(getObservations).toHaveBeenCalledTimes(1);
+    // 2, not 1: useObservationData also fetches the always-on 7-day weeklySeries alongside the
+    // primary 24h window (018-dashboard-visual-redesign, research.md §4) — a real second fetch
+    // here since the window isn't already "last-7-days".
+    expect(getObservations).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: "Temperature" })).toHaveAttribute(
       "aria-pressed",
       "true"
@@ -628,7 +631,7 @@ describe("003 US2/US3: metric tabs and Rain-tab comparison bars", () => {
     }
 
     // Tab switches are pure display state — no additional fetches (FR-005).
-    expect(getObservations).toHaveBeenCalledTimes(1);
+    expect(getObservations).toHaveBeenCalledTimes(2);
   });
 
   it("shows an unavailable message for a metric with no data for this location", async () => {

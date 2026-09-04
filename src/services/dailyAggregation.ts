@@ -27,6 +27,9 @@ function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bu
   const windSpeeds = nonNull(bucket.map((o) => o.windSpeed));
   const cloudCoverages = nonNull(bucket.map((o) => o.cloudCoverPercent));
   const windGusts = nonNull(bucket.map((o) => o.windGust ?? null));
+  // Last-reading-wins, not a circular mean — the general direction is all a daily summary needs
+  // (018-dashboard-visual-redesign, research.md §5).
+  const windDirections = nonNull(bucket.map((o) => o.windDirection ?? null));
   const chancesOfRain = nonNull(
     bucket.filter((o) => o.isForecast === true).map((o) => o.chanceOfRain ?? null)
   );
@@ -53,6 +56,7 @@ function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bu
     windGustHigh: windGusts.length > 0 ? Math.max(...windGusts) : null,
     feelsLikeAverage: feelsLikes.length > 0 ? mean(feelsLikes) : null,
     chanceOfRainMax: chancesOfRain.length > 0 ? Math.max(...chancesOfRain) : null,
+    windDirection: windDirections.length > 0 ? windDirections[windDirections.length - 1] : null,
   };
 }
 

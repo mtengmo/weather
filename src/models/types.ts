@@ -86,6 +86,9 @@ export interface DailyAggregate {
   /** Set only for a sub-day period bucket (e.g. "Morning"), used as its column label instead
    *  of the weekday name (014-dashboard-usability-fixes, FR-018). */
   subDayLabel?: string;
+  /** The bucket's most recent non-null wind direction reading (degrees, 0-360), for the Today
+   *  card's compass display (018-dashboard-visual-redesign, research.md §5). */
+  windDirection?: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

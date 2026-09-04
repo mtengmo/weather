@@ -11,15 +11,18 @@ import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
 import WeatherIconOverview from "./components/WeatherIconOverview";
-import UnitToggle from "./components/UnitToggle";
-import ThemePicker from "./components/ThemePicker";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
-import HighLowToggle from "./components/HighLowToggle";
-import CombineForecastToggle from "./components/CombineForecastToggle";
+import DisplayMenu from "./components/DisplayMenu";
+import ForecastSourcesControl from "./components/ForecastSourcesControl";
 import LocationPanel from "./components/LocationPanel";
 import Footer from "./components/Footer";
 import MapView from "./components/MapView";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
+import { deriveWeatherCondition } from "./services/weatherCondition";
+import { WEATHER_ICONS } from "./components/weatherIcons";
+import { deriveFeelsLike } from "./services/feelsLike";
+import { convertTemperature } from "./services/units";
+import { formatValue } from "./services/format";
 
 type View = "graph" | "details" | "overview" | "map";
 
@@ -43,12 +46,36 @@ export default function App() {
   // whenever a location resolves, rather than the classic line-graph (013, FR-001).
   const [view, setView] = useState<View>("overview");
 
-  const { series, nearbyStations, multiSourceForecast } = useObservationData(
+  const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated } = useObservationData(
     selected,
     obsWindow,
     nearbyStationCount,
     combineForecastSources
   );
+
+  // Last non-forecast observation in the current series — the header's inline "current
+  // conditions" reading (018-dashboard-visual-redesign, contracts/header-redesign.md).
+  const observedPoints = series?.observations.filter((o) => !o.isForecast) ?? [];
+  const currentConditions = observedPoints.length > 0 ? observedPoints[observedPoints.length - 1] : null;
+  const currentFeelsLike =
+    currentConditions !== null
+      ? deriveFeelsLike({
+          temperature: currentConditions.temperature,
+          windSpeed: currentConditions.windSpeed,
+          relativeHumidity: currentConditions.relativeHumidity ?? null,
+        })
+      : null;
+  const currentCondition =
+    currentConditions !== null
+      ? deriveWeatherCondition({
+          temperature: currentConditions.temperature,
+          precipitation: currentConditions.precipitation,
+          windSpeed: currentConditions.windSpeed,
+          cloudCoverPercent: currentConditions.cloudCoverPercent,
+          timestamp: currentConditions.timestamp,
+        })
+      : null;
+  const currentConditionLabel = currentCondition !== null ? WEATHER_ICONS[currentCondition].label : null;
 
   useEffect(() => {
     requestLocation();
@@ -113,28 +140,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-controls">
-          <ThemePicker theme={theme} onChange={setTheme} />
-          <UnitToggle unit={unit} onChange={setUnit} />
-          {view !== "overview" && (
-            <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
-          )}
-          <HighLowToggle visible={highLowVisible} onChange={setHighLowVisible} />
-          <CombineForecastToggle
-            combined={combineForecastSources}
-            onChange={setCombineForecastSources}
-          />
-        </div>
-
-        <div className="header-actions">
-          {view === "overview" && (
-            <button type="button" onClick={() => setView("graph")}>
-              Details
-            </button>
-          )}
-          <button type="button" onClick={() => setView("map")}>
-            Map
-          </button>
+        <div className="current-conditions">
           <LocationPanel
             currentLocation={currentLocation}
             favorites={favorites}
@@ -147,6 +153,47 @@ export default function App() {
             geoStatus={geoStatus}
             onRequestCurrentLocation={requestLocation}
           />
+          {currentConditions !== null && (
+            <>
+              <span className="current-temperature">
+                {formatValue(convertTemperature(currentConditions.temperature, unit), 0)}°
+              </span>
+              {currentConditionLabel !== null && (
+                <span className="current-condition-label">{currentConditionLabel}</span>
+              )}
+              {currentFeelsLike !== null && (
+                <span className="current-feels-like">
+                  Feels like {formatValue(convertTemperature(currentFeelsLike, unit), 0)}°
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="header-actions">
+          <DisplayMenu
+            theme={theme}
+            onThemeChange={setTheme}
+            unit={unit}
+            onUnitChange={setUnit}
+            highLowVisible={highLowVisible}
+            onHighLowChange={setHighLowVisible}
+          />
+          <ForecastSourcesControl
+            combined={combineForecastSources}
+            onChange={setCombineForecastSources}
+          />
+          {view !== "overview" && (
+            <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
+          )}
+          {view === "overview" && (
+            <button type="button" onClick={() => setView("graph")}>
+              Details
+            </button>
+          )}
+          <button type="button" onClick={() => setView("map")}>
+            Map
+          </button>
         </div>
       </header>
 
@@ -197,6 +244,7 @@ export default function App() {
           highLowVisible={highLowVisible}
           combineForecastSources={combineForecastSources}
           multiSourceForecast={multiSourceForecast}
+          weeklySeries={weeklySeries}
         />
       )}
 
@@ -208,7 +256,7 @@ export default function App() {
         />
       )}
 
-      <Footer />
+      <Footer series={series} lastUpdated={lastUpdated} />
     </div>
   );
 }
