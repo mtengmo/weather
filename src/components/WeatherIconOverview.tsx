@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Location, ObservationSeries, ObservationWindow, UnitSystem } from "../models/types";
+import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import {
   build3DayTimelineData,
   buildDailyTimelineData,
   buildHourlyTimelineData,
+  mergeMultiSourceIntoTimelinePoints,
   type TimelineData,
   type TimelinePeriod,
   type TimelineRow,
@@ -18,9 +20,12 @@ interface WeatherIconOverviewProps {
   onWindowChange: (window: ObservationWindow) => void;
   unit: UnitSystem;
   series: ObservationSeries | null; // null while loading
-  onBack: () => void;
   /** Mirrors the app-wide High/Low toggle already used by the graph view (014, FR-009). */
   highLowVisible: boolean;
+  /** Mirrors the app-wide "Combine forecast sources" toggle already used by the graph view
+   *  (016-dashboard-polish-round-two, FR-002). */
+  combineForecastSources: boolean;
+  multiSourceForecast: MultiSourceForecastEntry[];
 }
 
 // The overview only supports 24h/3d/7d (007 spec Edge Cases, extended by 015) — 30-day is out
@@ -30,10 +35,13 @@ type OverviewDisplayMode = "last-24-hours" | "last-3-days" | "last-7-days";
 // "Last 3 days" and "Last 7 days" both fetch via the same shared ObservationWindow
 // ("last-7-days") — this is a purely client-side display choice over already-fetched data, so
 // switching between them never triggers a new fetch (015, research.md §3, SC-004).
+// Each label directly names its own time span rather than implying a fixed historical look-back
+// via "Last" — misleading now that these windows also extend into forecast territory
+// (016-dashboard-polish-round-two, FR-004).
 const OVERVIEW_WINDOWS: { value: OverviewDisplayMode; label: string }[] = [
-  { value: "last-24-hours", label: "Last 24 hours" },
-  { value: "last-3-days", label: "Last 3 days" },
-  { value: "last-7-days", label: "Last 7 days" },
+  { value: "last-24-hours", label: "24 Hours" },
+  { value: "last-3-days", label: "3 Days" },
+  { value: "last-7-days", label: "7 Days" },
 ];
 
 function xPercent(index: number, count: number): number {
@@ -201,9 +209,11 @@ function LineRow({
                 .join(" ") || undefined}
               title={point.interpolated ? "Estimated" : undefined}
             >
-              {highLowVisible && point.high != null && point.low != null
-                ? `${formatRowValue(row, point.value)} (${formatValue(point.high, 0)}°/${formatValue(point.low, 0)}°)`
-                : formatRowValue(row, point.value)}
+              {point.sources !== undefined
+                ? `${formatRowValue(row, point.value)} (${point.sources.map((s) => `${s.label} ${formatValue(s.value, 0)}°`).join(" · ")})`
+                : highLowVisible && point.high != null && point.low != null
+                  ? `${formatRowValue(row, point.value)} (${formatValue(point.high, 0)}°/${formatValue(point.low, 0)}°)`
+                  : formatRowValue(row, point.value)}
             </span>
           );
         }}
@@ -416,8 +426,9 @@ export default function WeatherIconOverview({
   onWindowChange,
   unit,
   series,
-  onBack,
   highLowVisible,
+  combineForecastSources,
+  multiSourceForecast,
 }: WeatherIconOverviewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
@@ -460,10 +471,26 @@ export default function WeatherIconOverview({
           : buildDailyTimelineData(series, unit)
       : null;
 
+  if (timeline !== null && combineForecastSources) {
+    mergeMultiSourceIntoTimelinePoints(timeline.temperature, timeline.periods, multiSourceForecast, unit);
+  }
+
   const nowLeftPercent =
     timeline !== null && timeline.nowBoundaryIndex !== null
       ? ((timeline.nowBoundaryIndex + 1) / timeline.periods.length) * 100
       : null;
+
+  // Left-percent position of each day boundary — only on the 3-day view, where several sub-day
+  // columns share a calendar day, making it hard to spot where one day ends and the next begins.
+  // Not rendered on the 7-day view, where every column is already unambiguously its own day
+  // (016-dashboard-polish-round-two, FR-003, research.md §3). Relies on the 3-day view always
+  // producing groups of exactly 5 sub-day periods per day (toSubDayBuckets' own contract, 015).
+  const dayBoundaryPercents: number[] =
+    displayMode === "last-3-days" && timeline !== null
+      ? timeline.periods
+          .map((_p, i) => (i > 0 && i % 5 === 0 ? (i / timeline.periods.length) * 100 : null))
+          .filter((v): v is number => v !== null)
+      : [];
 
   useEffect(() => {
     // Center the "now" column in the visible area on a fresh render whenever the timeline
@@ -487,9 +514,6 @@ export default function WeatherIconOverview({
         <h2 ref={headingRef} tabIndex={-1}>
           {location.displayName} — overview
         </h2>
-        <button type="button" onClick={onBack}>
-          Back to graph
-        </button>
       </div>
 
       <div className="window-toggle" role="group" aria-label="Overview window">
@@ -533,6 +557,15 @@ export default function WeatherIconOverview({
                   <span className="weather-timeline-now-label">Now</span>
                 </div>
               )}
+
+              {dayBoundaryPercents.map((percent, i) => (
+                <div
+                  key={`day-boundary-${i}`}
+                  className="weather-timeline-day-boundary"
+                  style={{ left: `${percent}%` }}
+                  aria-hidden="true"
+                />
+              ))}
 
               <PeriodGrid
                 periods={timeline.periods}

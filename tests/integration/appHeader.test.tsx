@@ -229,17 +229,31 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     expect(screen.queryByRole("button", { name: "View details" })).not.toBeInTheDocument();
   });
 
-  it("switches to the graph view when 'Back to graph' is clicked", async () => {
+  it("switches to the graph view when 'Details' is clicked", async () => {
     addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
     localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
 
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Back to graph" }));
+    await user.click(await screen.findByRole("button", { name: "Details" }));
 
     expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
+  });
+
+  it("shows the 'Details' button in the persistent header only while the Overview is active (016-dashboard-polish-round-two, US5)", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    const detailsButton = await screen.findByRole("button", { name: "Details" });
+    expect(screen.getByRole("banner")).toContainElement(detailsButton);
+
+    await user.click(detailsButton);
+    expect(screen.queryByRole("button", { name: "Details" })).not.toBeInTheDocument();
   });
 });
 
@@ -425,7 +439,54 @@ describe("Nearby-stations control hidden on the Overview (014-dashboard-usabilit
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
     expect(screen.queryByLabelText(/nearby stations/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Back to graph" }));
+    await user.click(screen.getByRole("button", { name: "Details" }));
     expect(screen.getByLabelText(/nearby stations/i)).toBeInTheDocument();
+  });
+});
+
+describe("Change location reachable from every screen (016-dashboard-polish-round-two, US6)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows 'Change location' on the overview, and after switching to the graph and details views", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Details" }));
+    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View details" }));
+    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+  });
+
+  it("shows 'Change location' on the map view (016-dashboard-polish-round-two, US10)", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Map" }));
+    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
   });
 });

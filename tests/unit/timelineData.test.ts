@@ -3,8 +3,10 @@ import {
   build3DayTimelineData,
   buildDailyTimelineData,
   buildHourlyTimelineData,
+  mergeMultiSourceIntoTimelinePoints,
 } from "../../src/components/timelineData";
 import type { ObservationSeries, WeatherObservation } from "../../src/models/types";
+import type { MultiSourceForecastEntry } from "../../src/services/weatherApi";
 
 const LOCATION = { latitude: 59.33, longitude: 18.07, displayName: "Stockholm", source: "favorite" as const };
 
@@ -306,5 +308,83 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
     const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
     // No forecast at all — only "today"'s 5 sub-day periods should exist.
     expect(data.periods).toHaveLength(5);
+  });
+});
+
+describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US2)", () => {
+  function forecastObs(timestamp: string, temperature: number): WeatherObservation {
+    return obs({ timestamp, temperature, isForecast: true });
+  }
+
+  it("populates sources on a forecast period when 2+ sources have data for it", () => {
+    const t = hoursFromNow(1);
+    const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [forecastObs(t, 8)] },
+      { source: "open-meteo", observations: [forecastObs(t, 12)] },
+    ];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
+
+    const point = data.temperature.points[0];
+    expect(point.sources).toEqual([
+      { label: "S", value: 8 },
+      { label: "O", value: 12 },
+    ]);
+  });
+
+  it("does nothing with fewer than 2 sources", () => {
+    const t = hoursFromNow(1);
+    const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
+    const entries: MultiSourceForecastEntry[] = [{ source: "smhi", observations: [forecastObs(t, 8)] }];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
+
+    expect(data.temperature.points[0].sources).toBeUndefined();
+  });
+
+  it("never populates sources on an observed period", () => {
+    const past = hoursFromNow(-1);
+    const future = hoursFromNow(1);
+    const data = buildHourlyTimelineData(
+      series([obs({ timestamp: past, temperature: 5 }), forecastObs(future, 10)]),
+      "metric"
+    );
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [forecastObs(future, 8)] },
+      { source: "open-meteo", observations: [forecastObs(future, 12)] },
+    ];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
+
+    expect(data.temperature.points[0].sources).toBeUndefined(); // observed period
+    expect(data.temperature.points[1].sources).toBeDefined(); // forecast period
+  });
+
+  it("converts each source's value to the requested unit", () => {
+    const t = hoursFromNow(1);
+    const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "imperial");
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [forecastObs(t, 0)] },
+      { source: "open-meteo", observations: [forecastObs(t, 0)] },
+    ];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "imperial");
+
+    expect(data.temperature.points[0].sources?.[0].value).toBe(32);
+  });
+
+  it("leaves a forecast period untouched when fewer than 2 sources have data at its own time span", () => {
+    const t = hoursFromNow(1);
+    const otherT = hoursFromNow(5);
+    const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [forecastObs(otherT, 8)] },
+      { source: "open-meteo", observations: [forecastObs(otherT, 12)] },
+    ];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
+
+    expect(data.temperature.points[0].sources).toBeUndefined();
   });
 });

@@ -11,5 +11,11 @@ module.exports = {
   plugins: ["@typescript-eslint", "react-refresh"],
   rules: {
     "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+    // This codebase's established convention for an intentionally-unused destructured binding
+    // (e.g. stripping a field before returning the rest) is an underscore prefix.
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },
+    ],
   },
 };

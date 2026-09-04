@@ -9,9 +9,10 @@ import type { Location, ObservationWindow } from "../../src/models/types";
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
+  getMultiSourceForecast: vi.fn(),
 }));
 
-import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
 
 const stockholm: Location = {
   latitude: 59.33,
@@ -31,12 +32,14 @@ function hoursAgo(h: number): string {
 function OverviewHarness({
   location,
   highLowVisible = false,
+  combineForecastSources = false,
 }: {
   location: Location;
   highLowVisible?: boolean;
+  combineForecastSources?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
-  const { series } = useObservationData(location, window, 0);
+  const { series, multiSourceForecast } = useObservationData(location, window, 0, combineForecastSources);
 
   return (
     <WeatherIconOverview
@@ -45,8 +48,9 @@ function OverviewHarness({
       onWindowChange={setWindow}
       unit="metric"
       series={series}
-      onBack={() => {}}
       highLowVisible={highLowVisible}
+      combineForecastSources={combineForecastSources}
+      multiSourceForecast={multiSourceForecast}
     />
   );
 }
@@ -172,7 +176,7 @@ describe("US1: synchronized 24h timeline", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     // The overview's toggle never offers a 30-day option.
@@ -205,7 +209,7 @@ describe("US2: synchronized 7-day timeline", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     await waitFor(() => expect(container.querySelector(".weather-timeline")).toBeInTheDocument());
@@ -236,7 +240,7 @@ describe("US2: synchronized 7-day timeline", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     const forecastLabels = await screen.findAllByText("Forecast");
@@ -263,7 +267,7 @@ describe("7-day timeline fill width (014-dashboard-usability-fixes, US3)", () =>
     expect(container.querySelector(".weather-timeline-fill")).not.toBeInTheDocument();
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     expect(container.querySelector(".weather-timeline-fill")).toBeInTheDocument();
@@ -294,7 +298,7 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
     const user = userEvent.setup();
     render(<OverviewHarness location={stockholm} highLowVisible />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     expect(await screen.findByText(/15°\/5°/)).toBeInTheDocument();
@@ -317,7 +321,7 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
     const user = userEvent.setup();
     render(<OverviewHarness location={stockholm} highLowVisible={false} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     await screen.findByText(/Temperature/);
@@ -346,7 +350,7 @@ describe("7-day view never mixes resolutions (015-overview-3day-resolution-fix, 
     const user = userEvent.setup();
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     for (const label of ["Morning", "Lunch", "Afternoon", "Evening", "Night"]) {
@@ -373,7 +377,7 @@ describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
-    expect(screen.getByRole("button", { name: "Last 3 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 Days" })).toBeInTheDocument();
   });
 
   it("shows sub-day columns, not full-day columns, when switched to the 3-day view", async () => {
@@ -390,7 +394,7 @@ describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
     const user = userEvent.setup();
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
-    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     expect(await screen.findByText("Morning")).toBeInTheDocument();
@@ -408,15 +412,214 @@ describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
     const callsAfter7Day = vi.mocked(getObservations).mock.calls.length;
 
-    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
     await screen.findByText("Morning");
-    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
 
     expect(vi.mocked(getObservations).mock.calls.length).toBe(callsAfter7Day);
+  });
+});
+
+describe("3-day view period-count regression guard (016-dashboard-polish-round-two, US1)", () => {
+  // No reproduction of "only one day" was found during planning across every path tested here —
+  // this locks in the currently-correct behavior so a future regression is caught immediately.
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  function multiDayForecastObservations() {
+    // 3 days of hourly forecast, reaching well past the 3-day view's own horizon.
+    return Array.from({ length: 24 * 4 }, (_, i) => ({
+      timestamp: hoursFromNow(i + 1),
+      temperature: 10,
+      precipitation: 0,
+      windSpeed: 1,
+      cloudCoverPercent: 10,
+      isForecast: true,
+    }));
+  }
+
+  async function countTimePeriods(container: HTMLElement) {
+    return (await waitFor(() => container.querySelectorAll(".weather-timeline-row-time .weather-timeline-cell")))
+      .length;
+  }
+
+  it("shows all 15 sub-day columns on a direct 24h -> 3-day click (no intermediate 7-day visit)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? multiDayForecastObservations() : [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    await screen.findAllByText("Morning");
+
+    expect(await countTimePeriods(container)).toBe(15);
+  });
+
+  it("shows the correct column count across a full toggle sequence: 3-day -> 7-day -> 3-day -> 24h -> 3-day", async () => {
+    const hourlyObservation = {
+      timestamp: hoursAgo(1),
+      temperature: 10,
+      precipitation: 0,
+      windSpeed: 1,
+      cloudCoverPercent: 10,
+    };
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? multiDayForecastObservations() : [hourlyObservation],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    expect(await countTimePeriods(container)).toBe(15);
+
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    expect(await countTimePeriods(container)).toBe(11); // 7 observed-window + 4 forecast days (multiDayForecastObservations spans 4 days)
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    expect(await countTimePeriods(container)).toBe(15);
+
+    await user.click(screen.getByRole("button", { name: "24 Hours" }));
+    expect(await countTimePeriods(container)).toBe(1); // the single 24h-window observation
+
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    expect(await countTimePeriods(container)).toBe(15);
+  });
+
+  it("shows exactly 5 columns (today only) when the location has no forecast data at all", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    await screen.findByText("Morning");
+
+    expect(await countTimePeriods(container)).toBe(5);
+  });
+});
+
+describe("Combine forecast sources on the Overview (016-dashboard-polish-round-two, US2)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+  });
+
+  it("shows each source's own reading on a forecast period when the toggle is on", async () => {
+    const t = hoursFromNow(1);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: t, temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true },
+      ],
+    });
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([
+      { source: "smhi", observations: [{ timestamp: t, temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+      { source: "open-meteo", observations: [{ timestamp: t, temperature: 12, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+    ]);
+
+    render(<OverviewHarness location={stockholm} combineForecastSources />);
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
+
+    expect(await screen.findByText(/S 8°/)).toBeInTheDocument();
+    expect(screen.getByText(/O 12°/)).toBeInTheDocument();
+  });
+
+  it("shows only the plain value when the toggle is off", async () => {
+    const t = hoursFromNow(1);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: t, temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} combineForecastSources={false} />);
+    await screen.findByText(/Temperature/);
+
+    expect(getMultiSourceForecast).not.toHaveBeenCalled();
+    expect(screen.queryByText(/S \d/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Day-boundary marker (016-dashboard-polish-round-two, US3)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows 2 day-boundary markers on the 3-day view (3 days)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursFromNow(24 * 3), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    await screen.findAllByText("Morning");
+
+    expect(container.querySelectorAll(".weather-timeline-day-boundary")).toHaveLength(2);
+  });
+
+  it("shows no day-boundary marker on the 7-day view", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    expect(container.querySelectorAll(".weather-timeline-day-boundary")).toHaveLength(0);
   });
 });
 
@@ -444,7 +647,7 @@ describe("High/Low regression across all display modes (015-overview-3day-resolu
     const user = userEvent.setup();
     render(<OverviewHarness location={stockholm} highLowVisible />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
-    await user.click(screen.getByRole("button", { name: "Last 3 days" }));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     expect(await screen.findByText(/15°\/5°/)).toBeInTheDocument();

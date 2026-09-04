@@ -116,6 +116,7 @@ body {
 .app-header {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -125,6 +126,15 @@ body {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+/* Groups view-switching actions (e.g. "Details") with "Change location" at the header's right
+   edge — repositioned here from the Overview's own local header row so every navigation control
+   lives in one place (016-dashboard-polish-round-two, FR-005/FR-006). */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 /* Location Panel (013-overview-default-and-layout): consolidates current-location/favorites/
@@ -639,8 +649,64 @@ a {
   white-space: nowrap;
 }
 
+/* Subtle day-boundary marker on the 3-day view (016-dashboard-polish-round-two, FR-003) —
+   distinct from .weather-timeline-now (no label, softer gradient, no dash pattern) so the two
+   are never confused at a glance. */
+.weather-timeline-day-boundary {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--border) 15%, var(--border) 85%, transparent);
+  box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
 [data-theme="glass"] .weather-timeline-wrap {
   background: var(--surface);
   backdrop-filter: blur(var(--surface-blur));
   -webkit-backdrop-filter: blur(var(--surface-blur));
+}
+
+/* Small, unobtrusive footer with the build version and a privacy notice link
+   (016-dashboard-polish-round-two, FR-009). */
+.app-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 1rem 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.app-footer button {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+}
+
+/* A centered modal overlay, opened from the footer — not anchored to a specific button the way
+   .location-panel-content is, so it uses a fixed/centered treatment instead. */
+.privacy-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(90vw, 480px);
+  max-height: 80vh;
+  overflow-y: auto;
+  margin: auto;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.privacy-notice-close {
+  align-self: flex-end;
+  line-height: 1;
+  padding: 0.25rem 0.6rem;
 }

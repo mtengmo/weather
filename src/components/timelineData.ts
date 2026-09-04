@@ -4,6 +4,7 @@ import type {
   UnitSystem,
   WeatherObservation,
 } from "../models/types";
+import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { toDailyAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
@@ -35,6 +36,9 @@ export interface TimelineRowPoint {
   /** Temperature row only, daily view: the day's high/low, alongside the plain average (014, FR-009). */
   high?: number | null;
   low?: number | null;
+  /** Temperature row only, forecast periods: each forecast source's own reading, when "Combine
+   *  forecast sources" is on and 2+ sources have data for this period (016, FR-002). */
+  sources?: { label: string; value: number }[];
   /**
    * true when `value` was derived by interpolating this row's neighboring points at the
    * observed/forecast boundary, rather than measured/forecast directly
@@ -297,4 +301,56 @@ const SUB_DAY_VIEW_DAY_COUNT = 3;
  *  day at the same sub-day resolution, never mixed with plain daily columns (015, FR-003/FR-004). */
 export function build3DayTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
   return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit);
+}
+
+const MULTI_SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
+  smhi: "S",
+  "open-meteo": "O",
+};
+
+/**
+ * Populates each forecast period's `TimelineRowPoint.sources` on the temperature row with every
+ * available source's own reading for that period's time span, when 2+ sources have data — never
+ * for observed periods, never a misleading single-source "combination" (016-dashboard-polish-round-two,
+ * FR-002, contracts/multi-source-overview.md). Mutates `temperatureRow.points` in place, the same
+ * pattern `interpolateNowBoundary` already uses. A period's span is (previous period's end,
+ * this period's own end] — the same contiguous-bucket convention every builder above already
+ * produces, so this works unchanged across the hourly, 3-day, and 7-day timelines.
+ */
+export function mergeMultiSourceIntoTimelinePoints(
+  temperatureRow: TimelineRow,
+  periods: TimelinePeriod[],
+  multiSourceForecast: MultiSourceForecastEntry[],
+  unit: UnitSystem
+): void {
+  if (multiSourceForecast.length < 2) return;
+
+  periods.forEach((period, i) => {
+    if (!period.isForecast) return;
+    const point = temperatureRow.points[i];
+    if (!point) return;
+
+    const periodEnd = Date.parse(period.key);
+    const periodStart = i > 0 ? Date.parse(periods[i - 1].key) : periodEnd - 24 * 3600_000;
+
+    const sources = multiSourceForecast
+      .map((entry) => {
+        const temperatures = entry.observations
+          .filter((o) => {
+            const t = Date.parse(o.timestamp);
+            return t > periodStart && t <= periodEnd;
+          })
+          .map((o) => o.temperature)
+          .filter((v): v is number => v !== null);
+        const average =
+          temperatures.length > 0 ? temperatures.reduce((sum, v) => sum + v, 0) / temperatures.length : null;
+        return { label: MULTI_SOURCE_LABELS[entry.source], value: average };
+      })
+      .filter((s): s is { label: string; value: number } => s.value !== null)
+      .map((s) => ({ label: s.label, value: convertTemperature(s.value, unit)! }));
+
+    if (sources.length > 1) {
+      point.sources = sources;
+    }
+  });
 }

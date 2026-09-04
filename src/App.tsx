@@ -17,9 +17,11 @@ import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import HighLowToggle from "./components/HighLowToggle";
 import CombineForecastToggle from "./components/CombineForecastToggle";
 import LocationPanel from "./components/LocationPanel";
+import Footer from "./components/Footer";
+import MapView from "./components/MapView";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 
-type View = "graph" | "details" | "overview";
+type View = "graph" | "details" | "overview" | "map";
 
 export default function App() {
   const { location: currentLocation, status: geoStatus, request: requestLocation } =
@@ -124,18 +126,28 @@ export default function App() {
           />
         </div>
 
-        <LocationPanel
-          currentLocation={currentLocation}
-          favorites={favorites}
-          favoritesError={favoritesError}
-          selected={selected}
-          onSelect={selectLocation}
-          onAddFavorite={(candidate) => add(candidate)}
-          onRemoveFavorite={remove}
-          onDismissFavoritesError={clearError}
-          geoStatus={geoStatus}
-          onRequestCurrentLocation={requestLocation}
-        />
+        <div className="header-actions">
+          {view === "overview" && (
+            <button type="button" onClick={() => setView("graph")}>
+              Details
+            </button>
+          )}
+          <button type="button" onClick={() => setView("map")}>
+            Map
+          </button>
+          <LocationPanel
+            currentLocation={currentLocation}
+            favorites={favorites}
+            favoritesError={favoritesError}
+            selected={selected}
+            onSelect={selectLocation}
+            onAddFavorite={(candidate) => add(candidate)}
+            onRemoveFavorite={remove}
+            onDismissFavoritesError={clearError}
+            geoStatus={geoStatus}
+            onRequestCurrentLocation={requestLocation}
+          />
+        </div>
       </header>
 
       {locationUnavailable && (
@@ -182,10 +194,21 @@ export default function App() {
           onWindowChange={setObsWindow}
           unit={unit}
           series={series}
-          onBack={() => setView("graph")}
           highLowVisible={highLowVisible}
+          combineForecastSources={combineForecastSources}
+          multiSourceForecast={multiSourceForecast}
         />
       )}
+
+      {view === "map" && (
+        <MapView
+          favorites={favorites}
+          cachedLocation={getCachedLocation()}
+          onSelectLocation={selectLocation}
+        />
+      )}
+
+      <Footer />
     </div>
   );
 }
