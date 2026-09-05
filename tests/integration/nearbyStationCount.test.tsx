@@ -9,6 +9,9 @@ import type { Location } from "../../src/models/types";
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
+  // getMultiSourceForecast is now always fetched, unconditionally
+  // (020-dashboard-polish-round-five, US2 — no toggle to gate it).
+  getMultiSourceForecast: vi.fn().mockResolvedValue([]),
 }));
 
 import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";

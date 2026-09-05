@@ -175,7 +175,12 @@ body {
 .display-menu-content {
   position: absolute;
   top: calc(100% + 0.5rem);
-  right: 0;
+  /* left, not right: on a narrow viewport the Display button sits near the header's left edge
+     (especially once the header wraps to multiple rows), so anchoring the panel's *right* edge
+     to the button pushed its content off the left of the screen entirely — same anchor
+     convention .location-panel-content already uses correctly (020-dashboard-polish-round-five,
+     US8, found via live mobile-viewport testing). */
+  left: 0;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -185,35 +190,6 @@ body {
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.forecast-sources-control {
-  position: relative;
-}
-
-.forecast-sources-control ul {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  z-index: 10;
-  list-style: none;
-  margin: 0;
-  padding: 0.35rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  min-width: 10rem;
-}
-
-.forecast-sources-control li button {
-  width: 100%;
-  text-align: left;
-  border: none;
-}
-
-.forecast-sources-control li button[aria-selected="true"] {
-  font-weight: 700;
 }
 
 /* Location Panel (013-overview-default-and-layout): consolidates current-location/favorites/
@@ -435,7 +411,6 @@ a {
 [data-theme="glass"] .observation-table-wrap,
 [data-theme="glass"] .location-panel-content,
 [data-theme="glass"] .display-menu-content,
-[data-theme="glass"] .forecast-sources-control ul,
 [data-theme="glass"] .error-banner {
   background: var(--surface);
   backdrop-filter: blur(var(--surface-blur));

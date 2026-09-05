@@ -18,13 +18,16 @@ export function dataSourceNote(series: {
   return series.forecastFromFallbackSource ? "Data: SMHI (forecast: Open-Meteo)" : "Data: SMHI";
 }
 
-/** The footer's "SMHI observations · Open-Meteo forecast"-style disclosure
- *  (018-dashboard-visual-redesign, FR-013) — a longer-form sibling of `dataSourceNote`,
- *  reusing the same fields. Also appends the forecast's own freshness (019-dashboard-polish-round-four,
- *  FR-012): the source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own
- *  `approvedTime`) when available, otherwise the app's own last-fetch time (`lastUpdated`) —
- *  never omitted when a forecast is shown, since one of the two is always present once a fetch
- *  has completed. */
+/**
+ * The footer's data-source/freshness disclosure — a longer-form sibling of `dataSourceNote`.
+ * Names only the *observation* source (still meaningful: SMHI, or its Open-Meteo fallback),
+ * plus a single forecast freshness time, rather than naming a "forecast source" at all
+ * (020-dashboard-polish-round-five, US6/FR-009 — the forecast is now always potentially a
+ * cross-source average, so a single source name would be misleading). Freshness prefers the
+ * source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own `approvedTime`) when
+ * available, otherwise the app's own last-fetch time (`lastUpdated`) — never omitted when a
+ * forecast is shown, since one of the two is always present once a fetch has completed.
+ */
 export function dataSourceDisclosure(
   series: {
     primarySource?: "smhi" | "open-meteo";
@@ -35,18 +38,11 @@ export function dataSourceDisclosure(
 ): string | null {
   if (series.primarySource === undefined) return null;
   const observedLabel = series.primarySource === "smhi" ? "SMHI observations" : "Open-Meteo observations";
-  const forecastSource = series.forecastFromFallbackSource
-    ? series.primarySource === "smhi"
-      ? "Open-Meteo"
-      : "SMHI"
-    : series.primarySource === "smhi"
-      ? "SMHI"
-      : "Open-Meteo";
   const freshnessTime = series.forecastIssuedAt ?? lastUpdated;
   const freshness = freshnessTime
-    ? ` (updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`
+    ? ` · Forecast updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "";
-  return `${observedLabel} · ${forecastSource} forecast${freshness}`;
+  return `${observedLabel}${freshness}`;
 }
 
 const COMPASS_POINTS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];

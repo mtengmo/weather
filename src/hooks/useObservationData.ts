@@ -29,8 +29,7 @@ export interface UseObservationDataResult {
 export function useObservationData(
   location: Location | null,
   window: ObservationWindow,
-  nearbyStationCount: NearbyStationCount,
-  combineForecastSources = false
+  nearbyStationCount: NearbyStationCount
 ): UseObservationDataResult {
   const [series, setSeries] = useState<ObservationSeries | null>(null);
   const [nearbyStations, setNearbyStations] = useState<NearbyStationSeries[]>([]);
@@ -50,9 +49,9 @@ export function useObservationData(
     Promise.all([
       getObservations(location, window),
       getNearbyStationSeries(location, window, nearbyStationCount),
-      // Only fetched when the toggle is on — mirrors the nearbyStationCount===0 fast path above
-      // (014-dashboard-usability-fixes, FR-013).
-      combineForecastSources ? getMultiSourceForecast(location, window) : Promise.resolve([]),
+      // Always fetched now — forecast is always a cross-source average when both have data
+      // (020-dashboard-polish-round-five, US2; was previously gated behind a user toggle).
+      getMultiSourceForecast(location, window),
       // Only a genuinely new fetch when `window` isn't already "last-7-days" — the Today card
       // and 7-day strip need weekly data regardless of which tab is active
       // (018-dashboard-visual-redesign, research.md §4).
@@ -70,7 +69,7 @@ export function useObservationData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location?.latitude, location?.longitude, window, nearbyStationCount, combineForecastSources]);
+  }, [location?.latitude, location?.longitude, window, nearbyStationCount]);
 
   return { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated };
 }

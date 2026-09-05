@@ -66,10 +66,7 @@ interface ObservationChartProps {
   unit: UnitSystem;
   series: ObservationSeries | null; // null while loading
   nearbyStations: NearbyStationSeries[];
-  combineForecastSources: boolean;
   multiSourceForecast: MultiSourceForecastEntry[];
-  onViewDetails: () => void;
-  onViewOverview: () => void;
 }
 
 const SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
@@ -119,10 +116,7 @@ export default function ObservationChart({
   unit,
   series,
   nearbyStations,
-  combineForecastSources,
   multiSourceForecast,
-  onViewDetails,
-  onViewOverview,
 }: ObservationChartProps) {
   const tempUnitLabel = unit === "imperial" ? "°F" : "°C";
   const precipUnitLabel = unit === "imperial" ? "in" : "mm";
@@ -182,14 +176,19 @@ export default function ObservationChart({
     series !== null && series.status === "ready" && metric === "temperature" && window === "last-24-hours"
       ? buildHourlyRows(series, nearbyStations, unit)
       : null;
-  if (hourlyRows !== null && combineForecastSources) {
+  // Always averaged across sources when 2+ have data — no user toggle anymore
+  // (020-dashboard-polish-round-five, US2).
+  if (hourlyRows !== null) {
     mergeMultiSourceForecastIntoRows(hourlyRows, multiSourceForecast, unit);
   }
-  const showCombinedForecast = combineForecastSources && multiSourceForecast.length > 1;
+  const showCombinedForecast = multiSourceForecast.length > 1;
 
   return (
     <section aria-label={`Observed weather for ${location.displayName}`}>
-      <h2 ref={headingRef} tabIndex={-1}>
+      {/* Visually redundant with the app-level header's own location display
+          (020-dashboard-polish-round-five, US4 — matches WeatherIconOverview's existing
+          pattern) but kept for the focus-on-view-change a11y convention every view follows. */}
+      <h2 ref={headingRef} tabIndex={-1} className="visually-hidden">
         {location.displayName}
       </h2>
 
@@ -204,12 +203,6 @@ export default function ObservationChart({
             {w.label}
           </button>
         ))}
-        <button type="button" onClick={onViewDetails}>
-          View details
-        </button>
-        <button type="button" onClick={onViewOverview}>
-          Overview
-        </button>
       </div>
 
       <MetricTabs metric={metric} onChange={onMetricChange} />

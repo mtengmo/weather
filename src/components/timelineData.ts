@@ -37,6 +37,23 @@ export function capForecastReach(days: DailyAggregate[], maxForecastDays: number
   return days.slice(0, firstForecastIndex + maxForecastDays);
 }
 
+/**
+ * A strict `count`-entry window anchored on "today," extending forward first (today + up to
+ * `count - 1` forecast days); only backfills from observed history if forward reach is shorter
+ * than `count - 1` days (020-dashboard-polish-round-five, US5, research.md §5) — used for the
+ * persistent weekly forecast-brief strip specifically, which (unlike the main 7-day timeline's
+ * `capForecastReach`) has no Observed/Forecast dual-section design to protect, so prioritizing
+ * "today and the days ahead" over older history is the better fit here.
+ */
+export function windowAroundToday(days: DailyAggregate[], count: number): DailyAggregate[] {
+  const firstForecastIndex = days.findIndex((d) => d.isForecast === true);
+  const todayIndex = firstForecastIndex === -1 ? days.length - 1 : firstForecastIndex - 1;
+  if (todayIndex < 0) return days.slice(-count);
+  const end = Math.min(days.length, todayIndex + count);
+  const start = Math.max(0, end - count);
+  return days.slice(start, end);
+}
+
 /** One column of the shared timeline — every row aligns to this same list (008 FR-002/FR-003). */
 export interface TimelinePeriod {
   key: string;

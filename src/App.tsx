@@ -6,14 +6,12 @@ import { useUnitPreference } from "./hooks/useUnitPreference";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
 import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
-import { useCombineForecastSourcesPreference } from "./hooks/useCombineForecastSourcesPreference";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
 import WeatherIconOverview from "./components/WeatherIconOverview";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import DisplayMenu from "./components/DisplayMenu";
-import ForecastSourcesControl from "./components/ForecastSourcesControl";
 import LocationPanel from "./components/LocationPanel";
 import Footer from "./components/Footer";
 import MapView from "./components/MapView";
@@ -36,8 +34,6 @@ export default function App() {
     useNearbyStationCountPreference();
   const { visible: highLowVisible, setVisible: setHighLowVisible } =
     useHighLowVisibilityPreference();
-  const { combineForecastSources, setCombineForecastSources } =
-    useCombineForecastSourcesPreference();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -52,8 +48,7 @@ export default function App() {
   const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated } = useObservationData(
     selected,
     obsWindow,
-    nearbyStationCount,
-    combineForecastSources
+    nearbyStationCount
   );
 
   // Last non-forecast observation in the current series — the header's inline "current
@@ -194,16 +189,30 @@ export default function App() {
             highLowVisible={highLowVisible}
             onHighLowChange={setHighLowVisible}
           />
-          <ForecastSourcesControl
-            combined={combineForecastSources}
-            onChange={setCombineForecastSources}
-          />
           {view !== "overview" && (
             <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
           )}
+          {/* "Back" always means "go to the Overview," everywhere in the app; "Details" always
+              means "go to the Details table" — one consistent navigation vocabulary across
+              Overview, graph, details, and map (020-dashboard-polish-round-five, US4). */}
           {view === "overview" && (
             <button type="button" onClick={() => setView("graph")}>
               Details
+            </button>
+          )}
+          {view === "graph" && (
+            <>
+              <button type="button" onClick={() => setView("details")}>
+                Details
+              </button>
+              <button type="button" onClick={viewOverview}>
+                Back
+              </button>
+            </>
+          )}
+          {view === "details" && (
+            <button type="button" onClick={viewOverview}>
+              Back
             </button>
           )}
           {view === "map" ? (
@@ -236,10 +245,7 @@ export default function App() {
           unit={unit}
           series={series}
           nearbyStations={nearbyStations}
-          combineForecastSources={combineForecastSources}
           multiSourceForecast={multiSourceForecast}
-          onViewDetails={() => setView("details")}
-          onViewOverview={viewOverview}
         />
       )}
 
@@ -250,8 +256,6 @@ export default function App() {
           unit={unit}
           series={series}
           nearbyStations={nearbyStations}
-          onBack={() => setView("graph")}
-          onViewOverview={viewOverview}
         />
       )}
 
@@ -263,7 +267,6 @@ export default function App() {
           unit={unit}
           series={series}
           highLowVisible={highLowVisible}
-          combineForecastSources={combineForecastSources}
           multiSourceForecast={multiSourceForecast}
           weeklySeries={weeklySeries}
         />

@@ -7,6 +7,9 @@ import type { Location } from "../../src/models/types";
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
+  // getMultiSourceForecast is now always fetched, unconditionally
+  // (020-dashboard-polish-round-five, US2 — no toggle to gate it).
+  getMultiSourceForecast: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../../src/services/smhiProvider", () => ({
   getNearestStations: vi.fn(),
@@ -239,10 +242,13 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     await user.click(await screen.findByRole("button", { name: "Details" }));
 
     expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
+    // From the graph view, "Details" (→ the details table) and "Back" (→ Overview) both remain
+    // available (020-dashboard-polish-round-five, US4 — replaces the old "View details" button).
+    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
   });
 
-  it("shows the 'Details' button in the persistent header only while the Overview is active (016-dashboard-polish-round-two, US5)", async () => {
+  it("shows a 'Details' button in the persistent header on the Overview and the graph view, and a 'Back' button once past the Overview (020-dashboard-polish-round-five, US4)", async () => {
     addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
     localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
 
@@ -251,9 +257,12 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
 
     const detailsButton = await screen.findByRole("button", { name: "Details" });
     expect(screen.getByRole("banner")).toContainElement(detailsButton);
+    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
 
     await user.click(detailsButton);
-    expect(screen.queryByRole("button", { name: "Details" })).not.toBeInTheDocument();
+    // Now on the graph view: "Details" (→ the details table) and "Back" (→ Overview) both show.
+    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
   });
 });
 
@@ -481,7 +490,7 @@ describe("Change location reachable from every screen (016-dashboard-polish-roun
     await user.click(screen.getByRole("button", { name: "Details" }));
     expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "View details" }));
+    await user.click(screen.getByRole("button", { name: "Details" }));
     expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
   });
 
@@ -538,16 +547,10 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     expect(screen.getByRole("button", { name: /Fahrenheit|°F/i })).toBeInTheDocument();
   });
 
-  it("offers Automatic/Combined via the Forecast sources control, replacing the old two-button toggle", async () => {
-    const user = userEvent.setup();
+  it("no longer offers a Forecast sources control (020-dashboard-polish-round-five, US2)", () => {
     render(<App />);
 
-    const control = screen.getByRole("button", { name: /Forecast sources: Automatic/ });
-    await user.click(control);
-    expect(screen.getByRole("listbox", { name: "Forecast sources" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Combined" }));
-    expect(screen.getByRole("button", { name: /Forecast sources: Combined/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Forecast sources/ })).not.toBeInTheDocument();
   });
 
   it("keeps Map and Details reachable from the header", async () => {
@@ -595,7 +598,7 @@ describe("Location name visible in the header (019-dashboard-polish-round-four, 
     await user.click(await screen.findByRole("button", { name: "Details" }));
     expect(header).toHaveTextContent("Stockholm");
 
-    await user.click(screen.getByRole("button", { name: "View details" }));
+    await user.click(screen.getByRole("button", { name: "Details" }));
     expect(header).toHaveTextContent("Stockholm");
 
     await user.click(screen.getByRole("button", { name: "Map" }));
@@ -654,6 +657,6 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     await user.click(screen.getByRole("button", { name: "Back" }));
 
     expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
   });
 });

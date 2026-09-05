@@ -11,7 +11,10 @@ import type { Location, ObservationWindow } from "../../src/models/types";
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
-  getMultiSourceForecast: vi.fn(),
+  // Default to an empty array: getMultiSourceForecast is now always fetched, unconditionally
+  // (020-dashboard-polish-round-five, US2 — no toggle to gate it), so every test needs a
+  // resolvable default even if it never cares about multi-source data specifically.
+  getMultiSourceForecast: vi.fn().mockResolvedValue([]),
 }));
 
 import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
@@ -34,19 +37,12 @@ function hoursAgo(h: number): string {
 function OverviewHarness({
   location,
   highLowVisible = false,
-  combineForecastSources = false,
 }: {
   location: Location;
   highLowVisible?: boolean;
-  combineForecastSources?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
-  const { series, multiSourceForecast, weeklySeries } = useObservationData(
-    location,
-    window,
-    0,
-    combineForecastSources
-  );
+  const { series, multiSourceForecast, weeklySeries } = useObservationData(location, window, 0);
 
   return (
     <WeatherIconOverview
@@ -56,7 +52,6 @@ function OverviewHarness({
       unit="metric"
       series={series}
       highLowVisible={highLowVisible}
-      combineForecastSources={combineForecastSources}
       multiSourceForecast={multiSourceForecast}
       weeklySeries={weeklySeries}
     />
@@ -546,7 +541,7 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
   });
 });
 
-describe("Combine forecast sources on the Overview (016-dashboard-polish-round-two, US2)", () => {
+describe("Always-averaged forecast sources on the Overview (020-dashboard-polish-round-five, US2)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
     vi.mocked(getNearbyStationSeries).mockReset();
@@ -555,7 +550,7 @@ describe("Combine forecast sources on the Overview (016-dashboard-polish-round-t
     vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
   });
 
-  it("shows a single averaged reading, marked '(avg)', on a forecast period when the toggle is on (019-dashboard-polish-round-four, US8)", async () => {
+  it("always shows a single averaged reading, marked '(avg)', on a forecast period when 2+ sources have data (020-dashboard-polish-round-five, US2 — no toggle anymore)", async () => {
     const t = hoursFromNow(1);
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -570,7 +565,7 @@ describe("Combine forecast sources on the Overview (016-dashboard-polish-round-t
       { source: "open-meteo", observations: [{ timestamp: t, temperature: 12, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
     ]);
 
-    render(<OverviewHarness location={stockholm} combineForecastSources />);
+    render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
 
     expect(await screen.findByText(/10 °C \(avg\)/)).toBeInTheDocument();
@@ -578,7 +573,7 @@ describe("Combine forecast sources on the Overview (016-dashboard-polish-round-t
     expect(screen.queryByText(/O 12°/)).not.toBeInTheDocument();
   });
 
-  it("shows only the plain value when the toggle is off", async () => {
+  it("shows the plain value when only one source has forecast data for that period", async () => {
     const t = hoursFromNow(1);
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -588,11 +583,13 @@ describe("Combine forecast sources on the Overview (016-dashboard-polish-round-t
         { timestamp: t, temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true },
       ],
     });
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([
+      { source: "smhi", observations: [{ timestamp: t, temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+    ]);
 
-    render(<OverviewHarness location={stockholm} combineForecastSources={false} />);
+    render(<OverviewHarness location={stockholm} />);
     await screen.findByText(/Temperature/);
 
-    expect(getMultiSourceForecast).not.toHaveBeenCalled();
     expect(screen.queryByText(/\(avg\)/)).not.toBeInTheDocument();
   });
 });
@@ -1757,7 +1754,7 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     expect(datedLabels.length).toBeGreaterThan(0);
   });
 
-  it("caps the persistent weekly forecast strip's forecast portion at 7 days under the same conditions", async () => {
+  it("shows exactly 7 cards in the persistent weekly forecast strip, anchored on today, when forecast reaches well beyond a week (020-dashboard-polish-round-five, US5)", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -1769,7 +1766,65 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const strip = await screen.findByRole("region", { name: "7 day forecast" });
-    // 7 observed (empty) + at most 7 forecast, never the full 10-day reach.
-    expect(strip.querySelectorAll(".weekly-forecast-day")).toHaveLength(14);
+    // Strictly 7 (today + 6 forecast days), not the 14 the main timeline's own
+    // forecast-reach-only cap would allow — the strip has no Observed/Forecast section
+    // design to protect, so it always prioritizes today and the days ahead.
+    expect(strip.querySelectorAll(".weekly-forecast-day")).toHaveLength(7);
+  });
+});
+
+describe("Now line and day-boundary line positioning (020-dashboard-polish-round-five, US3)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("positions the 'Now' line with a calc() offset accounting for the sticky label column", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursFromNow(1), temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    const nowLine = container.querySelector(".weather-timeline-now") as HTMLElement;
+    // jsdom's CSSOM can reorder a calc() expression's operands, so assert on substrings
+    // rather than an exact literal match.
+    expect(nowLine.style.left).toMatch(/^calc\(7rem \+/);
+    expect(nowLine.style.left).toContain("100% - 7rem");
+  });
+
+  it("positions each day-boundary line with the same calc() offset on the 3-day view", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursFromNow(24 * 3), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    await screen.findAllByText("Morning");
+
+    const boundaries = Array.from(container.querySelectorAll(".weather-timeline-day-boundary")) as HTMLElement[];
+    expect(boundaries.length).toBeGreaterThan(0);
+    for (const boundary of boundaries) {
+      expect(boundary.style.left).toMatch(/^calc\(7rem \+/);
+      expect(boundary.style.left).toContain("100% - 7rem");
+    }
   });
 });

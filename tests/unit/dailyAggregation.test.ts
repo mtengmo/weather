@@ -292,6 +292,34 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
     return new Date(Date.now() + d * 24 * 3600_000 - 12 * 3600_000).toISOString();
   }
 
+  it("includes an early-morning (00:00-06:00) observation on the first rendered day in its Morning bucket (020-dashboard-polish-round-five, US1)", () => {
+    const earlyMorning = new Date();
+    earlyMorning.setHours(3, 0, 0, 0);
+    const result = toSubDayBuckets([obs({ timestamp: earlyMorning.toISOString(), temperature: 7 })], 3);
+
+    const morning = result.find((b) => b.subDayLabel === "Morning");
+    expect(morning?.high).toBe(7);
+    expect(morning?.low).toBe(7);
+  });
+
+  it("leaves a later rendered day's own Morning boundary at 6am, unaffected by the first-day widening", () => {
+    const dayPlusOneEarlyMorning = new Date(Date.now() + 24 * 3600_000);
+    dayPlusOneEarlyMorning.setHours(3, 0, 0, 0);
+    const result = toSubDayBuckets(
+      [obs({ timestamp: dayPlusOneEarlyMorning.toISOString(), temperature: 9, isForecast: true })],
+      3
+    );
+
+    // Day+1's own 00:00-06:00 is covered by day 0's Night period (which reaches 6h into day+1),
+    // not by day+1's own Morning — confirming day+1's Morning boundary is still 6, not widened.
+    const dayZeroNight = result[4]; // first day's 5 periods: Morning, Lunch, Afternoon, Evening, Night
+    const dayOneMorning = result[5];
+    expect(dayZeroNight.subDayLabel).toBe("Night");
+    expect(dayOneMorning?.subDayLabel).toBe("Morning");
+    expect(dayZeroNight.high).toBe(9);
+    expect(dayOneMorning.high).toBeNull();
+  });
+
   it("returns exactly 5 sub-day buckets for today when there is no forecast data", () => {
     const result = toSubDayBuckets([], 3);
     expect(result).toHaveLength(5);

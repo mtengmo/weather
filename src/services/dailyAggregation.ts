@@ -121,13 +121,21 @@ export const SUB_DAY_PERIODS: SubDayBoundary[] = [
 function subDayBucketsForDate(
   baseDate: Date,
   observations: WeatherObservation[],
-  now: number
+  now: number,
+  isFirstDay: boolean
 ): DailyAggregate[] {
   const dayStart = new Date(baseDate);
   dayStart.setHours(0, 0, 0, 0);
 
-  return SUB_DAY_PERIODS.map(({ label, startHour, endHour }) => {
-    const startMs = dayStart.getTime() + startHour * 3600_000;
+  return SUB_DAY_PERIODS.map(({ period, label, startHour, endHour }) => {
+    // Every rendered day *except the first* has its own 00:00-06:00 window already covered by
+    // the *previous* day's Night period (which reaches 6 hours into the next day) — but no
+    // "yesterday" bucket is ever generated to cover the first rendered day's own early morning.
+    // Widening just this one day's Morning period to start at local midnight closes that gap
+    // without disturbing every other day's familiar "Night = tonight into tomorrow morning"
+    // semantics (020-dashboard-polish-round-five, research.md §1).
+    const effectiveStartHour = isFirstDay && period === "morning" ? 0 : startHour;
+    const startMs = dayStart.getTime() + effectiveStartHour * 3600_000;
     const endMs = dayStart.getTime() + endHour * 3600_000;
     const bucket = observations.filter((o) => {
       const t = Date.parse(o.timestamp);
@@ -167,7 +175,7 @@ export function toSubDayBuckets(
   const buckets: DailyAggregate[] = [];
   for (let dayOffset = 0; dayOffset < availableDayCount; dayOffset++) {
     const date = new Date(now + dayOffset * BUCKET_MS);
-    buckets.push(...subDayBucketsForDate(date, observations, now));
+    buckets.push(...subDayBucketsForDate(date, observations, now, dayOffset === 0));
   }
   return buckets;
 }

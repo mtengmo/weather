@@ -6,6 +6,7 @@ import {
   buildDailyTimelineData,
   buildHourlyTimelineData,
   capForecastReach,
+  windowAroundToday,
   mergeMultiSourceIntoTimelinePoints,
   type TimelineData,
   type TimelinePeriod,
@@ -26,9 +27,6 @@ interface WeatherIconOverviewProps {
   series: ObservationSeries | null; // null while loading
   /** Mirrors the app-wide High/Low toggle already used by the graph view (014, FR-009). */
   highLowVisible: boolean;
-  /** Mirrors the app-wide "Combine forecast sources" toggle already used by the graph view
-   *  (016-dashboard-polish-round-two, FR-002). */
-  combineForecastSources: boolean;
   multiSourceForecast: MultiSourceForecastEntry[];
   /** Always-on 7-day series, for the persistent Today card / 7-day strip (018-dashboard-visual-redesign). */
   weeklySeries: ObservationSeries | null;
@@ -453,7 +451,6 @@ export default function WeatherIconOverview({
   unit,
   series,
   highLowVisible,
-  combineForecastSources,
   multiSourceForecast,
   weeklySeries,
 }: WeatherIconOverviewProps) {
@@ -498,7 +495,9 @@ export default function WeatherIconOverview({
           : buildDailyTimelineData(series, unit)
       : null;
 
-  if (timeline !== null && combineForecastSources) {
+  // Always averaged across sources when 2+ have data — no user toggle anymore
+  // (020-dashboard-polish-round-five, US2).
+  if (timeline !== null) {
     mergeMultiSourceIntoTimelinePoints(timeline.temperature, timeline.periods, multiSourceForecast, unit);
   }
 
@@ -573,7 +572,10 @@ export default function WeatherIconOverview({
       </h2>
 
       <TodaySummaryCard today={today} unit={unit} location={location} />
-      <WeeklyForecastStrip days={weeklyDays} unit={unit} />
+      {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
+          (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast
+          section design to protect, so it always prioritizes the days ahead over older history. */}
+      <WeeklyForecastStrip days={windowAroundToday(weeklyDays, 7)} unit={unit} />
 
       <div className="window-toggle" role="group" aria-label="Overview window">
         {OVERVIEW_WINDOWS.map((w) => (
@@ -607,10 +609,15 @@ export default function WeatherIconOverview({
             <div
               className={`weather-timeline${displayMode !== "last-24-hours" ? " weather-timeline-fill" : ""}`}
             >
+              {/* left is a percentage of the DATA columns' own width, but this element's
+                  positioning parent (.weather-timeline) also includes the 7rem sticky label
+                  column — calc() translates the fraction into the actual coordinate space
+                  instead of treating the whole container (label column included) as 100%
+                  (020-dashboard-polish-round-five, US3, research.md §3). */}
               {nowLeftPercent !== null && (
                 <div
                   className="weather-timeline-now"
-                  style={{ left: `${nowLeftPercent}%` }}
+                  style={{ left: `calc(7rem + (100% - 7rem) * ${nowLeftPercent / 100})` }}
                   aria-label="Now"
                 >
                   <span className="weather-timeline-now-label">Now</span>
@@ -621,7 +628,7 @@ export default function WeatherIconOverview({
                 <div
                   key={`day-boundary-${i}`}
                   className="weather-timeline-day-boundary"
-                  style={{ left: `${percent}%` }}
+                  style={{ left: `calc(7rem + (100% - 7rem) * ${percent / 100})` }}
                   aria-hidden="true"
                 />
               ))}

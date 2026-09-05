@@ -9,6 +9,8 @@ import type {
 import { toDailyAggregates } from "../services/dailyAggregation";
 import { convertPrecipitation, convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
+import { deriveWeatherCondition } from "../services/weatherCondition";
+import { WEATHER_ICONS } from "./weatherIcons";
 
 interface ObservationDetailsProps {
   location: Location;
@@ -16,8 +18,6 @@ interface ObservationDetailsProps {
   unit: UnitSystem;
   series: ObservationSeries | null;
   nearbyStations: NearbyStationSeries[];
-  onBack: () => void;
-  onViewOverview: () => void;
 }
 
 function formatTemperature(value: number | null, unit: UnitSystem): string {
@@ -36,8 +36,6 @@ export default function ObservationDetails({
   unit,
   series,
   nearbyStations,
-  onBack,
-  onViewOverview,
 }: ObservationDetailsProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
@@ -50,17 +48,12 @@ export default function ObservationDetails({
 
   return (
     <section aria-label={`Observation details for ${location.displayName}`}>
-      <div className="app-header">
-        <h2 ref={headingRef} tabIndex={-1}>
-          {location.displayName} — details
-        </h2>
-        <button type="button" onClick={onBack}>
-          Back to graph
-        </button>
-        <button type="button" onClick={onViewOverview}>
-          Overview
-        </button>
-      </div>
+      {/* Visually redundant with the app-level header's own location display
+          (020-dashboard-polish-round-five, US4 — matches WeatherIconOverview's existing
+          pattern) but kept for the focus-on-view-change a11y convention every view follows. */}
+      <h2 ref={headingRef} tabIndex={-1} className="visually-hidden">
+        {location.displayName} — details
+      </h2>
 
       {series === null && <p role="status">Loading observed weather…</p>}
 
@@ -77,6 +70,7 @@ export default function ObservationDetails({
               <tr>
                 <th>Time</th>
                 <th>Status</th>
+                <th>Condition</th>
                 <th>{location.displayName} temperature</th>
                 <th>{location.displayName} precipitation</th>
                 {nearbyStations.map((n) => (
@@ -89,6 +83,17 @@ export default function ObservationDetails({
             <tbody>
               {series.observations.map((obs) => {
                 const isGap = obs.temperature === null && obs.precipitation === null;
+                // Same deriveWeatherCondition/WEATHER_ICONS pairing the Overview's ConditionRow
+                // uses, at the same 28px size, for visual consistency between the two
+                // (020-dashboard-polish-round-five, US7).
+                const condition = deriveWeatherCondition({
+                  temperature: obs.temperature,
+                  precipitation: obs.precipitation,
+                  windSpeed: obs.windSpeed,
+                  cloudCoverPercent: obs.cloudCoverPercent,
+                  timestamp: obs.timestamp,
+                });
+                const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
                 return (
                   <tr
                     key={obs.timestamp}
@@ -98,6 +103,13 @@ export default function ObservationDetails({
                   >
                     <td>{new Date(obs.timestamp).toLocaleString()}</td>
                     <td>{obs.isForecast ? "Forecast" : "Observed"}</td>
+                    <td>
+                      {iconInfo ? (
+                        <iconInfo.Icon aria-label={iconInfo.label} size={28} />
+                      ) : (
+                        <span aria-label="No data">—</span>
+                      )}
+                    </td>
                     <td>{formatTemperature(convertTemperature(obs.temperature, unit), unit)}</td>
                     <td>
                       {formatPrecipitation(convertPrecipitation(obs.precipitation, unit), unit)}
