@@ -280,7 +280,7 @@ export default function App() {
         />
       )}
 
-      <Footer series={series} lastUpdated={lastUpdated} />
+      <Footer series={series} lastUpdated={lastUpdated} combinedForecast={multiSourceForecast.length > 1} />
     </div>
   );
 }

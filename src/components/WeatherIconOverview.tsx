@@ -277,10 +277,10 @@ function BarRow({
                   title={point.interpolated ? "Estimated" : undefined}
                 >
                   {formatRowValue(row, point.value)}
+                  {point.chanceOfRain !== null && point.chanceOfRain !== undefined && (
+                    <span className="weather-timeline-bar-chance"> · {Math.round(point.chanceOfRain)}%</span>
+                  )}
                 </span>
-                {point.chanceOfRain !== null && point.chanceOfRain !== undefined && (
-                  <span className="weather-timeline-bar-chance">{Math.round(point.chanceOfRain)}%</span>
-                )}
               </div>
             );
           }}

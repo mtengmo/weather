@@ -24,9 +24,13 @@ export function dataSourceNote(series: {
  * plus a single forecast freshness time, rather than naming a "forecast source" at all
  * (020-dashboard-polish-round-five, US6/FR-009 — the forecast is now always potentially a
  * cross-source average, so a single source name would be misleading). Freshness prefers the
- * source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own `approvedTime`) when
+ * source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own `referenceTime`) when
  * available, otherwise the app's own last-fetch time (`lastUpdated`) — never omitted when a
  * forecast is shown, since one of the two is always present once a fetch has completed.
+ *
+ * `combined` names both forecast sources when the forecast genuinely blends them
+ * (021-dashboard-polish-round-six, US2/FR-003 — the per-period `(avg)` marker already existed,
+ * but the footer never confirmed blending was happening at all).
  */
 export function dataSourceDisclosure(
   series: {
@@ -34,13 +38,15 @@ export function dataSourceDisclosure(
     forecastFromFallbackSource?: boolean;
     forecastIssuedAt?: string | null;
   },
-  lastUpdated: string | null
+  lastUpdated: string | null,
+  combined: boolean
 ): string | null {
   if (series.primarySource === undefined) return null;
   const observedLabel = series.primarySource === "smhi" ? "SMHI observations" : "Open-Meteo observations";
+  const forecastLabel = combined ? "SMHI + Open-Meteo forecast" : "Forecast";
   const freshnessTime = series.forecastIssuedAt ?? lastUpdated;
   const freshness = freshnessTime
-    ? ` · Forecast updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    ? ` · ${forecastLabel} updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "";
   return `${observedLabel}${freshness}`;
 }

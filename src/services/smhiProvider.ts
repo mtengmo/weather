@@ -75,9 +75,11 @@ interface SmhiForecastTimeSeriesEntry {
 }
 
 interface SmhiForecastResponse {
-  /** ISO 8601 — when this forecast was generated/approved, per SMHI's point-forecast API
-   *  (019-dashboard-polish-round-four, research.md §8). */
-  approvedTime?: string;
+  /** ISO 8601 — SMHI's own forecast model-run reference time, the closest match to "when this
+   *  forecast was created" (021-dashboard-polish-round-six, research.md §1 — the previous
+   *  `approvedTime` field name doesn't exist in SMHI's actual API response, so this value has
+   *  never once been populated in production). */
+  referenceTime?: string;
   timeSeries?: SmhiForecastTimeSeriesEntry[];
 }
 
@@ -225,7 +227,7 @@ async function fetchForecastTimeSeries(
     );
     if (!response.ok) return { timeSeries: [], issuedAt: null };
     const data = (await response.json()) as SmhiForecastResponse;
-    return { timeSeries: data.timeSeries ?? [], issuedAt: data.approvedTime ?? null };
+    return { timeSeries: data.timeSeries ?? [], issuedAt: data.referenceTime ?? null };
   } catch {
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.

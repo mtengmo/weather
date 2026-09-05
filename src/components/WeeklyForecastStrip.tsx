@@ -31,7 +31,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             <span className="weekly-forecast-weekday">
               {new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" })}
             </span>
-            {iconInfo ? <iconInfo.Icon aria-hidden="true" size={24} /> : <span aria-hidden="true">—</span>}
+            {iconInfo ? <iconInfo.Icon aria-hidden="true" size={28} /> : <span aria-hidden="true">—</span>}
             <span className="weekly-forecast-highlow">
               {formatValue(convertTemperature(day.high, unit), 0)}° /{" "}
               {formatValue(convertTemperature(day.low, unit), 0)}°

@@ -41,21 +41,22 @@ describe("directionToCompass (018-dashboard-visual-redesign)", () => {
 
 describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names only the observation source, no per-mode forecast-source naming)", () => {
   it("returns null when primarySource is absent", () => {
-    expect(dataSourceDisclosure({}, null)).toBeNull();
+    expect(dataSourceDisclosure({}, null, false)).toBeNull();
   });
 
   it("describes SMHI observations", () => {
-    expect(dataSourceDisclosure({ primarySource: "smhi" }, null)).toBe("SMHI observations");
+    expect(dataSourceDisclosure({ primarySource: "smhi" }, null, false)).toBe("SMHI observations");
   });
 
   it("describes Open-Meteo observations", () => {
-    expect(dataSourceDisclosure({ primarySource: "open-meteo" }, null)).toBe("Open-Meteo observations");
+    expect(dataSourceDisclosure({ primarySource: "open-meteo" }, null, false)).toBe("Open-Meteo observations");
   });
 
   it("appends the source's own forecastIssuedAt time when available", () => {
     const result = dataSourceDisclosure(
       { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
-      "2026-09-05T06:47:00.000Z"
+      "2026-09-05T06:47:00.000Z",
+      false
     );
     const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
       hour: "2-digit",
@@ -65,7 +66,7 @@ describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names o
   });
 
   it("falls back to lastUpdated when forecastIssuedAt is absent", () => {
-    const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z");
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z", false);
     const expectedTime = new Date("2026-09-05T06:47:00.000Z").toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -74,7 +75,31 @@ describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names o
   });
 
   it("omits the freshness fragment entirely when neither is available", () => {
-    const result = dataSourceDisclosure({ primarySource: "smhi" }, null);
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, null, false);
     expect(result).toBe("SMHI observations");
+  });
+});
+
+describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-round-six, US2/FR-003)", () => {
+  it("names both forecast sources when combined is true", () => {
+    const result = dataSourceDisclosure(
+      { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
+      null,
+      true
+    );
+    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(result).toBe(`SMHI observations · SMHI + Open-Meteo forecast updated ${expectedTime}`);
+  });
+
+  it("keeps the plain 'Forecast' label when combined is false", () => {
+    const result = dataSourceDisclosure(
+      { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
+      null,
+      false
+    );
+    expect(result).not.toContain("Open-Meteo forecast");
   });
 });

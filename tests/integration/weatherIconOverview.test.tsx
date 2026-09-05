@@ -954,10 +954,18 @@ describe("chance of rain (011-precipitation-chance)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("2.0 mm");
+    await waitFor(() =>
+      expect(
+        Array.from(container.querySelectorAll(".weather-timeline-bar-value")).some(
+          (el) => el.textContent === "2.0 mm · 70%"
+        )
+      ).toBe(true)
+    );
 
-    expect(screen.getByText("70%")).toBeInTheDocument();
-    expect(container.querySelector(".weather-timeline-bar-chance")?.textContent).toBe("70%");
+    // 021-dashboard-polish-round-six, US3/FR-004: the chance-of-rain percentage now renders
+    // inline on the same line as the mm value (not a stacked sibling), so every
+    // .weather-timeline-bar-cell always stacks exactly two children and bar baselines stay aligned.
+    expect(container.querySelector(".weather-timeline-bar-chance")?.textContent).toBe(" · 70%");
   });
 
   it("renders no percentage for an observed column even when chanceOfRain data is present", async () => {

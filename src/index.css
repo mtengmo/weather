@@ -189,7 +189,12 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  /* Two layers: the original dark elevation shadow, plus a subtle light 1px ring so the panel's
+     edge stays visible against a near-black page background regardless of how close --border and
+     --surface sit to each other in a given theme (021-dashboard-polish-round-six, research.md §4). */
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 /* Location Panel (013-overview-default-and-layout): consolidates current-location/favorites/
@@ -215,7 +220,11 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  /* Two-layer shadow — see .display-menu-content above (021-dashboard-polish-round-six,
+     research.md §4). */
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .location-panel-content .place-search,
@@ -676,9 +685,12 @@ a {
   border-bottom: 1px dotted var(--text-muted);
 }
 
-/* Chance-of-rain, shown beneath the bar's mm value — deliberately smaller/dimmer than
-   .weather-timeline-bar-value so it reads as a secondary reading, not a second amount
-   (011-precipitation-chance, FR-005). */
+/* Chance-of-rain, shown inline after the bar's mm value on the same line — deliberately
+   smaller/dimmer than .weather-timeline-bar-value so it reads as a secondary reading, not a
+   second amount (011-precipitation-chance, FR-005). Kept inline rather than a stacked sibling
+   line so every .weather-timeline-bar-cell always stacks exactly two children (bar + one text
+   line); a variable 2-vs-3-child stack under justify-content: flex-end previously shifted bars'
+   baselines relative to neighboring cells (021-dashboard-polish-round-six, research.md §3). */
 .weather-timeline-bar-chance {
   font-size: 0.65rem;
   color: var(--text-muted);

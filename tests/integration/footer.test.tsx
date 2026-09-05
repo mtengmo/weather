@@ -7,13 +7,13 @@ import Footer from "../../src/components/Footer";
 
 describe("Footer (016-dashboard-polish-round-two, US8)", () => {
   it("shows the current version", () => {
-    render(<Footer series={null} lastUpdated={null} />);
+    render(<Footer series={null} lastUpdated={null} combinedForecast={false} />);
     expect(screen.getByText(/Weather History v/)).toBeInTheDocument();
   });
 
   it("opens the privacy notice when 'Privacy' is clicked, and closes it again", async () => {
     const user = userEvent.setup();
-    render(<Footer series={null} lastUpdated={null} />);
+    render(<Footer series={null} lastUpdated={null} combinedForecast={false} />);
 
     expect(screen.queryByRole("dialog", { name: "Privacy notice" })).not.toBeInTheDocument();
 
@@ -41,6 +41,7 @@ describe("Data source and freshness disclosure (018-dashboard-visual-redesign, U
           primarySource: "smhi",
         }}
         lastUpdated="2026-09-04T10:15:00.000Z"
+        combinedForecast={false}
       />
     );
 
@@ -49,10 +50,30 @@ describe("Data source and freshness disclosure (018-dashboard-visual-redesign, U
   });
 
   it("shows no source/freshness text when there is no series", () => {
-    render(<Footer series={null} lastUpdated={null} />);
+    render(<Footer series={null} lastUpdated={null} combinedForecast={false} />);
 
     expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
     expect(screen.getByText(/Weather History v/)).toBeInTheDocument();
+  });
+});
+
+describe("Footer combined-forecast disclosure (021-dashboard-polish-round-six, US2/FR-003)", () => {
+  it("names both forecast sources in the footer when combinedForecast is true", () => {
+    render(
+      <Footer
+        series={{
+          location: { latitude: 59.33, longitude: 18.06, displayName: "Stockholm", source: "favorite" },
+          window: "last-24-hours",
+          status: "ready",
+          observations: [],
+          primarySource: "smhi",
+        }}
+        lastUpdated="2026-09-04T10:15:00.000Z"
+        combinedForecast={true}
+      />
+    );
+
+    expect(screen.getByText(/SMHI \+ Open-Meteo forecast/)).toBeInTheDocument();
   });
 });
 

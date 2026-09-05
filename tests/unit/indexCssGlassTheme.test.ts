@@ -28,3 +28,25 @@ describe("Display menu doesn't overflow off-screen on narrow viewports (020-dash
     expect(rule).not.toMatch(/[^-]right:\s*0/);
   });
 });
+
+describe("Location panel and Display menu contrast against dark backgrounds (021-dashboard-polish-round-six, US4)", () => {
+  it("gives .display-menu-content a two-layer box-shadow with a light contrast ring", () => {
+    const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+    const ruleMatch = css.match(/\.display-menu-content\s*\{[^}]*\}/);
+
+    expect(ruleMatch).not.toBeNull();
+    const rule = ruleMatch![0];
+    expect(rule).toContain("rgba(0, 0, 0, 0.35)");
+    expect(rule).toContain("rgba(255, 255, 255, 0.08)");
+  });
+
+  it("gives .location-panel-content a two-layer box-shadow with a light contrast ring", () => {
+    const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+    const ruleMatch = css.match(/\.location-panel-content\s*\{[^}]*\}/);
+
+    expect(ruleMatch).not.toBeNull();
+    const rule = ruleMatch![0];
+    expect(rule).toContain("rgba(0, 0, 0, 0.35)");
+    expect(rule).toContain("rgba(255, 255, 255, 0.08)");
+  });
+});
