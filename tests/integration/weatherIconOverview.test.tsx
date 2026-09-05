@@ -1742,15 +1742,19 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     }));
 
     const user = userEvent.setup();
-    render(<OverviewHarness location={stockholm} />);
+    const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
     await screen.findByText(/Temperature/);
 
-    // Weekday-only labels (e.g. "Fri") are 3 letters; a dated label always has a digit too.
-    const timeLabels = screen.getAllByText(/^[A-Za-z]{3} \d{1,2}$/);
-    expect(timeLabels.length).toBeGreaterThan(0);
+    // Weekday-only labels (e.g. "Fri") have no digit at all; a dated label always does. Checks
+    // for a digit rather than an exact format/separator, since `toLocaleDateString`'s output
+    // (spacing, comma) can vary by the runtime's available locale data (observed to differ
+    // between local and CI environments).
+    const timeCells = container.querySelectorAll(".weather-timeline-row-time .weather-timeline-cell");
+    const datedLabels = Array.from(timeCells).filter((cell) => /\d/.test(cell.textContent ?? ""));
+    expect(datedLabels.length).toBeGreaterThan(0);
   });
 
   it("caps the persistent weekly forecast strip's forecast portion at 7 days under the same conditions", async () => {
