@@ -657,15 +657,21 @@ describe("High/Low regression across all display modes (015-overview-3day-resolu
       status: "ready",
       observations:
         w === "last-7-days"
-          ? [
-              // Minutes apart, not hours — the 3-day view's sub-day buckets are 2-9 hours wide
-              // (dailyAggregation.ts's SUB_DAY_PERIODS), so two points an hour or more apart can
-              // straddle a bucket boundary depending on the wall-clock time the suite runs at,
-              // landing in separate cells instead of combining into one high/low. Minutes-apart
-              // timestamps stay safely within the same bucket regardless of when this runs.
-              { timestamp: hoursAgo(0.2), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(0.1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-            ]
+          ? (() => {
+              // Fixed at today's own Lunch period (11:00-13:00 local), minutes apart — not an
+              // hours-ago offset. Today's wrap-around Night period only spans *tonight* 21:00
+              // through *tomorrow* 06:00, so "now" (and anything "hours ago" from it) has no
+              // home among today's 5 periods whenever the suite happens to run between local
+              // midnight and 06:00 — hit routinely in CI, which runs in UTC.
+              const base = new Date();
+              base.setHours(12, 0, 0, 0);
+              const t1 = new Date(base.getTime() - 6 * 60_000).toISOString();
+              const t2 = new Date(base.getTime() - 3 * 60_000).toISOString();
+              return [
+                { timestamp: t1, temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+                { timestamp: t2, temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              ];
+            })()
           : [],
     }));
 

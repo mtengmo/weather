@@ -307,12 +307,13 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
   });
 
   it("carries high/low onto a sub-day temperature point the same way a daily point does (015, FR-007)", () => {
-    // "now" itself, not some hours-ago offset: the 3-day view's visible window starts at
-    // today's own current period and looks forward — an offset landing before 06:00 local can
-    // fall into *yesterday's* wrap-around Night bucket (21:00-06:00), which isn't part of that
-    // window, depending on the wall-clock time the suite runs at. "now" is always inside today's
-    // window by definition.
-    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(0), temperature: 5 })]), "metric");
+    // Fixed at today's own Lunch period (11:00-13:00 local), not an hours-ago/hours-from-now
+    // offset: today's own wrap-around Night period only spans *tonight* 21:00 through *tomorrow*
+    // 06:00, so "now" itself has no home among today's 5 periods whenever the suite happens to
+    // run between local midnight and 06:00 — hit repeatedly in CI, which runs in UTC.
+    const todayLunch = new Date();
+    todayLunch.setHours(12, 0, 0, 0);
+    const data = build3DayTimelineData(series([obs({ timestamp: todayLunch.toISOString(), temperature: 5 })]), "metric");
     const populatedPoint = data.temperature.points.find((p) => p.value !== null);
 
     expect(populatedPoint?.high).not.toBeUndefined();
