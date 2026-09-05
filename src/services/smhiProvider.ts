@@ -221,25 +221,27 @@ interface SmhiForecastFetchResult {
   issuedAt: string | null;
 }
 
+// SMHI's forecast API 404s once the URL's lat/lon exceed 6 decimal places (confirmed live:
+// 6 decimals succeeds, 7+ returns 404 — masked by the browser as a CORS error, since SMHI's
+// 404 page carries no CORS headers). Raw browser geolocation coordinates commonly have 10+
+// decimals, so every geolocation-sourced location silently lost its real SMHI forecast
+// timestamp until rounded (021-dashboard-polish-round-six follow-up).
+function roundCoordinate(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
 async function fetchForecastTimeSeries(
   location: { latitude: number; longitude: number }
 ): Promise<SmhiForecastFetchResult> {
-  const url = `${FORECAST_BASE_URL}/lon/${location.longitude}/lat/${location.latitude}/data.json`;
+  const lon = roundCoordinate(location.longitude);
+  const lat = roundCoordinate(location.latitude);
+  const url = `${FORECAST_BASE_URL}/lon/${lon}/lat/${lat}/data.json`;
   try {
     const response = await fetch(url);
-    if (!response.ok) {
-      // Temporary diagnostic (021-dashboard-polish-round-six follow-up): a user reported the
-      // forecast timestamp always falling back to sync time despite the createdTime fix, but
-      // the endpoint works fine from a clean/incognito browser and via direct navigation —
-      // logging the actual failure reason here to pin down what's different in their environment.
-      console.warn(`SMHI forecast request failed: ${response.status} ${response.statusText}`, url);
-      return { timeSeries: [], issuedAt: null };
-    }
+    if (!response.ok) return { timeSeries: [], issuedAt: null };
     const data = (await response.json()) as SmhiForecastResponse;
     return { timeSeries: data.timeSeries ?? [], issuedAt: data.createdTime ?? null };
-  } catch (err) {
-    // Temporary diagnostic — see above.
-    console.warn("SMHI forecast request threw", url, err);
+  } catch {
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.
     return { timeSeries: [], issuedAt: null };

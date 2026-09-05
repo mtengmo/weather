@@ -240,5 +240,30 @@ describe("smhiProvider", () => {
       expect(result.status).toBe("ready");
       expect(result.observations.some((o) => o.isForecast)).toBe(false);
     });
+
+    it("rounds raw geolocation coordinates to 6 decimals before requesting the forecast (021 follow-up)", async () => {
+      // SMHI's forecast API 404s (surfaced by the browser as a misleading CORS error) once the
+      // URL's lat/lon exceed 6 decimal places — confirmed live. Raw browser geolocation
+      // coordinates commonly carry 10+ decimals, so every geolocation-sourced location silently
+      // lost its real SMHI forecast timestamp until the coordinates were rounded before the
+      // request was built.
+      const requestedUrls: string[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) => {
+          if (url.includes("/category/snow1g/version/1/geotype/point")) requestedUrls.push(url);
+          for (const [pattern, body] of Object.entries(baseStations)) {
+            if (url.includes(pattern)) return { ok: true, status: 200, json: async () => body };
+          }
+          return { ok: true, status: 200, json: async () => forecastBody([]) };
+        })
+      );
+
+      const { getObservations } = await freshProvider();
+      await getObservations({ latitude: 59.84308579590745, longitude: 17.63027201883273 }, "last-24-hours");
+
+      expect(requestedUrls).toHaveLength(1);
+      expect(requestedUrls[0]).toContain("lon/17.630272/lat/59.843086");
+    });
   });
 });
