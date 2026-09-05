@@ -224,14 +224,22 @@ interface SmhiForecastFetchResult {
 async function fetchForecastTimeSeries(
   location: { latitude: number; longitude: number }
 ): Promise<SmhiForecastFetchResult> {
+  const url = `${FORECAST_BASE_URL}/lon/${location.longitude}/lat/${location.latitude}/data.json`;
   try {
-    const response = await fetch(
-      `${FORECAST_BASE_URL}/lon/${location.longitude}/lat/${location.latitude}/data.json`
-    );
-    if (!response.ok) return { timeSeries: [], issuedAt: null };
+    const response = await fetch(url);
+    if (!response.ok) {
+      // Temporary diagnostic (021-dashboard-polish-round-six follow-up): a user reported the
+      // forecast timestamp always falling back to sync time despite the createdTime fix, but
+      // the endpoint works fine from a clean/incognito browser and via direct navigation —
+      // logging the actual failure reason here to pin down what's different in their environment.
+      console.warn(`SMHI forecast request failed: ${response.status} ${response.statusText}`, url);
+      return { timeSeries: [], issuedAt: null };
+    }
     const data = (await response.json()) as SmhiForecastResponse;
     return { timeSeries: data.timeSeries ?? [], issuedAt: data.createdTime ?? null };
-  } catch {
+  } catch (err) {
+    // Temporary diagnostic — see above.
+    console.warn("SMHI forecast request threw", url, err);
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.
     return { timeSeries: [], issuedAt: null };
