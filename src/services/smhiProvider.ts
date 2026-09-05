@@ -75,6 +75,9 @@ interface SmhiForecastTimeSeriesEntry {
 }
 
 interface SmhiForecastResponse {
+  /** ISO 8601 — when this forecast was generated/approved, per SMHI's point-forecast API
+   *  (019-dashboard-polish-round-four, research.md §8). */
+  approvedTime?: string;
   timeSeries?: SmhiForecastTimeSeriesEntry[];
 }
 
@@ -208,20 +211,25 @@ function buildHourlySeries(
   return observations;
 }
 
+interface SmhiForecastFetchResult {
+  timeSeries: SmhiForecastTimeSeriesEntry[];
+  issuedAt: string | null;
+}
+
 async function fetchForecastTimeSeries(
   location: { latitude: number; longitude: number }
-): Promise<SmhiForecastTimeSeriesEntry[]> {
+): Promise<SmhiForecastFetchResult> {
   try {
     const response = await fetch(
       `${FORECAST_BASE_URL}/lon/${location.longitude}/lat/${location.latitude}/data.json`
     );
-    if (!response.ok) return [];
+    if (!response.ok) return { timeSeries: [], issuedAt: null };
     const data = (await response.json()) as SmhiForecastResponse;
-    return data.timeSeries ?? [];
+    return { timeSeries: data.timeSeries ?? [], issuedAt: data.approvedTime ?? null };
   } catch {
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.
-    return [];
+    return { timeSeries: [], issuedAt: null };
   }
 }
 
@@ -308,8 +316,8 @@ export async function getObservations(
   );
 
   const forecastHoursNeeded = FORECAST_HOURS[window];
-  const forecastTimeSeries =
-    forecastHoursNeeded > 0 ? await fetchForecastTimeSeries(location) : [];
+  const { timeSeries: forecastTimeSeries, issuedAt: forecastIssuedAt } =
+    forecastHoursNeeded > 0 ? await fetchForecastTimeSeries(location) : { timeSeries: [], issuedAt: null };
   const forecastObservations = buildForecastHourlySeries(forecastHoursNeeded, forecastTimeSeries);
 
   return {
@@ -322,6 +330,7 @@ export async function getObservations(
     window,
     observations: [...observations, ...forecastObservations],
     status: "ready",
+    forecastIssuedAt: forecastObservations.length > 0 ? forecastIssuedAt : null,
   };
 }
 

@@ -98,6 +98,11 @@ export async function getNearbyStationSeries(
 export interface MultiSourceForecastEntry {
   source: "smhi" | "open-meteo";
   observations: WeatherObservation[];
+  /** Same meaning as `ObservationSeries.forecastIssuedAt` — SMHI's own approved-time when
+   *  available, always `null`/absent for Open-Meteo (019-dashboard-polish-round-four,
+   *  research.md §8). Optional so existing test fixtures/mocks that predate this field keep
+   *  compiling, matching this codebase's existing convention for `ObservationSeries.primarySource`. */
+  issuedAt?: string | null;
 }
 
 /**
@@ -111,19 +116,22 @@ export async function getMultiSourceForecast(
 ): Promise<MultiSourceForecastEntry[]> {
   const [smhiResult, openMeteoResult] = await Promise.allSettled([
     (async () => {
-      if (!(await isSmhiCovered(location))) return [];
+      if (!(await isSmhiCovered(location))) return { observations: [], issuedAt: null };
       const series = await smhiProvider.getObservations(location, window);
-      return series.observations.filter((o) => o.isForecast === true);
+      return {
+        observations: series.observations.filter((o) => o.isForecast === true),
+        issuedAt: series.forecastIssuedAt ?? null,
+      };
     })(),
     openMeteoProvider.getForecastOnly(location, window),
   ]);
 
   const entries: MultiSourceForecastEntry[] = [];
-  if (smhiResult.status === "fulfilled" && smhiResult.value.length > 0) {
-    entries.push({ source: "smhi", observations: smhiResult.value });
+  if (smhiResult.status === "fulfilled" && smhiResult.value.observations.length > 0) {
+    entries.push({ source: "smhi", observations: smhiResult.value.observations, issuedAt: smhiResult.value.issuedAt });
   }
   if (openMeteoResult.status === "fulfilled" && openMeteoResult.value.length > 0) {
-    entries.push({ source: "open-meteo", observations: openMeteoResult.value });
+    entries.push({ source: "open-meteo", observations: openMeteoResult.value, issuedAt: null });
   }
   return entries;
 }

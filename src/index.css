@@ -146,6 +146,12 @@ body {
   flex-wrap: wrap;
 }
 
+/* Selected location's name, shown inline in the header (019-dashboard-polish-round-four, US1)
+   — the header previously had nowhere visible showing which location is on screen. */
+.current-location-name {
+  font-weight: 600;
+}
+
 .current-temperature {
   font-size: 1.75rem;
   font-weight: 700;
@@ -428,6 +434,8 @@ a {
 [data-theme="glass"] .app-header,
 [data-theme="glass"] .observation-table-wrap,
 [data-theme="glass"] .location-panel-content,
+[data-theme="glass"] .display-menu-content,
+[data-theme="glass"] .forecast-sources-control ul,
 [data-theme="glass"] .error-banner {
   background: var(--surface);
   backdrop-filter: blur(var(--surface-blur));
@@ -635,8 +643,17 @@ a {
   color: var(--row-wind);
 }
 
+/* `align-items: stretch` (grid's own default, made explicit here) is required, not just
+   cosmetic: `.weather-timeline-bar-cell`'s `height: 100%` (and `.weather-timeline-bar`'s own
+   percentage height inside it) only resolves against a definite parent height. A previous
+   `align-items: end` here let each `.weather-timeline-cell` grid item shrink to its own content
+   height instead of stretching to fill this row's 70px, leaving every percentage height below it
+   unresolved and collapsing every bar to its `min-height: 2px` floor regardless of amount —
+   visually flat, never-scaling rain/snow bars (019-dashboard-polish-round-four, US4). Bottom
+   alignment of the bar itself is unaffected: `.weather-timeline-bar-cell`'s own
+   `justify-content: flex-end` already handles that within the now-full-height cell. */
 .weather-timeline-row-bars {
-  align-items: end;
+  align-items: stretch;
   height: 70px;
 }
 
@@ -849,8 +866,16 @@ a {
 }
 
 .today-summary-highlow {
+  display: flex;
+  gap: 0.5rem;
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+/* High/low labels (019-dashboard-polish-round-four, US6) — the paired reading was previously
+   two bare numbers with no indication of which was which. */
+.today-summary-low {
+  color: var(--text-muted);
 }
 
 .today-summary-description {

@@ -15,6 +15,28 @@ import {
 
 const DAILY_BUCKET_COUNT = 7;
 
+/**
+ * Caps an oldest->newest `DailyAggregate[]` (toDailyAggregates' own output) at `maxForecastDays`
+ * *forecast* days, leaving every observed/historical day untouched
+ * (019-dashboard-polish-round-four, US7, research.md §7).
+ *
+ * toDailyAggregates' own forward-extension rule returns `bucketCount` past days *plus* however
+ * many forecast days the data reaches, uncapped — a location whose forecast reaches well beyond
+ * a week produces far more than a week's worth of forecast columns. Capping the array's *tail*
+ * directly (e.g. `days.slice(-7)`) is unsafe: since the array is oldest->newest, a long enough
+ * forecast reach pushes the tail-slice's window past "today" entirely, dropping every observed
+ * day (and "today" itself) — silently breaking anything that depends on locating "today" in this
+ * same array, such as the persistent Today card. This instead only trims *forecast* entries
+ * beyond `maxForecastDays`, since forecast entries are always the array's trailing run (once
+ * `bucketEnd` passes "now", `isForecast` never reverts to false again) — every observed entry
+ * before that run, including "today," is always kept.
+ */
+export function capForecastReach(days: DailyAggregate[], maxForecastDays: number): DailyAggregate[] {
+  const firstForecastIndex = days.findIndex((d) => d.isForecast === true);
+  if (firstForecastIndex === -1) return days; // no forecast at all — nothing to cap
+  return days.slice(0, firstForecastIndex + maxForecastDays);
+}
+
 /** One column of the shared timeline — every row aligns to this same list (008 FR-002/FR-003). */
 export interface TimelinePeriod {
   key: string;
@@ -36,9 +58,11 @@ export interface TimelineRowPoint {
   /** Temperature row only, daily view: the day's high/low, alongside the plain average (014, FR-009). */
   high?: number | null;
   low?: number | null;
-  /** Temperature row only, forecast periods: each forecast source's own reading, when "Combine
-   *  forecast sources" is on and 2+ sources have data for this period (016, FR-002). */
-  sources?: { label: string; value: number }[];
+  /** Temperature row only, forecast periods: true when `value` is a cross-source average rather
+   *  than a single source's own reading, set when "Forecast sources: Combined" is selected and
+   *  2+ sources have data for this period (019-dashboard-polish-round-four, FR-011 — replaces
+   *  016's per-source `sources` list, which showed each source's reading side by side). */
+  combined?: boolean;
   /**
    * true when `value` was derived by interpolating this row's neighboring points at the
    * observed/forecast boundary, rather than measured/forecast directly
@@ -246,9 +270,12 @@ export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSys
 function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineData {
   const periods: TimelinePeriod[] = days.map((day) => ({
     key: day.bucketEnd,
-    // A sub-day bucket (3-day view) labels itself by period name instead of weekday; a plain
-    // daily bucket (7-day view) never carries subDayLabel, so it always falls through.
-    label: day.subDayLabel ?? new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" }),
+    // A sub-day bucket (3-day view) labels itself by period name instead of weekday+date; a
+    // plain daily bucket (7-day view) never carries subDayLabel, so it always falls through —
+    // includes the calendar date, not just the weekday, per 019-dashboard-polish-round-four US7.
+    label:
+      day.subDayLabel ??
+      new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
     isForecast: day.isForecast ?? false,
     // No timestamp passed: a clear day always shows the sun, never the moon (007/008
     // research.md §3) — a whole day inherently spans both.
@@ -264,7 +291,10 @@ function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineD
     temperature: day.average,
     precipitation: day.totalPrecipitation,
     windSpeed: day.windAverage,
-    windDirection: null, // no meaningful "average direction" at daily/sub-day granularity
+    // Last non-null reading in the bucket, same convention TodaySummaryCard already uses
+    // (018-dashboard-visual-redesign) — this used to be hard-nulled here before aggregateBucket
+    // computed a real value (019-dashboard-polish-round-four, US5).
+    windDirection: day.windDirection ?? null,
     windGust: day.windGustHigh,
     cloudCoverPercent: day.cloudAverage,
     isSnowy:
@@ -292,7 +322,10 @@ function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineD
 /** Builds the synchronized daily timeline (7-day view) from an already-loaded series — always
  *  one column per day, at a single consistent resolution (015, FR-001/FR-002). */
 export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
-  return daysToTimelineData(toDailyAggregates(series.observations, DAILY_BUCKET_COUNT), unit);
+  return daysToTimelineData(
+    capForecastReach(toDailyAggregates(series.observations, DAILY_BUCKET_COUNT), DAILY_BUCKET_COUNT),
+    unit
+  );
 }
 
 const SUB_DAY_VIEW_DAY_COUNT = 3;
@@ -303,18 +336,15 @@ export function build3DayTimelineData(series: ObservationSeries, unit: UnitSyste
   return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit);
 }
 
-const MULTI_SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
-  smhi: "S",
-  "open-meteo": "O",
-};
-
 /**
- * Populates each forecast period's `TimelineRowPoint.sources` on the temperature row with every
- * available source's own reading for that period's time span, when 2+ sources have data — never
- * for observed periods, never a misleading single-source "combination" (016-dashboard-polish-round-two,
- * FR-002, contracts/multi-source-overview.md). Mutates `temperatureRow.points` in place, the same
- * pattern `interpolateNowBoundary` already uses. A period's span is (previous period's end,
- * this period's own end] — the same contiguous-bucket convention every builder above already
+ * Overwrites each forecast period's temperature `TimelineRowPoint.value` with the mean of the
+ * available sources' own per-period averages, and flags it `combined: true` — never for observed
+ * periods, never fabricated when fewer than 2 sources have data for that period
+ * (019-dashboard-polish-round-four, FR-011 — replaces 016's side-by-side per-source display,
+ * which cluttered the timeline; "write it out" is now satisfied by the point's own "(avg)"
+ * rendering, contracts/timeline-and-display-fixes.md). Mutates `temperatureRow.points` in place,
+ * the same pattern `interpolateNowBoundary` already uses. A period's span is (previous period's
+ * end, this period's own end] — the same contiguous-bucket convention every builder above already
  * produces, so this works unchanged across the hourly, 3-day, and 7-day timelines.
  */
 export function mergeMultiSourceIntoTimelinePoints(
@@ -333,7 +363,7 @@ export function mergeMultiSourceIntoTimelinePoints(
     const periodEnd = Date.parse(period.key);
     const periodStart = i > 0 ? Date.parse(periods[i - 1].key) : periodEnd - 24 * 3600_000;
 
-    const sources = multiSourceForecast
+    const perSourceAverages = multiSourceForecast
       .map((entry) => {
         const temperatures = entry.observations
           .filter((o) => {
@@ -342,15 +372,17 @@ export function mergeMultiSourceIntoTimelinePoints(
           })
           .map((o) => o.temperature)
           .filter((v): v is number => v !== null);
-        const average =
-          temperatures.length > 0 ? temperatures.reduce((sum, v) => sum + v, 0) / temperatures.length : null;
-        return { label: MULTI_SOURCE_LABELS[entry.source], value: average };
+        return temperatures.length > 0
+          ? temperatures.reduce((sum, v) => sum + v, 0) / temperatures.length
+          : null;
       })
-      .filter((s): s is { label: string; value: number } => s.value !== null)
-      .map((s) => ({ label: s.label, value: convertTemperature(s.value, unit)! }));
+      .filter((v): v is number => v !== null);
 
-    if (sources.length > 1) {
-      point.sources = sources;
+    if (perSourceAverages.length > 1) {
+      const combinedAverage =
+        perSourceAverages.reduce((sum, v) => sum + v, 0) / perSourceAverages.length;
+      point.value = convertTemperature(combinedAverage, unit)!;
+      point.combined = true;
     }
   });
 }

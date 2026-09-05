@@ -45,7 +45,7 @@ describe("Data source and freshness disclosure (018-dashboard-visual-redesign, U
     );
 
     expect(screen.getByText(/SMHI observations · SMHI forecast/)).toBeInTheDocument();
-    expect(screen.getByText(/Updated/)).toBeInTheDocument();
+    expect(screen.getByText(/updated/i)).toBeInTheDocument();
   });
 
   it("shows no source/freshness text when there is no series", () => {

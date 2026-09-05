@@ -340,9 +340,12 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     await user.click(await screen.findByRole("button", { name: "View" }));
 
     expect(await screen.findByRole("heading", { name: /Paris.*overview/i })).toBeInTheDocument();
-    // Viewing must not implicitly favorite it (FR-002) — reopen the panel and confirm it's absent.
+    // Viewing must not implicitly favorite it (FR-002) — reopen the panel and confirm it's
+    // absent from the favorites list specifically (scoped since 019's header now also shows
+    // the current location's name, which is the same text and would otherwise false-positive).
     await user.click(screen.getByRole("button", { name: "Change location" }));
-    expect(screen.queryByText("Paris, France")).not.toBeInTheDocument();
+    const favoritesList = document.querySelector(".favorites-list");
+    expect(favoritesList).not.toHaveTextContent("Paris, France");
   });
 
   it("still supports adding a search result to favorites as a separate action", async () => {
@@ -555,5 +558,102 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
 
     expect(await screen.findByRole("button", { name: "Details" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+  });
+});
+
+describe("Location name visible in the header (019-dashboard-polish-round-four, US1)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("shows the selected location's name in the header on the Overview, graph, details, and map views", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    const header = screen.getByRole("banner");
+    await waitFor(() => expect(header).toHaveTextContent("Stockholm"));
+
+    await user.click(await screen.findByRole("button", { name: "Details" }));
+    expect(header).toHaveTextContent("Stockholm");
+
+    await user.click(screen.getByRole("button", { name: "View details" }));
+    expect(header).toHaveTextContent("Stockholm");
+
+    await user.click(screen.getByRole("button", { name: "Map" }));
+    expect(header).toHaveTextContent("Stockholm");
+  });
+});
+
+describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns to the Overview after opening the map from there", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    await user.click(screen.getByRole("button", { name: "Map" }));
+    expect(screen.queryByRole("button", { name: "Map" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+  });
+
+  it("returns to the graph view after opening the map from there", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: "Details" }));
+    await screen.findByRole("heading", { name: "Stockholm" });
+
+    await user.click(screen.getByRole("button", { name: "Map" }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
   });
 });

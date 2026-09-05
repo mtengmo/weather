@@ -253,12 +253,22 @@ describe("buildDailyTimelineData", () => {
     expect(data.periods.every((p) => !subDayLabels.includes(p.label))).toBe(true);
   });
 
-  it("sets windDirection to null for every daily wind point", () => {
+  it("carries the day's windDirection onto the daily wind point (019-dashboard-polish-round-four, US5)", () => {
     const data = buildDailyTimelineData(
       series([obs({ timestamp: hoursFromNow(-1), windSpeed: 5, windDirection: 90 })]),
       "metric"
     );
-    expect(data.wind.points.every((p) => p.direction === null)).toBe(true);
+    const populatedPoint = data.wind.points.find((p) => p.value !== null);
+    expect(populatedPoint?.direction).toBe(90);
+  });
+
+  it("leaves windDirection null for a day with no wind-direction reading at all", () => {
+    const data = buildDailyTimelineData(
+      series([obs({ timestamp: hoursFromNow(-1), windSpeed: 5 })]),
+      "metric"
+    );
+    const populatedPoint = data.wind.points.find((p) => p.value !== null);
+    expect(populatedPoint?.direction).toBeNull();
   });
 
   it("reflects the day's chanceOfRainMax on the precipitation row (011-precipitation-chance)", () => {
@@ -297,7 +307,12 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
   });
 
   it("carries high/low onto a sub-day temperature point the same way a daily point does (015, FR-007)", () => {
-    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
+    // "now" itself, not some hours-ago offset: the 3-day view's visible window starts at
+    // today's own current period and looks forward — an offset landing before 06:00 local can
+    // fall into *yesterday's* wrap-around Night bucket (21:00-06:00), which isn't part of that
+    // window, depending on the wall-clock time the suite runs at. "now" is always inside today's
+    // window by definition.
+    const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(0), temperature: 5 })]), "metric");
     const populatedPoint = data.temperature.points.find((p) => p.value !== null);
 
     expect(populatedPoint?.high).not.toBeUndefined();
@@ -311,12 +326,12 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
   });
 });
 
-describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US2)", () => {
+describe("mergeMultiSourceIntoTimelinePoints (019-dashboard-polish-round-four, US8)", () => {
   function forecastObs(timestamp: string, temperature: number): WeatherObservation {
     return obs({ timestamp, temperature, isForecast: true });
   }
 
-  it("populates sources on a forecast period when 2+ sources have data for it", () => {
+  it("overwrites a forecast period's value with the cross-source average and flags it combined", () => {
     const t = hoursFromNow(1);
     const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
     const entries: MultiSourceForecastEntry[] = [
@@ -327,23 +342,23 @@ describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
 
     const point = data.temperature.points[0];
-    expect(point.sources).toEqual([
-      { label: "S", value: 8 },
-      { label: "O", value: 12 },
-    ]);
+    expect(point.value).toBe(10); // mean of 8 and 12
+    expect(point.combined).toBe(true);
   });
 
   it("does nothing with fewer than 2 sources", () => {
     const t = hoursFromNow(1);
     const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
     const entries: MultiSourceForecastEntry[] = [{ source: "smhi", observations: [forecastObs(t, 8)] }];
+    const originalValue = data.temperature.points[0].value;
 
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
 
-    expect(data.temperature.points[0].sources).toBeUndefined();
+    expect(data.temperature.points[0].value).toBe(originalValue);
+    expect(data.temperature.points[0].combined).toBeUndefined();
   });
 
-  it("never populates sources on an observed period", () => {
+  it("never overwrites an observed period", () => {
     const past = hoursFromNow(-1);
     const future = hoursFromNow(1);
     const data = buildHourlyTimelineData(
@@ -357,11 +372,11 @@ describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US
 
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
 
-    expect(data.temperature.points[0].sources).toBeUndefined(); // observed period
-    expect(data.temperature.points[1].sources).toBeDefined(); // forecast period
+    expect(data.temperature.points[0].combined).toBeUndefined(); // observed period
+    expect(data.temperature.points[1].combined).toBe(true); // forecast period
   });
 
-  it("converts each source's value to the requested unit", () => {
+  it("converts the averaged value to the requested unit", () => {
     const t = hoursFromNow(1);
     const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "imperial");
     const entries: MultiSourceForecastEntry[] = [
@@ -371,7 +386,7 @@ describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US
 
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "imperial");
 
-    expect(data.temperature.points[0].sources?.[0].value).toBe(32);
+    expect(data.temperature.points[0].value).toBe(32);
   });
 
   it("leaves a forecast period untouched when fewer than 2 sources have data at its own time span", () => {
@@ -385,6 +400,6 @@ describe("mergeMultiSourceIntoTimelinePoints (016-dashboard-polish-round-two, US
 
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
 
-    expect(data.temperature.points[0].sources).toBeUndefined();
+    expect(data.temperature.points[0].combined).toBeUndefined();
   });
 });

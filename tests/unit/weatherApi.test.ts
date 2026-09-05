@@ -178,6 +178,46 @@ describe("weatherApi.getObservations forecast-only fallback (006-forecast-now-ma
   });
 });
 
+describe("Automatic forecast-source preference (019-dashboard-polish-round-four, FR-010)", () => {
+  beforeEach(() => {
+    vi.mocked(smhiProvider.isCovered).mockReset();
+    vi.mocked(smhiProvider.getObservations).mockReset();
+    vi.mocked(openMeteoProvider.getForecastOnly).mockReset();
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+  });
+
+  it("uses SMHI's own forecast whenever the location is SMHI-covered and SMHI provides one, never blending in Open-Meteo", async () => {
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", [forecastPoint()]));
+
+    const result = await getObservations(location, "last-24-hours");
+
+    expect(openMeteoProvider.getForecastOnly).not.toHaveBeenCalled();
+    expect(result.primarySource).toBe("smhi");
+    expect(result.forecastFromFallbackSource).toBeFalsy();
+  });
+
+  it("falls back to Open-Meteo's forecast only when SMHI's own forecast is entirely empty", async () => {
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", []));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+
+    const result = await getObservations(location, "last-24-hours");
+
+    expect(openMeteoProvider.getForecastOnly).toHaveBeenCalled();
+    expect(result.forecastFromFallbackSource).toBe(true);
+  });
+
+  it("threads SMHI's forecastIssuedAt through onto the returned series when SMHI supplies its own forecast", async () => {
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue({
+      ...series("ready", [forecastPoint()]),
+      forecastIssuedAt: "2026-09-05T06:00:00.000Z",
+    });
+
+    const result = await getObservations(location, "last-24-hours");
+
+    expect(result.forecastIssuedAt).toBe("2026-09-05T06:00:00.000Z");
+  });
+});
+
 describe("weatherApi.getNearbyStationSeries", () => {
   beforeEach(() => {
     vi.mocked(smhiProvider.isCovered).mockReset();
@@ -263,7 +303,7 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7)
 
     const result = await getMultiSourceForecast(location, "last-24-hours");
 
-    expect(result).toEqual([{ source: "open-meteo", observations: [point] }]);
+    expect(result).toEqual([{ source: "open-meteo", observations: [point], issuedAt: null }]);
   });
 
   it("omits a source that rejects, without failing the other", async () => {
@@ -274,7 +314,7 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7)
 
     const result = await getMultiSourceForecast(location, "last-24-hours");
 
-    expect(result).toEqual([{ source: "open-meteo", observations: [point] }]);
+    expect(result).toEqual([{ source: "open-meteo", observations: [point], issuedAt: null }]);
   });
 
   it("returns an empty array when neither source has forecast data", async () => {
@@ -285,5 +325,21 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7)
     const result = await getMultiSourceForecast(location, "last-24-hours");
 
     expect(result).toEqual([]);
+  });
+
+  it("carries SMHI's forecastIssuedAt onto its entry, and always null for Open-Meteo (019-dashboard-polish-round-four)", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue({
+      ...series("ready", [forecastPoint()]),
+      forecastIssuedAt: "2026-09-05T06:00:00.000Z",
+    });
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    const smhiEntry = result.find((r) => r.source === "smhi");
+    const openMeteoEntry = result.find((r) => r.source === "open-meteo");
+    expect(smhiEntry?.issuedAt).toBe("2026-09-05T06:00:00.000Z");
+    expect(openMeteoEntry?.issuedAt).toBeNull();
   });
 });

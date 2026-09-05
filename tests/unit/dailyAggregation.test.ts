@@ -282,6 +282,16 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
     return date.toISOString();
   }
 
+  // Day buckets here are rolling 24h windows from "now" (matching toDailyAggregates' own
+  // documented convention), not calendar dates — daysFromNow's fixed "tomorrow at 14:00" can
+  // drift into the next rolling bucket depending on the current wall-clock time (e.g. it lands
+  // more than 24h out whenever the suite runs before 14:00 local). Used only where the test
+  // asserts an exact day-index classification; offset from "now" itself instead of a wall-clock
+  // hour keeps it robustly mid-bucket regardless of when the suite runs.
+  function midRollingDayFromNow(d: number): string {
+    return new Date(Date.now() + d * 24 * 3600_000 - 12 * 3600_000).toISOString();
+  }
+
   it("returns exactly 5 sub-day buckets for today when there is no forecast data", () => {
     const result = toSubDayBuckets([], 3);
     expect(result).toHaveLength(5);
@@ -295,12 +305,12 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
   });
 
   it("returns 10 buckets when forecast reaches 1 day out", () => {
-    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(1), temperature: 5, isForecast: true })], 3);
+    const result = toSubDayBuckets([obs({ timestamp: midRollingDayFromNow(1), temperature: 5, isForecast: true })], 3);
     expect(result).toHaveLength(10);
   });
 
   it("returns 15 buckets when forecast reaches 2+ days out (the full 3-day view)", () => {
-    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(2), temperature: 5, isForecast: true })], 3);
+    const result = toSubDayBuckets([obs({ timestamp: midRollingDayFromNow(2), temperature: 5, isForecast: true })], 3);
     expect(result).toHaveLength(15);
   });
 

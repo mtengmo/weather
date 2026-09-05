@@ -41,28 +41,56 @@ describe("directionToCompass (018-dashboard-visual-redesign)", () => {
 
 describe("dataSourceDisclosure (018-dashboard-visual-redesign)", () => {
   it("returns null when primarySource is absent", () => {
-    expect(dataSourceDisclosure({})).toBeNull();
+    expect(dataSourceDisclosure({}, null)).toBeNull();
   });
 
   it("describes SMHI observations with SMHI forecast when not on fallback", () => {
-    expect(dataSourceDisclosure({ primarySource: "smhi" })).toBe("SMHI observations · SMHI forecast");
+    expect(dataSourceDisclosure({ primarySource: "smhi" }, null)).toBe("SMHI observations · SMHI forecast");
   });
 
   it("describes SMHI observations with Open-Meteo forecast when on fallback", () => {
-    expect(dataSourceDisclosure({ primarySource: "smhi", forecastFromFallbackSource: true })).toBe(
+    expect(dataSourceDisclosure({ primarySource: "smhi", forecastFromFallbackSource: true }, null)).toBe(
       "SMHI observations · Open-Meteo forecast"
     );
   });
 
   it("describes Open-Meteo observations with Open-Meteo forecast when not on fallback", () => {
-    expect(dataSourceDisclosure({ primarySource: "open-meteo" })).toBe(
+    expect(dataSourceDisclosure({ primarySource: "open-meteo" }, null)).toBe(
       "Open-Meteo observations · Open-Meteo forecast"
     );
   });
 
   it("describes Open-Meteo observations with SMHI forecast when on fallback", () => {
-    expect(dataSourceDisclosure({ primarySource: "open-meteo", forecastFromFallbackSource: true })).toBe(
+    expect(dataSourceDisclosure({ primarySource: "open-meteo", forecastFromFallbackSource: true }, null)).toBe(
       "Open-Meteo observations · SMHI forecast"
     );
+  });
+});
+
+describe("dataSourceDisclosure forecast freshness (019-dashboard-polish-round-four, US8)", () => {
+  it("appends the source's own forecastIssuedAt time when available", () => {
+    const result = dataSourceDisclosure(
+      { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
+      "2026-09-05T06:47:00.000Z"
+    );
+    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(result).toBe(`SMHI observations · SMHI forecast (updated ${expectedTime})`);
+  });
+
+  it("falls back to lastUpdated when forecastIssuedAt is absent", () => {
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z");
+    const expectedTime = new Date("2026-09-05T06:47:00.000Z").toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(result).toBe(`SMHI observations · SMHI forecast (updated ${expectedTime})`);
+  });
+
+  it("omits the freshness fragment entirely when neither is available", () => {
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, null);
+    expect(result).toBe("SMHI observations · SMHI forecast");
   });
 });

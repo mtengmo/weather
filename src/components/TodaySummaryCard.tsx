@@ -34,8 +34,8 @@ export default function TodaySummaryCard({ today, unit, location }: TodaySummary
         {iconInfo ? <iconInfo.Icon aria-hidden="true" size={40} /> : null}
       </div>
       <div className="today-summary-highlow">
-        {formatValue(convertTemperature(today.high, unit), 0)}° /{" "}
-        {formatValue(convertTemperature(today.low, unit), 0)}°
+        <span className="today-summary-high">High {formatValue(convertTemperature(today.high, unit), 0)}°</span>
+        <span className="today-summary-low">Low {formatValue(convertTemperature(today.low, unit), 0)}°</span>
       </div>
       <p className="today-summary-description">{iconInfo ? `${iconInfo.label}.` : "—"}</p>
       <div className="today-summary-detail">

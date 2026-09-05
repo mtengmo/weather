@@ -45,6 +45,9 @@ export default function App() {
   // Overview is the primary, most digestible view of current conditions — the app opens on it
   // whenever a location resolves, rather than the classic line-graph (013, FR-001).
   const [view, setView] = useState<View>("overview");
+  // The view active immediately before opening the map, so "Back" can return to it
+  // (019-dashboard-polish-round-four, US2) — the map previously had no way to leave.
+  const [previousView, setPreviousView] = useState<View>("overview");
 
   const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated } = useObservationData(
     selected,
@@ -134,6 +137,15 @@ export default function App() {
     setView("overview");
   }
 
+  function openMap() {
+    setPreviousView(view);
+    setView("map");
+  }
+
+  function closeMap() {
+    setView(previousView);
+  }
+
   const locationUnavailable =
     (geoStatus === "denied" || geoStatus === "unavailable") && selected === null;
 
@@ -153,6 +165,9 @@ export default function App() {
             geoStatus={geoStatus}
             onRequestCurrentLocation={requestLocation}
           />
+          {selected !== null && (
+            <span className="current-location-name">{selected.displayName}</span>
+          )}
           {currentConditions !== null && (
             <>
               <span className="current-temperature">
@@ -191,9 +206,15 @@ export default function App() {
               Details
             </button>
           )}
-          <button type="button" onClick={() => setView("map")}>
-            Map
-          </button>
+          {view === "map" ? (
+            <button type="button" onClick={closeMap}>
+              Back
+            </button>
+          ) : (
+            <button type="button" onClick={openMap}>
+              Map
+            </button>
+          )}
         </div>
       </header>
 

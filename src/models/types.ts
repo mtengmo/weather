@@ -58,6 +58,13 @@ export interface ObservationSeries {
    * observed data (006-forecast-now-marker). Absent/false in the common case.
    */
   forecastFromFallbackSource?: boolean;
+  /**
+   * When the active forecast source generated/approved this forecast (SMHI's own
+   * `approvedTime`) — null when the source is Open-Meteo, or when SMHI didn't supply one, or
+   * when there's no forecast in this series at all (019-dashboard-polish-round-four, research.md
+   * §8). Optional so existing test fixtures/mocks that predate this field keep compiling.
+   */
+  forecastIssuedAt?: string | null;
 }
 
 export type UnitSystem = "metric" | "imperial";

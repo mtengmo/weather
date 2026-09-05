@@ -11,17 +11,14 @@ interface FooterProps {
 
 export default function Footer({ series, lastUpdated }: FooterProps) {
   const [privacyOpen, setPrivacyOpen] = useState(false);
-  const disclosure = series !== null ? dataSourceDisclosure(series) : null;
+  // dataSourceDisclosure now embeds its own freshness time inline (019-dashboard-polish-round-four,
+  // FR-012) — no separate "· Updated HH:MM" suffix here anymore, to avoid showing the same time
+  // twice when the forecast's own freshness falls back to this same lastUpdated value.
+  const disclosure = series !== null ? dataSourceDisclosure(series, lastUpdated) : null;
 
   return (
     <footer className="app-footer">
-      {disclosure !== null && (
-        <span className="app-footer-source">
-          {disclosure}
-          {lastUpdated !== null &&
-            ` · Updated ${new Date(lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-        </span>
-      )}
+      {disclosure !== null && <span className="app-footer-source">{disclosure}</span>}
       <span>Weather History v{APP_VERSION}</span>
       <button type="button" onClick={() => setPrivacyOpen(true)}>
         Privacy

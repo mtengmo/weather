@@ -5,6 +5,7 @@ import {
   build3DayTimelineData,
   buildDailyTimelineData,
   buildHourlyTimelineData,
+  capForecastReach,
   mergeMultiSourceIntoTimelinePoints,
   type TimelineData,
   type TimelinePeriod,
@@ -218,10 +219,10 @@ function LineRow({
                   .join(" ") || undefined}
                 title={point.interpolated ? "Estimated" : undefined}
               >
-                {point.sources !== undefined
-                  ? `${formatRowValue(row, point.value)} (${point.sources.map((s) => `${s.label} ${formatValue(s.value, 0)}°`).join(" · ")})`
+                {point.combined
+                  ? `${formatRowValue(row, point.value)} (avg)`
                   : highLowVisible && point.high != null && point.low != null
-                    ? `${formatRowValue(row, point.value)} (${formatValue(point.high, 0)}°/${formatValue(point.low, 0)}°)`
+                    ? `${formatRowValue(row, point.value)} (H ${formatValue(point.high, 0)}° / L ${formatValue(point.low, 0)}°)`
                     : formatRowValue(row, point.value)}
               </span>
             );
@@ -529,10 +530,16 @@ export default function WeatherIconOverview({
   // "Today" = the last non-forecast entry in the always-on 7-day series, or the final entry
   // when there's no forecast at all — reused on all three tabs, not gated on displayMode
   // (018-dashboard-visual-redesign, contracts/summary-cards.md).
-  const weeklyDays: DailyAggregate[] =
+  // Forecast reach capped at 7 days (019-dashboard-polish-round-four, US7): toDailyAggregates'
+  // own forward-extension rule means it can return far more than 7 forecast days once a
+  // location's forecast reaches beyond a week — capped here without touching the observed side,
+  // so "today" (needed below) is never at risk of being trimmed away.
+  const weeklyDays: DailyAggregate[] = capForecastReach(
     weeklySeries !== null && weeklySeries.status === "ready"
       ? toDailyAggregates(weeklySeries.observations, 7)
-      : [];
+      : [],
+    7
+  );
   const todayIndex = (() => {
     const firstForecastIndex = weeklyDays.findIndex((d) => d.isForecast === true);
     if (firstForecastIndex === -1) return weeklyDays.length - 1;
