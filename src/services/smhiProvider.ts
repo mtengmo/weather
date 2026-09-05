@@ -75,11 +75,14 @@ interface SmhiForecastTimeSeriesEntry {
 }
 
 interface SmhiForecastResponse {
-  /** ISO 8601 — SMHI's own forecast model-run reference time, the closest match to "when this
-   *  forecast was created" (021-dashboard-polish-round-six, research.md §1 — the previous
-   *  `approvedTime` field name doesn't exist in SMHI's actual API response, so this value has
-   *  never once been populated in production). */
-  referenceTime?: string;
+  /** ISO 8601 — when this specific forecast data was generated, matching the timestamp SMHI's
+   *  own app/site shows as "Prognosen utfärdades ... lokal tid" ("The forecast was issued at...").
+   *  `referenceTime` (the forecast model run's own reference time) was tried first
+   *  (021-dashboard-polish-round-six, research.md §1) but confirmed wrong via live comparison
+   *  against SMHI's own site: `referenceTime` read ~20 minutes earlier than what SMHI itself
+   *  displays as "utfärdades" (issued), while `createdTime` matched it exactly. The earlier
+   *  `approvedTime` field name (019) doesn't exist in SMHI's actual API response at all. */
+  createdTime?: string;
   timeSeries?: SmhiForecastTimeSeriesEntry[];
 }
 
@@ -227,7 +230,7 @@ async function fetchForecastTimeSeries(
     );
     if (!response.ok) return { timeSeries: [], issuedAt: null };
     const data = (await response.json()) as SmhiForecastResponse;
-    return { timeSeries: data.timeSeries ?? [], issuedAt: data.referenceTime ?? null };
+    return { timeSeries: data.timeSeries ?? [], issuedAt: data.createdTime ?? null };
   } catch {
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.

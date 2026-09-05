@@ -24,7 +24,7 @@ export function dataSourceNote(series: {
  * plus a single forecast freshness time, rather than naming a "forecast source" at all
  * (020-dashboard-polish-round-five, US6/FR-009 — the forecast is now always potentially a
  * cross-source average, so a single source name would be misleading). Freshness prefers the
- * source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own `referenceTime`) when
+ * source's own "as of" time (`series.forecastIssuedAt`, e.g. SMHI's own `createdTime`) when
  * available, otherwise the app's own last-fetch time (`lastUpdated`) — never omitted when a
  * forecast is shown, since one of the two is always present once a fetch has completed.
  *
