@@ -1559,7 +1559,10 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
       status: "ready",
       observations:
         w === "last-7-days"
-          ? [{ timestamp: hoursAgo(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }]
+          ? // Fixed local-time (no "Z") daytime timestamp, not hoursAgo(1) — the "current
+            // condition" reading factors in day/night by clock hour (weatherCondition.ts's
+            // isNight), so a real-now timestamp made this test flaky depending on when it ran.
+            [{ timestamp: "2026-08-31T12:00:00", temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }]
           : [],
     }));
 
