@@ -53,11 +53,19 @@ export default function App() {
   // The view active immediately before opening the map, so "Back" can return to it
   // (019-dashboard-polish-round-four, US2) — the map previously had no way to leave.
   const [previousView, setPreviousView] = useState<View>("overview");
+  // True once Details/graph has been opened at least once this session — gates nearby-station
+  // comparison fetching, which only that view ever renders (025-reduce-api-requests, US1). Never
+  // reset back to false once set, so returning to the Overview keeps the data already fetched.
+  const [hasOpenedDetails, setHasOpenedDetails] = useState(false);
+  useEffect(() => {
+    if (view === "graph" || view === "details") setHasOpenedDetails(true);
+  }, [view]);
 
   const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated } = useObservationData(
     selected,
     obsWindow,
-    nearbyStationCount
+    nearbyStationCount,
+    hasOpenedDetails
   );
 
   // Last non-forecast observation in the current series — the header's inline "current

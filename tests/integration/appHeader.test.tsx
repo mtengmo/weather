@@ -660,3 +660,55 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
   });
 });
+
+describe("Nearby-station data is deferred until Details/graph is opened (025-reduce-api-requests, US1)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("does not fetch nearby-station data on the Overview", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    expect(getNearbyStationSeries).not.toHaveBeenCalled();
+  });
+
+  it("fetches nearby-station data once the Details/graph view is opened for the first time", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    expect(getNearbyStationSeries).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Details" }));
+
+    await waitFor(() => expect(getNearbyStationSeries).toHaveBeenCalledTimes(1));
+
+    // Returning to the Overview must not clear or re-fetch nearby-station data.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    expect(getNearbyStationSeries).toHaveBeenCalledTimes(1);
+  });
+});

@@ -29,7 +29,11 @@ export interface UseObservationDataResult {
 export function useObservationData(
   location: Location | null,
   window: ObservationWindow,
-  nearbyStationCount: NearbyStationCount
+  nearbyStationCount: NearbyStationCount,
+  /** True once the Details/graph view has been opened at least once this session — nearby-station
+   *  comparison data is only ever rendered there, so it's fetched lazily rather than with every
+   *  Overview load (025-reduce-api-requests, research.md §1). */
+  includeNearbyStations: boolean
 ): UseObservationDataResult {
   const [series, setSeries] = useState<ObservationSeries | null>(null);
   const [nearbyStations, setNearbyStations] = useState<NearbyStationSeries[]>([]);
@@ -40,7 +44,6 @@ export function useObservationData(
   useEffect(() => {
     let cancelled = false;
     setSeries(null);
-    setNearbyStations([]);
     setMultiSourceForecast([]);
     if (window !== "last-7-days") setWeeklySeries(null);
 
@@ -48,7 +51,6 @@ export function useObservationData(
 
     Promise.all([
       getObservations(location, window),
-      getNearbyStationSeries(location, window, nearbyStationCount),
       // Always fetched now — forecast is always a cross-source average when both have data
       // (020-dashboard-polish-round-five, US2; was previously gated behind a user toggle).
       getMultiSourceForecast(location, window),
@@ -56,10 +58,9 @@ export function useObservationData(
       // and 7-day strip need weekly data regardless of which tab is active
       // (018-dashboard-visual-redesign, research.md §4).
       window === "last-7-days" ? Promise.resolve(null) : getObservations(location, "last-7-days"),
-    ]).then(([primary, nearby, multiSource, weekly]) => {
+    ]).then(([primary, multiSource, weekly]) => {
       if (cancelled) return;
       setSeries(primary);
-      setNearbyStations(nearby);
       setMultiSourceForecast(multiSource);
       setWeeklySeries(window === "last-7-days" ? primary : weekly);
       setLastUpdated(new Date().toISOString());
@@ -69,7 +70,29 @@ export function useObservationData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location?.latitude, location?.longitude, window, nearbyStationCount]);
+  }, [location?.latitude, location?.longitude, window]);
+
+  // Nearby-station comparison data is fetched independently, only once the Details/graph view has
+  // been opened — split into its own effect so flipping `includeNearbyStations` from false to
+  // true fetches only this data, not a redundant re-fetch of the primary/weekly/multi-source data
+  // above, which is already valid for the same location/window (025-reduce-api-requests, US1).
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!includeNearbyStations || location === null) {
+      setNearbyStations([]);
+      return;
+    }
+
+    getNearbyStationSeries(location, window, nearbyStationCount).then((nearby) => {
+      if (!cancelled) setNearbyStations(nearby);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.latitude, location?.longitude, window, nearbyStationCount, includeNearbyStations]);
 
   return { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated };
 }

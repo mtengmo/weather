@@ -368,5 +368,58 @@ describe("smhiProvider", () => {
       expect(requestedUrls).toHaveLength(1);
       expect(requestedUrls[0]).toContain("lon/17.630272/lat/59.843086");
     });
+
+    describe("getForecastOnly (025-reduce-api-requests, US2)", () => {
+      it("returns forecast observations and issuedAt without fetching any observation parameters", async () => {
+        const requestedUrls: string[] = [];
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async (url: string) => {
+            requestedUrls.push(url);
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                createdTime: "2026-09-06T08:00:00Z",
+                timeSeries: [{ time: isoHourFromNow(1), data: { air_temperature: 12 } }],
+              }),
+            };
+          })
+        );
+
+        const { getForecastOnly } = await freshProvider();
+        const result = await getForecastOnly(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations).toHaveLength(24);
+        expect(result.observations[0].temperature).toBe(12);
+        expect(result.issuedAt).toBe("2026-09-06T08:00:00Z");
+        // Only the forecast URL is requested — no /parameter/... observation-parameter fetches.
+        expect(requestedUrls).toHaveLength(1);
+        expect(requestedUrls[0]).toContain("/category/snow1g/version/1/geotype/point");
+      });
+
+      it("returns empty observations and null issuedAt for last-30-days (forecast out of scope)", async () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () => {
+            throw new Error("should not be called for last-30-days");
+          })
+        );
+
+        const { getForecastOnly } = await freshProvider();
+        const result = await getForecastOnly(STOCKHOLM, "last-30-days");
+
+        expect(result).toEqual({ observations: [], issuedAt: null });
+      });
+
+      it("degrades to empty observations and null issuedAt when the forecast request fails", async () => {
+        mockFetchRouter({}); // no handler -> 404 in mockFetchRouter
+
+        const { getForecastOnly } = await freshProvider();
+        const result = await getForecastOnly(STOCKHOLM, "last-24-hours");
+
+        expect(result).toEqual({ observations: [], issuedAt: null });
+      });
+    });
   });
 });

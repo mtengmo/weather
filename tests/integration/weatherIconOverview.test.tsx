@@ -42,7 +42,7 @@ function OverviewHarness({
   highLowVisible?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
-  const { series, multiSourceForecast, weeklySeries } = useObservationData(location, window, 0);
+  const { series, multiSourceForecast, weeklySeries } = useObservationData(location, window, 0, false);
 
   return (
     <WeatherIconOverview
@@ -1036,6 +1036,31 @@ describe("chance of rain (011-precipitation-chance)", () => {
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await screen.findByText("2.0 mm");
+
+    expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
+  });
+
+  it("renders no percentage when chanceOfRain is genuinely 0% (025-reduce-api-requests, US3)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 0,
+          windSpeed: 3,
+          cloudCoverPercent: 10,
+          isForecast: true,
+          chanceOfRain: 0,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("0.0 mm");
 
     expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
   });

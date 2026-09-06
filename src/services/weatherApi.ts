@@ -120,11 +120,10 @@ export async function getMultiSourceForecast(
   const [smhiResult, openMeteoResult, metNoResult] = await Promise.allSettled([
     (async () => {
       if (!(await isSmhiCovered(location))) return { observations: [], issuedAt: null };
-      const series = await smhiProvider.getObservations(location, window);
-      return {
-        observations: series.observations.filter((o) => o.isForecast === true),
-        issuedAt: series.forecastIssuedAt ?? null,
-      };
+      // Forecast-only path (025-reduce-api-requests, US2) — avoids re-fetching all six
+      // observation parameters (which the primary series's own getObservations call already
+      // fetched) just to discard everything except the forecast portion.
+      return smhiProvider.getForecastOnly(location, window);
     })(),
     openMeteoProvider.getForecastOnly(location, window),
     metNoProvider.getForecastOnly(location, window),

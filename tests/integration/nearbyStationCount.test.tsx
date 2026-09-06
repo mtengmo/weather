@@ -25,7 +25,7 @@ const stockholm: Location = {
 
 function Harness({ location }: { location: Location }) {
   const { count, setCount } = useNearbyStationCountPreference();
-  useObservationData(location, "last-24-hours", count);
+  useObservationData(location, "last-24-hours", count, true);
   return <NearbyStationCountControl count={count} onChange={setCount} />;
 }
 

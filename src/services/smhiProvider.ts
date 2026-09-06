@@ -399,6 +399,27 @@ export async function getObservations(
   };
 }
 
+/**
+ * SMHI's forecast-only observations for a location — mirrors
+ * `openMeteoProvider.getForecastOnly`/`metNoProvider.getForecastOnly`'s shape. Reuses the same
+ * `fetchForecastTimeSeries` + `buildForecastHourlySeries` pair `getObservations` already calls
+ * for its own forecast portion, without any of the six observation-parameter station fetches
+ * `getObservations` also does — those were pure waste for a caller that only wants the forecast
+ * (025-reduce-api-requests, research.md §2 — `getMultiSourceForecast`'s SMHI branch previously
+ * called the full `getObservations` solely to discard everything except this).
+ */
+export async function getForecastOnly(
+  location: Pick<import("../models/types").Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<{ observations: WeatherObservation[]; issuedAt: string | null }> {
+  const forecastHoursNeeded = FORECAST_HOURS[window];
+  if (forecastHoursNeeded === 0) return { observations: [], issuedAt: null };
+
+  const { timeSeries, issuedAt } = await fetchForecastTimeSeries(location);
+  const observations = buildForecastHourlySeries(forecastHoursNeeded, timeSeries);
+  return { observations, issuedAt: observations.length > 0 ? issuedAt : null };
+}
+
 export async function getNearestStations(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
   count: number

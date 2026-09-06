@@ -68,7 +68,8 @@ function ChartAndDetailsHarness({
   const { series: primary, nearbyStations, multiSourceForecast } = useObservationData(
     location,
     window,
-    4
+    4,
+    true // this harness only ever renders the graph/details views, which always need nearby-station data
   );
 
   return view === "graph" ? (

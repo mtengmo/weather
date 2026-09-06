@@ -275,7 +275,7 @@ function BarRow({
                   title={point.interpolated ? "Estimated" : undefined}
                 >
                   {formatRowValue(row, point.value)}
-                  {point.chanceOfRain !== null && point.chanceOfRain !== undefined && (
+                  {point.chanceOfRain !== null && point.chanceOfRain !== undefined && point.chanceOfRain > 0 && (
                     <span className="weather-timeline-bar-chance"> · {Math.round(point.chanceOfRain)}%</span>
                   )}
                 </span>
