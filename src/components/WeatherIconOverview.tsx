@@ -169,6 +169,37 @@ function clampTickLabelPercent(y: number): number {
   return Math.min(TICK_LABEL_SAFE_MAX_PERCENT, Math.max(TICK_LABEL_SAFE_MIN_PERCENT, y));
 }
 
+// Ticks are generated at a fixed 5-degree step regardless of the row's actual data range, so for
+// a narrow range two adjacent ticks' clamped label positions can land close enough (or on
+// literally the same clamped position) that their text visually overlaps (035-fix-temp-scale-logo,
+// research.md §2). Thins the rendered *labels* only — gridlines still use the full `ticks` list —
+// keeping the topmost/bottommost (range boundary) ticks always, and greedily keeping middle ticks
+// only if they clear this minimum gap from the previously kept label.
+const MIN_TICK_LABEL_GAP_PERCENT = 16;
+
+function dedupeCloseTicks(ticks: Tick[]): Tick[] {
+  if (ticks.length <= 2) return ticks;
+  const sorted = [...ticks].sort((a, b) => clampTickLabelPercent(a.y) - clampTickLabelPercent(b.y));
+  const kept: Tick[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const candidate = sorted[i];
+    const isLast = i === sorted.length - 1;
+    const lastKeptY = clampTickLabelPercent(kept[kept.length - 1].y);
+    const candidateY = clampTickLabelPercent(candidate.y);
+    const gap = candidateY - lastKeptY;
+    if (isLast && gap < MIN_TICK_LABEL_GAP_PERCENT && kept.length > 1) {
+      kept.pop();
+    } else if (!isLast && gap < MIN_TICK_LABEL_GAP_PERCENT) {
+      continue;
+    }
+    kept.push(candidate);
+  }
+  // Return in the original (ascending-by-value) order — the sort above was only to walk the
+  // ticks in on-screen top-to-bottom order while deciding which to keep.
+  const keptValues = new Set(kept.map((t) => t.value));
+  return ticks.filter((t) => keptValues.has(t.value));
+}
+
 function toPointsAttr(points: Pt[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(" ");
 }
@@ -214,28 +245,31 @@ function LineRow({
   const segments = buildSegments(row, scale);
   const isTemperature = row.key === "temperature";
   const ticks = isTemperature && scale !== null ? buildTicks(scale) : [];
+  const labelTicks = isTemperature ? dedupeCloseTicks(ticks) : [];
 
   return (
     <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
       <div className="weather-timeline-row-title">
-        {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
-        {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
+        {isTemperature && labelTicks.length > 0 && (
+          <div className="weather-timeline-temp-scale" aria-hidden="true">
+            {labelTicks.map((tick) => (
+              <span
+                key={tick.value}
+                className="weather-timeline-temp-scale-tick"
+                style={{ top: `${clampTickLabelPercent(tick.y)}%` }}
+              >
+                {tick.value}°
+              </span>
+            ))}
+          </div>
+        )}
+        <span className="weather-timeline-row-title-text">
+          {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
+          {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
+        </span>
       </div>
       <div className="weather-timeline-row-grid-cells">
         <div className="weather-timeline-line-area">
-          {isTemperature && ticks.length > 0 && (
-            <div className="weather-timeline-temp-scale" aria-hidden="true">
-              {ticks.map((tick) => (
-                <span
-                  key={tick.value}
-                  className="weather-timeline-temp-scale-tick"
-                  style={{ top: `${clampTickLabelPercent(tick.y)}%` }}
-                >
-                  {tick.value}°
-                </span>
-              ))}
-            </div>
-          )}
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="weather-timeline-svg" aria-hidden="true">
             {isTemperature && (
               <defs>

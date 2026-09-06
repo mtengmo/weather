@@ -130,7 +130,7 @@ describe("US1: synchronized 24h timeline", () => {
     // cloud-cover row (009-timeline-polish-and-header, FR-005). Scoped to the sticky
     // row-title column since the persistent Today card (018-dashboard-visual-redesign) also
     // renders its own "Wind ..." text elsewhere on the page.
-    expect(screen.getByText(/Temperature/)).toBeInTheDocument();
+    expect(screen.getByText(/Temp/)).toBeInTheDocument();
     expect(screen.getByText(/Precipitation/)).toBeInTheDocument();
     expect(
       container.querySelector(".weather-timeline-row-wind .weather-timeline-row-title")
@@ -241,7 +241,7 @@ describe("US2: synchronized 7-day timeline", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
     await waitFor(() => expect(container.querySelector(".weather-timeline")).toBeInTheDocument());
-    expect(screen.getByText(/Temperature/)).toBeInTheDocument();
+    expect(screen.getByText(/Temp/)).toBeInTheDocument();
     expect(container.querySelectorAll(".weather-timeline-row-grid").length).toBeGreaterThan(0);
   });
 
@@ -352,7 +352,7 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
     expect(screen.queryByText(/H 15° \/ L 5°/)).not.toBeInTheDocument();
   });
 });
@@ -630,7 +630,7 @@ describe("Always-averaged forecast sources on the Overview (020-dashboard-polish
     ]);
 
     render(<OverviewHarness location={stockholm} />);
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(screen.queryByText(/\(avg\)/)).not.toBeInTheDocument();
   });
@@ -788,7 +788,7 @@ describe("High/Low regression across all display modes (015-overview-3day-resolu
     });
 
     render(<OverviewHarness location={stockholm} highLowVisible />);
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(screen.queryByText(/°\/.*°\)/)).not.toBeInTheDocument();
   });
@@ -857,7 +857,7 @@ describe("US3: sun/moon and enrichment rows", () => {
 
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const snowTitle = screen
       .queryAllByText(/Snow/)
@@ -865,7 +865,7 @@ describe("US3: sun/moon and enrichment rows", () => {
     expect(snowTitle).toBeUndefined();
 
     // The core rows from User Story 1 are unaffected by the omission.
-    expect(screen.getByText(/Temperature/)).toBeInTheDocument();
+    expect(screen.getByText(/Temp/)).toBeInTheDocument();
   });
 });
 
@@ -895,7 +895,7 @@ describe("US2: a leaner set of timeline rows (009-timeline-polish-and-header)", 
 
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(screen.queryByText(/Cloud cover/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Feels like/)).not.toBeInTheDocument();
@@ -982,7 +982,7 @@ describe("US3: fix timeline display and navigation defects (009-timeline-polish-
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-interpolated")).toBeInTheDocument();
     expect(screen.getByText("15 °C")).toBeInTheDocument();
@@ -1016,7 +1016,7 @@ describe("US3: fix timeline display and navigation defects (009-timeline-polish-
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelectorAll(".weather-timeline-interpolated").length).toBe(0);
   });
@@ -1188,7 +1188,7 @@ describe("US2: chart rows colored and shaded like the mockup (010-timeline-visua
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-row-temperature")).toBeInTheDocument();
     expect(container.querySelector(".weather-timeline-row-wind")).toBeInTheDocument();
@@ -1223,7 +1223,7 @@ describe("US3: the 'now' column reads as a highlighted marker (010-timeline-visu
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const nowLine = container.querySelector(".weather-timeline-now");
     expect(nowLine).toBeInTheDocument();
@@ -1246,7 +1246,7 @@ describe("US3: the 'now' column reads as a highlighted marker (010-timeline-visu
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-now")).not.toBeInTheDocument();
     expect(container.querySelectorAll(".weather-timeline-now-column")).toHaveLength(0);
@@ -1294,7 +1294,7 @@ describe("center-on-now scroll behavior (013-overview-default-and-layout, US3)",
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
     expect(wrap.scrollLeft).toBeGreaterThan(0);
@@ -1321,7 +1321,7 @@ describe("center-on-now scroll behavior (013-overview-default-and-layout, US3)",
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
     expect(wrap.scrollLeft).toBe(0);
@@ -1340,7 +1340,7 @@ describe("center-on-now scroll behavior (013-overview-default-and-layout, US3)",
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const wrap = container.querySelector(".weather-timeline-wrap") as HTMLDivElement;
     expect(wrap.scrollLeft).toBe(0);
@@ -1421,7 +1421,7 @@ describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)"
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-section-observed")).toHaveTextContent("Observed");
     expect(container.querySelector(".weather-timeline-section-forecast")).toHaveTextContent("Forecast");
@@ -1439,7 +1439,7 @@ describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)"
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-section-observed")).toHaveTextContent("Observed");
     expect(container.querySelector(".weather-timeline-section-forecast")).not.toBeInTheDocument();
@@ -1458,7 +1458,7 @@ describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)"
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-section-observed")).not.toBeInTheDocument();
     const forecastSection = container.querySelector(".weather-timeline-section-forecast");
@@ -1486,7 +1486,7 @@ describe("Sticky row-label column (018-dashboard-visual-redesign, US3)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(
       container.querySelector(".weather-timeline-row-precipitation .weather-timeline-row-sublabel")
@@ -1511,10 +1511,10 @@ describe("Sticky row-label column (018-dashboard-visual-redesign, US3)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const titles = container.querySelectorAll(".weather-timeline-row-title");
-    // Time-label placeholder, Weather, Temperature, Rain, Wind — at minimum.
+    // Time-label placeholder, Weather, Temp, Rain, Wind — at minimum.
     expect(titles.length).toBeGreaterThanOrEqual(5);
   });
 });
@@ -1813,7 +1813,7 @@ describe("Rain bar scaling (019-dashboard-polish-round-four, US4)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const bars = Array.from(
       container.querySelectorAll(".weather-timeline-row-precipitation .weather-timeline-bar")
@@ -1958,7 +1958,7 @@ describe("Wind direction on 3-day/7-day views (019-dashboard-polish-round-four, 
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-wind-arrow")).toBeInTheDocument();
   });
@@ -1979,7 +1979,7 @@ describe("Wind direction on 3-day/7-day views (019-dashboard-polish-round-four, 
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     expect(container.querySelector(".weather-timeline-wind-arrow")).not.toBeInTheDocument();
   });
@@ -2047,7 +2047,7 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const columns = container.querySelectorAll(".weather-timeline-row-time .weather-timeline-cell");
     const forecastColumns = container.querySelectorAll(".weather-timeline-cell-forecast");
@@ -2093,7 +2093,7 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     // Weekday-only labels (e.g. "Fri") have no digit at all; a dated label always does. Checks
     // for a digit rather than an exact format/separator, since `toLocaleDateString`'s output
@@ -2143,7 +2143,7 @@ describe("Now line and day-boundary line positioning (020-dashboard-polish-round
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText(/Temperature/);
+    await screen.findByText(/Temp/);
 
     const nowLine = container.querySelector(".weather-timeline-now") as HTMLElement;
     // jsdom's CSSOM can reorder a calc() expression's operands, so assert on substrings
@@ -2239,7 +2239,7 @@ describe("UV risk badge (027-uv-index-alert)", () => {
   });
 });
 
-describe("Temperature chart degree scale (032-dashboard-polish-round-seven, US7)", () => {
+describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
     vi.mocked(getNearbyStationSeries).mockReset();

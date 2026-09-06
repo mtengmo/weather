@@ -75,6 +75,12 @@ describe("App header consolidation (009-timeline-polish-and-header, US1)", () =>
 
     expect(screen.queryByRole("heading", { name: "Tengmo Väder" })).not.toBeInTheDocument();
   });
+
+  it("shows the Tengmo Väder logo in the header (035-fix-temp-scale-logo)", () => {
+    render(<App />);
+
+    expect(screen.getByAltText("Tengmo Väder")).toBeInTheDocument();
+  });
 });
 
 describe("Location Panel (013-overview-default-and-layout, US2)", () => {

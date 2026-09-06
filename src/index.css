@@ -155,6 +155,17 @@ body {
   flex-wrap: wrap;
 }
 
+/* Brand logo, top-left of the header, visible on every view (035-fix-temp-scale-logo). Sits
+   inside .current-conditions so it wraps along with the rest of that group at narrow widths
+   instead of needing its own mobile handling. */
+.app-logo {
+  height: 2rem;
+  width: 2rem;
+  object-fit: contain;
+  align-self: center;
+  flex-shrink: 0;
+}
+
 /* Selected location's name, shown inline in the header (019-dashboard-polish-round-four, US1)
    — the header previously had nowhere visible showing which location is on screen. */
 .current-location-name {
@@ -640,24 +651,22 @@ a {
   height: 100%;
 }
 
-/* Sticky degree scale for the temperature chart (032-dashboard-polish-round-seven, US7) — sits
-   immediately after the row title's own sticky 7rem column (`left: 7rem`), so both stay visible
-   together while the row's data scrolls horizontally underneath. Ticks are positioned with the
-   exact same 0-100 Y value `computeYScale`/`buildTicks` already compute for the polyline itself,
-   against the same 70px height as `.weather-timeline-line-area`, so a tick's label always lines
-   up with its own gridline. */
+/* Degree scale for the temperature chart, nested inside the row's own sticky title box
+   (035-fix-temp-scale-logo) rather than occupying a separate column after it — every row's title
+   column must stay exactly 7rem wide so the scrolling data grid begins at the same x-offset on
+   every row (008 research.md §1); widening just this row's title to fit a separate scale column
+   would break that alignment. Ticks are positioned with the exact same 0-100 Y value
+   `computeYScale`/`buildTicks` already compute for the polyline itself, against the same 70px
+   height as `.weather-timeline-line-area`, so a tick's label always lines up with its own
+   gridline. */
 .weather-timeline-temp-scale {
-  position: sticky;
-  left: 7rem;
-  z-index: 1;
-  width: 2.25rem;
+  position: relative;
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
   height: 70px;
-  background: var(--surface);
   pointer-events: none;
-  /* Clips a tick label's own box, not the element's sticky positioning (that's governed by this
-     box's own position, unaffected by clipping its children) — a second guard alongside the
-     label's percentage clamp in WeatherIconOverview.tsx against bleeding into the row above/
-     below (found live: "the highest value comes over to the temp row"). */
+  /* Clips a tick label's own box, not its positioning — a guard against bleeding into the row
+     above/below (found live: "the highest value comes over to the temp row"). */
   overflow: hidden;
 }
 
@@ -667,6 +676,14 @@ a {
   transform: translateY(-50%);
   font-size: 0.65rem;
   color: var(--text-muted);
+}
+
+/* Only the temperature row's title needs the scale-plus-text side-by-side layout; every other
+   row's title stays the plain block it always was. */
+.weather-timeline-row-temperature .weather-timeline-row-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .weather-timeline-temp-gridline {

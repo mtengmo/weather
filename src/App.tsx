@@ -166,6 +166,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="current-conditions">
+          <img src="/icon-192.png" alt="Tengmo Väder" className="app-logo" />
           <LocationPanel
             currentLocation={currentLocation}
             favorites={favorites}

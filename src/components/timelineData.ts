@@ -195,7 +195,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
 
   const temperature: TimelineRow = {
     key: "temperature",
-    label: "Temperature",
+    label: "Temp",
     unitLabel: labels.temp,
     kind: "line",
     points: sources.map((s) => ({
