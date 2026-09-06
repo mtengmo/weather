@@ -522,6 +522,16 @@ a {
   color: var(--text-muted);
 }
 
+/* Weekday label above each day's group of sub-day period columns on the 3-day view
+   (026-fix-3-day, US2) — only rendered on the first column of each 5-column day-group. */
+.weather-timeline-weekday-label {
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .weather-timeline-row-condition {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);

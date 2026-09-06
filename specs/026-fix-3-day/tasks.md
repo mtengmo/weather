@@ -42,19 +42,19 @@ confirm the header reads "Forecast," not "Observed" (per quickstart.md US1).
 
 ### Implementation for User Story 1
 
-- [ ] T001 [US1] Change `boundaryIndex` in `src/components/timelineData.ts` from
+- [X] T001 [US1] Change `boundaryIndex` in `src/components/timelineData.ts` from
       `idx > 0 ? idx - 1 : null` to `idx === -1 ? null : idx - 1`, per data-model.md
-- [ ] T002 [US1] Replace `observedForecastSplit` in `src/components/WeatherIconOverview.tsx` with
+- [X] T002 [US1] Replace `observedForecastSplit` in `src/components/WeatherIconOverview.tsx` with
       explicit `observedCount`/`showObservedSection`/`showForecastSection` derivations, and update
       the `.weather-timeline-sections` JSX to use them, per data-model.md
-- [ ] T003 [P] [US1] Add unit tests for `boundaryIndex` in `tests/unit/timelineData.test.ts`:
+- [X] T003 [P] [US1] Add unit tests for `boundaryIndex` in `tests/unit/timelineData.test.ts`:
       `[true, true, true]` → `-1`; `[false, false, false]` → `null`; `[false, true, true]` → `0`
       (unchanged mixed case)
-- [ ] T004 [P] [US1] Add an integration test in `tests/integration/weatherIconOverview.test.tsx`
+- [X] T004 [P] [US1] Add an integration test in `tests/integration/weatherIconOverview.test.tsx`
       (alongside the existing Observed/Forecast section-header tests) asserting: a 3-day timeline
       whose periods are entirely forecast renders `.weather-timeline-section-forecast` at 100%
       width and does not render `.weather-timeline-section-observed` at all
-- [ ] T005 [P] [US1] Verify (and update only if needed) the existing all-observed and
+- [X] T005 [P] [US1] Verify (and update only if needed) the existing all-observed and
       mixed-observed/forecast section-header tests in
       `tests/integration/weatherIconOverview.test.tsx` still pass unchanged with the new
       `observedCount`-based logic (non-regression check)
@@ -74,14 +74,14 @@ columns has a distinct, correct weekday label above it (per quickstart.md US2).
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Add a new `weather-timeline-row-weekday` row immediately before the existing
+- [X] T006 [US2] Add a new `weather-timeline-row-weekday` row immediately before the existing
       `weather-timeline-row-time` row in `src/components/WeatherIconOverview.tsx`, gated on
       `displayMode === "last-3-days"`, rendering each period's weekday
       (`new Date(period.key).toLocaleDateString([], { weekday: "short" })`) only on columns where
       `i % 5 === 0`, per data-model.md
-- [ ] T007 [P] [US2] Add a CSS rule for `.weather-timeline-weekday-label` in `src/index.css`
+- [X] T007 [P] [US2] Add a CSS rule for `.weather-timeline-weekday-label` in `src/index.css`
       (small, muted text consistent with the existing `.weather-timeline-row-time` label styling)
-- [ ] T008 [P] [US2] Add an integration test in `tests/integration/weatherIconOverview.test.tsx`
+- [X] T008 [P] [US2] Add an integration test in `tests/integration/weatherIconOverview.test.tsx`
       asserting the 3-day view renders exactly 3 non-empty weekday labels, each on the first
       column of its day-group, and that the 7-day/24-hour views render none
 
@@ -91,13 +91,13 @@ columns has a distinct, correct weekday label above it (per quickstart.md US2).
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T009 Run `npm test` and fix any regressions introduced by T001-T008
-- [ ] T010 Run `npm run lint` and fix any issues
-- [ ] T011 Run `npm run build` and confirm a clean build
-- [ ] T012 Start `npm run dev` and manually walk through both scenarios in
+- [X] T009 Run `npm test` and fix any regressions introduced by T001-T008
+- [X] T010 Run `npm run lint` and fix any issues
+- [X] T011 Run `npm run build` and confirm a clean build
+- [X] T012 Start `npm run dev` and manually walk through both scenarios in
       `specs/026-fix-3-day/quickstart.md` via live Playwright verification against a real
       location, confirming the section-header fix and the new weekday labels
-- [ ] T013 Bump `package.json`'s version as the final step before commit, per standing practice
+- [X] T013 Bump `package.json`'s version as the final step before commit, per standing practice
 
 ---
 

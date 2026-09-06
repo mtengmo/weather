@@ -83,6 +83,17 @@ describe("buildHourlyTimelineData", () => {
     expect(data.nowBoundaryIndex).toBeNull();
   });
 
+  it("returns -1 nowBoundaryIndex when every period is forecast (026-fix-3-day, research.md §1)", () => {
+    const data = buildHourlyTimelineData(
+      series([
+        obs({ timestamp: hoursFromNow(1), temperature: 5, isForecast: true }),
+        obs({ timestamp: hoursFromNow(2), temperature: 6, isForecast: true }),
+      ]),
+      "metric"
+    );
+    expect(data.nowBoundaryIndex).toBe(-1);
+  });
+
   it("core rows (temperature, precipitation, wind, snow) stay available even when entirely gapped", () => {
     const data = buildHourlyTimelineData(series([obs({ timestamp: hoursFromNow(-1) })]), "metric");
     expect(data.temperature.available).toBe(true);

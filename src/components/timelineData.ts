@@ -131,9 +131,14 @@ function unitLabels(unit: UnitSystem) {
   };
 }
 
+/** Returns null when every period is observed (no forecast anywhere — the existing "no boundary"
+ *  case, unchanged). Returns -1 when every period is forecast (no observed data at all) — a
+ *  distinct value from null, since both used to collapse into the same "null" result and render
+ *  identically as "Observed, 100%" even when nothing observed existed (026-fix-3-day,
+ *  research.md §1). Otherwise returns the index of the last observed period. */
 function boundaryIndex(isForecastFlags: boolean[]): number | null {
   const idx = isForecastFlags.findIndex((f) => f);
-  return idx > 0 ? idx - 1 : null;
+  return idx === -1 ? null : idx - 1;
 }
 
 interface RowSource {

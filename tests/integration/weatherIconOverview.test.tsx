@@ -664,6 +664,57 @@ describe("Day-boundary marker (016-dashboard-polish-round-two, US3)", () => {
   });
 });
 
+describe("Weekday labels on the 3-day view (026-fix-3-day, US2)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("shows exactly 3 non-empty weekday labels on the 3-day view, one per day-group", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursFromNow(24 * 3), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }]
+          : [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await user.click(screen.getByRole("button", { name: "3 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    await screen.findAllByText("Morning");
+
+    const labels = Array.from(container.querySelectorAll(".weather-timeline-weekday-label"));
+    expect(labels).toHaveLength(3);
+    for (const label of labels) {
+      expect(label.textContent).not.toBe("");
+    }
+  });
+
+  it("shows no weekday-label row on the 24-hour or 7-day views", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: [],
+    }));
+
+    const user = userEvent.setup();
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    expect(container.querySelectorAll(".weather-timeline-weekday-label")).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+    expect(container.querySelectorAll(".weather-timeline-weekday-label")).toHaveLength(0);
+  });
+});
+
 describe("High/Low regression across all display modes (015-overview-3day-resolution-fix, US3)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
@@ -1371,6 +1422,27 @@ describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)"
 
     expect(container.querySelector(".weather-timeline-section-observed")).toHaveTextContent("Observed");
     expect(container.querySelector(".weather-timeline-section-forecast")).not.toBeInTheDocument();
+  });
+
+  it("shows only 'Forecast' (not 'Observed') when every visible period is forecast (026-fix-3-day, US1)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursFromNow(1), temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+        { timestamp: hoursFromNow(2), temperature: 9, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temperature/);
+
+    expect(container.querySelector(".weather-timeline-section-observed")).not.toBeInTheDocument();
+    const forecastSection = container.querySelector(".weather-timeline-section-forecast");
+    expect(forecastSection).toHaveTextContent("Forecast");
+    expect(forecastSection).toHaveStyle({ width: "100%" });
   });
 });
 
