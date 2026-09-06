@@ -2274,7 +2274,7 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     expect(gridlines).toHaveLength(3);
   });
 
-  it("always includes a 0° tick even when the data range doesn't naturally reach it (all-positive range)", async () => {
+  it("does not force a 0° tick into view for an all-positive range far from freezing", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -2289,14 +2289,14 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
 
-    // min=12 -> floor to 10; max=25 -> ceil to 30; without a zero-anchor this would be 10, 20, 30.
+    // min=12 -> floor to 10; max=25 -> ceil to 30; step 10 => 10, 20, 30 (no forced 0 far off-chart).
     const tickLabels = Array.from(
       container.querySelectorAll(".weather-timeline-temp-scale-tick")
     ).map((el) => el.textContent);
-    expect(tickLabels).toEqual(["0°", "10°", "20°", "30°"]);
+    expect(tickLabels).toEqual(["10°", "20°", "30°"]);
   });
 
-  it("always includes a 0° tick even when the data range doesn't naturally reach it (all-negative range)", async () => {
+  it("does not force a 0° tick into view for an all-negative range far from freezing", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -2311,11 +2311,11 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
 
-    // min=-25 -> floor to -30; max=-12 -> ceil to -10; without a zero-anchor this would be -30, -20, -10.
+    // min=-25 -> floor to -30; max=-12 -> ceil to -10; step 10 => -30, -20, -10 (no forced 0 far off-chart).
     const tickLabels = Array.from(
       container.querySelectorAll(".weather-timeline-temp-scale-tick")
     ).map((el) => el.textContent);
-    expect(tickLabels).toEqual(["-30°", "-20°", "-10°", "0°"]);
+    expect(tickLabels).toEqual(["-30°", "-20°", "-10°"]);
   });
 
   it("renders no degree scale or gridlines for the wind/precipitation/snow rows", async () => {

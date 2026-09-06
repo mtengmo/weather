@@ -143,11 +143,17 @@ interface Tick {
 }
 
 /** One tick per `TEMPERATURE_TICK_STEP`-degree step spanning the row's own min/max, rounded
- *  outward to the nearest step, and always widened to include a 0° tick even when the row's
- *  own range doesn't naturally reach it (036-declutter-temperature-scale). */
+ *  outward to the nearest step (032-dashboard-polish-round-seven, US7, research.md §9;
+ *  widened from a 5- to a 10-degree step in 036-declutter-temperature-scale). Deliberately does
+ *  NOT force a 0° tick into view for ranges that don't naturally reach it — the row's Y-scale is
+ *  fixed to the data's own min/max (computeYScale, shared with the plotted curve), so a forced
+ *  0° tick for a range far from freezing would compute a `y` far outside the visible 0-100 plot
+ *  band; its *label* would then get clamped back into view by clampTickLabelPercent below while
+ *  its gridline stayed off-canvas, producing a mislabeled-looking scale (036, reported live: "the
+ *  scale is not correct... looks like 10 degrees is zero"). */
 function buildTicks(scale: YScale): Tick[] {
-  const start = Math.min(0, Math.floor(scale.min / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP);
-  const end = Math.max(0, Math.ceil(scale.max / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP);
+  const start = Math.floor(scale.min / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP;
+  const end = Math.ceil(scale.max / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP;
 
   const ticks: Tick[] = [];
   for (let value = start; value <= end; value += TEMPERATURE_TICK_STEP) {
@@ -174,31 +180,26 @@ function clampTickLabelPercent(y: number): number {
 // a narrow range two adjacent ticks' clamped label positions can land close enough (or on
 // literally the same clamped position) that their text visually overlaps (035-fix-temp-scale-logo,
 // research.md §2). Thins the rendered *labels* only — gridlines still use the full `ticks` list —
-// keeping the topmost/bottommost (range boundary) ticks and the 0° tick always (the latter is
-// always present in `ticks` since buildTicks widens outward to include it,
-// 036-declutter-temperature-scale), and greedily keeping middle ticks only if they clear this
-// minimum gap from an already-kept label.
+// keeping the topmost/bottommost (range boundary) ticks always, and greedily keeping middle ticks
+// only if they clear this minimum gap from the previously kept label.
 const MIN_TICK_LABEL_GAP_PERCENT = 16;
 
 function dedupeCloseTicks(ticks: Tick[]): Tick[] {
   if (ticks.length <= 2) return ticks;
   const sorted = [...ticks].sort((a, b) => clampTickLabelPercent(a.y) - clampTickLabelPercent(b.y));
-  const mustKeepValues = new Set([sorted[0].value, sorted[sorted.length - 1].value, 0]);
-  const kept: Tick[] = [];
-  for (const candidate of sorted) {
+  const kept: Tick[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const candidate = sorted[i];
+    const isLast = i === sorted.length - 1;
+    const lastKeptY = clampTickLabelPercent(kept[kept.length - 1].y);
     const candidateY = clampTickLabelPercent(candidate.y);
-    if (mustKeepValues.has(candidate.value)) {
-      for (let i = kept.length - 1; i >= 0; i--) {
-        const collides = Math.abs(clampTickLabelPercent(kept[i].y) - candidateY) < MIN_TICK_LABEL_GAP_PERCENT;
-        if (collides && !mustKeepValues.has(kept[i].value)) kept.splice(i, 1);
-      }
-      kept.push(candidate);
+    const gap = candidateY - lastKeptY;
+    if (isLast && gap < MIN_TICK_LABEL_GAP_PERCENT && kept.length > 1) {
+      kept.pop();
+    } else if (!isLast && gap < MIN_TICK_LABEL_GAP_PERCENT) {
       continue;
     }
-    const collidesWithKept = kept.some(
-      (k) => Math.abs(clampTickLabelPercent(k.y) - candidateY) < MIN_TICK_LABEL_GAP_PERCENT
-    );
-    if (!collidesWithKept) kept.push(candidate);
+    kept.push(candidate);
   }
   // Return in the original (ascending-by-value) order — the sort above was only to walk the
   // ticks in on-screen top-to-bottom order while deciding which to keep.

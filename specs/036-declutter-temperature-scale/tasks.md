@@ -62,3 +62,16 @@ This feature has one user story and touches one existing component plus its exis
 ## Implementation Strategy
 
 Single user story — implement top to bottom: red tests (T001-T003) → green implementation (T004-T006) → polish (T007-T009). There is no smaller MVP slice; the whole feature is one small, atomic visual change.
+
+---
+
+## Phase 3: Revert the zero-anchor (bug reported live post-deploy)
+
+**Trigger**: After T004-T006a shipped and deployed, live use surfaced a real bug: "the scale is not correct, must be some kind of bug on it. looks like 10 degrees is zero." Root cause — see [spec.md](./spec.md)'s Assumptions section. Forcing a 0° tick into view for periods far from freezing computed a `y` far outside the visible 0-100 plot band (the row's Y-scale stays fixed to the actual data range per FR-004/SC-003); the label-clamping safeguard then pulled that off-canvas label back into view, where it collided with — and sometimes displaced — the real boundary tick's label.
+
+- [X] T010 In `src/components/WeatherIconOverview.tsx`, revert `buildTicks()` to drop the `Math.min(0, ...)` / `Math.max(0, ...)` widening from T005 — back to plain floor/ceil-to-step from the row's own min/max. Keep `TEMPERATURE_TICK_STEP = 10` (T004 stands).
+- [X] T011 In `src/components/WeatherIconOverview.tsx`, revert `dedupeCloseTicks()` (T006a) to its pre-036 form — drop the `mustKeepValues`-includes-`0` special case, back to only ever protecting the topmost/bottommost boundary ticks.
+- [X] T012 In `tests/integration/weatherIconOverview.test.tsx`, replace T002/T003's "always includes a 0° tick" assertions with the corrected expectation: an all-positive range (12–25°C) yields `["10°", "20°", "30°"]` and an all-negative range (-25 to -12°C) yields `["-30°", "-20°", "-10°"]` — no forced 0.
+- [X] T013 Update [spec.md](./spec.md) to mark the zero-anchor requirement (former FR-004/FR-005) superseded, documenting the bug and the revert in Assumptions.
+
+**Checkpoint**: `npm run test -- weatherIconOverview` — 82/82 pass. Full `npm test` — 527/527 pass, no regressions.
