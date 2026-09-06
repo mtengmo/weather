@@ -69,6 +69,7 @@ interface SmhiForecastData {
   precipitation_amount_mean?: number;
   cloud_area_fraction?: number; // octas, 0-8 — NOT the same 0-100 scale as the observation API
   symbol_code?: number; // SMHI's Wsymb2 table, 1-27 (022-met-forecast-source, research.md §3)
+  probability_of_precipitation?: number; // percent, 0-100 (024-restore-rain-chance, research.md §1)
 }
 
 // SMHI's own Wsymb2 weather-symbol table (numeric 1-27, SMHI's long-published, stable parameter
@@ -321,6 +322,7 @@ function buildForecastHourlySeries(
       windDirection: data?.wind_from_direction ?? null,
       windGust: data?.wind_speed_of_gust ?? null,
       symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
+      chanceOfRain: data?.probability_of_precipitation ?? null,
       isForecast: true,
     });
   }

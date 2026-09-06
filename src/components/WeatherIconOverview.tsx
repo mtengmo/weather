@@ -217,11 +217,9 @@ function LineRow({
                   .join(" ") || undefined}
                 title={point.interpolated ? "Estimated" : undefined}
               >
-                {point.combined
-                  ? `${formatRowValue(row, point.value)} (avg${point.combinedSourceCount && point.combinedSourceCount > 2 ? ` of ${point.combinedSourceCount}` : ""})`
-                  : highLowVisible && point.high != null && point.low != null
-                    ? `${formatRowValue(row, point.value)} (H ${formatValue(point.high, 0)}° / L ${formatValue(point.low, 0)}°)`
-                    : formatRowValue(row, point.value)}
+                {highLowVisible && point.high != null && point.low != null
+                  ? `${formatRowValue(row, point.value)} (H ${formatValue(point.high, 0)}° / L ${formatValue(point.low, 0)}°)`
+                  : formatRowValue(row, point.value)}
               </span>
             );
           }}

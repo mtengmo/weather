@@ -550,7 +550,7 @@ describe("Always-averaged forecast sources on the Overview (020-dashboard-polish
     vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
   });
 
-  it("always shows a single averaged reading, marked '(avg)', on a forecast period when 2+ sources have data (020-dashboard-polish-round-five, US2 — no toggle anymore)", async () => {
+  it("shows the plain blended value with no '(avg)' annotation when 2+ sources have data (024-restore-rain-chance, US2 — footer alone discloses blending)", async () => {
     const t = hoursFromNow(1);
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -568,12 +568,13 @@ describe("Always-averaged forecast sources on the Overview (020-dashboard-polish
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
 
-    expect(await screen.findByText(/10 °C \(avg\)/)).toBeInTheDocument();
+    expect(await screen.findByText("10 °C")).toBeInTheDocument();
+    expect(screen.queryByText(/\(avg/)).not.toBeInTheDocument();
     expect(screen.queryByText(/S 8°/)).not.toBeInTheDocument();
     expect(screen.queryByText(/O 12°/)).not.toBeInTheDocument();
   });
 
-  it("shows '(avg of 3)' when three sources have data for that period (022-met-forecast-source)", async () => {
+  it("shows no '(avg of N)' annotation when three sources have data for that period (024-restore-rain-chance, US2)", async () => {
     const t = hoursFromNow(1);
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -592,7 +593,8 @@ describe("Always-averaged forecast sources on the Overview (020-dashboard-polish
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
 
-    expect(await screen.findByText(/\(avg of 3\)/)).toBeInTheDocument();
+    expect(await screen.findByText("12 °C")).toBeInTheDocument();
+    expect(screen.queryByText(/\(avg/)).not.toBeInTheDocument();
   });
 
   it("shows the plain value when only one source has forecast data for that period", async () => {

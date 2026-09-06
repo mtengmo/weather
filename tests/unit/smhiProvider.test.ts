@@ -314,6 +314,36 @@ describe("smhiProvider", () => {
       });
     });
 
+    describe("probability_of_precipitation -> chanceOfRain (024-restore-rain-chance, research.md §1)", () => {
+      it("threads a genuine probability_of_precipitation value onto chanceOfRain", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, probability_of_precipitation: 70 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.chanceOfRain).toBe(70);
+      });
+
+      it("leaves chanceOfRain null when no probability_of_precipitation is present", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.chanceOfRain).toBeNull();
+      });
+    });
+
     it("rounds raw geolocation coordinates to 6 decimals before requesting the forecast (021 follow-up)", async () => {
       // SMHI's forecast API 404s (surfaced by the browser as a misleading CORS error) once the
       // URL's lat/lon exceed 6 decimal places — confirmed live. Raw browser geolocation
