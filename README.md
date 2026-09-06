@@ -1,4 +1,4 @@
-# Weather History
+# Tengmo Väder
 
 A client-only web app showing observed (historical) weather for your current location and saved favorite places: an hourly graph for the last 24 hours, and a daily high/low/average + total-precipitation graph for the last 7 days, each with a "View details" table. Pick from three visual themes — Midnight, Ivory, and Glass — via the theme picker. No backend or account required — favorites, unit preference, and theme are stored locally in your browser.
 

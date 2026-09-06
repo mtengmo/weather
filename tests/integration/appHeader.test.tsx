@@ -70,10 +70,10 @@ describe("App header consolidation (009-timeline-polish-and-header, US1)", () =>
     vi.unstubAllGlobals();
   });
 
-  it("has no standalone 'Weather History' heading", () => {
+  it("has no standalone 'Tengmo Väder' heading", () => {
     render(<App />);
 
-    expect(screen.queryByRole("heading", { name: "Weather History" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Tengmo Väder" })).not.toBeInTheDocument();
   });
 });
 

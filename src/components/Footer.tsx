@@ -26,7 +26,7 @@ export default function Footer({ series, lastUpdated, contributingForecastSource
   return (
     <footer className="app-footer">
       {disclosure !== null && <span className="app-footer-source">{disclosure}</span>}
-      <span>Weather History v{APP_VERSION}</span>
+      <span>Tengmo Väder v{APP_VERSION}</span>
       <button type="button" onClick={() => setHowItWorksOpen(true)}>
         How this works
       </button>

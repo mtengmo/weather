@@ -34,8 +34,8 @@ export default defineConfig({
         runtimeCaching: [],
       },
       manifest: {
-        name: "Weather History",
-        short_name: "Weather",
+        name: "Tengmo Väder",
+        short_name: "TengmoVäder",
         description: "SMHI and Open-Meteo weather history, forecast, and comparison.",
         start_url: "/",
         display: "standalone",

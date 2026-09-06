@@ -2,7 +2,7 @@ const BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 
 // Nominatim's public-instance usage policy requires a descriptive User-Agent identifying
 // the calling application (006-forecast-now-marker, research.md §6).
-const USER_AGENT = "weather.tengmo.com weather-history-app (reverse geocoding for unnamed stations)";
+const USER_AGENT = "vader.tengmo.com weather-history-app (reverse geocoding for unnamed stations)";
 
 // Most-specific-first: prefer whichever populated-place field Nominatim actually returned.
 const ADDRESS_FIELD_PREFERENCE = ["city", "town", "village", "suburb", "municipality", "county"] as const;

@@ -8,7 +8,7 @@ import Footer from "../../src/components/Footer";
 describe("Footer (016-dashboard-polish-round-two, US8)", () => {
   it("shows the current version", () => {
     render(<Footer series={null} lastUpdated={null} contributingForecastSourceNames={[]} />);
-    expect(screen.getByText(/Weather History v/)).toBeInTheDocument();
+    expect(screen.getByText(/Tengmo Väder v/)).toBeInTheDocument();
   });
 
   it("opens the privacy notice when 'Privacy' is clicked, and closes it again", async () => {
@@ -78,7 +78,7 @@ describe("Data source and freshness disclosure (018-dashboard-visual-redesign, U
     render(<Footer series={null} lastUpdated={null} contributingForecastSourceNames={[]} />);
 
     expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Weather History v/)).toBeInTheDocument();
+    expect(screen.getByText(/Tengmo Väder v/)).toBeInTheDocument();
   });
 });
 
