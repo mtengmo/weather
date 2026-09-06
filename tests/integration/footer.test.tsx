@@ -27,6 +27,31 @@ describe("Footer (016-dashboard-polish-round-two, US8)", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog", { name: "Privacy notice" })).not.toBeInTheDocument();
   });
+
+  it("opens 'How this works' when clicked, covers every current feature, and closes again (030-how-it-works)", async () => {
+    const user = userEvent.setup();
+    render(<Footer series={null} lastUpdated={null} contributingForecastSourceNames={[]} />);
+
+    expect(screen.queryByRole("dialog", { name: "How this works" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "How this works" }));
+
+    const dialog = screen.getByRole("dialog", { name: "How this works" });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(/24 Hours/);
+    expect(dialog).toHaveTextContent(/3 Days/);
+    expect(dialog).toHaveTextContent(/7 Days/);
+    expect(dialog).toHaveTextContent(/observed/i);
+    expect(dialog).toHaveTextContent(/forecast/i);
+    expect(dialog).toHaveTextContent(/SMHI/);
+    expect(dialog).toHaveTextContent(/Open-Meteo/);
+    expect(dialog).toHaveTextContent(/MET Norway/);
+    expect(dialog).toHaveTextContent(/UV/);
+    expect(dialog).toHaveTextContent(/warning/i);
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "How this works" })).not.toBeInTheDocument();
+  });
 });
 
 describe("Data source and freshness disclosure (018-dashboard-visual-redesign, US6)", () => {

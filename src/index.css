@@ -1097,3 +1097,9 @@ a {
 .warning-level-class_3.warning-banner-item {
   border-left-color: #dc2626;
 }
+
+.map-precipitation-legend {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
