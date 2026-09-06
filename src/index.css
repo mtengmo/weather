@@ -522,13 +522,15 @@ a {
   color: var(--text-muted);
 }
 
-/* Weekday label above each day's group of sub-day period columns on the 3-day view
-   (026-fix-3-day, US2) — only rendered on the first column of each 5-column day-group. */
+/* Weekday label for each day's group of sub-day period columns on the 3-day view
+   (026-fix-3-day, US2) — one per 5-column day group, sharing the Observed/Forecast row
+   (026-fix-3-day follow-up). Centered within its group and in the foreground text color so
+   it stays readable over the muted band labels it shares the row with. */
 .weather-timeline-weekday-label {
   font-weight: 700;
   font-size: 0.7rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
+  color: var(--text);
+  text-align: center;
   letter-spacing: 0.02em;
 }
 
@@ -782,7 +784,10 @@ a {
    grouping aid above the time-label row; aria-hidden since every cell already discloses its own
    observed/forecast status. */
 .weather-timeline-sections {
-  display: flex;
+  /* Grid rather than flex so the Observed/Forecast bands and (on the 3-day view) the weekday
+     labels can stack in the SAME row/cell instead of the weekday needing a row of its own
+     (026-fix-3-day follow-up). */
+  display: grid;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -791,11 +796,33 @@ a {
   padding-left: 7rem; /* matches the sticky title column's width, so sections align with data columns */
 }
 
+.weather-timeline-sections-bands {
+  grid-area: 1 / 1;
+  display: flex;
+}
+
+.weather-timeline-sections-weekdays {
+  grid-area: 1 / 1;
+  display: grid;
+  align-items: center;
+  pointer-events: none;
+}
+
 .weather-timeline-section-observed,
 .weather-timeline-section-forecast {
-  text-align: center;
-  padding: 0.25rem 0;
+  padding: 0.25rem 0.35rem;
   border-bottom: 1px solid var(--border);
+}
+
+/* Each band's label sits at the timeline's outer edge — Observed hard left, Forecast hard right —
+   so neither can land on top of a weekday label, which is centered within its own 5-column day
+   group now that both share this row (026-fix-3-day follow-up). */
+.weather-timeline-section-observed {
+  text-align: left;
+}
+
+.weather-timeline-section-forecast {
+  text-align: right;
 }
 
 /* Sticky row-label column (018-dashboard-visual-redesign, US3): a fixed title column beside the

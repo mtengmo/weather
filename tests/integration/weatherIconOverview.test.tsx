@@ -409,7 +409,7 @@ describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
     await user.click(screen.getByRole("button", { name: "3 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
-    expect(await screen.findByText("Morning")).toBeInTheDocument();
+    expect((await screen.findAllByText("Morning")).length).toBeGreaterThan(0);
   });
 
   it("does not fetch again when switching between 'Last 3 days' and 'Last 7 days'", async () => {
@@ -429,7 +429,7 @@ describe("3-day view (015-overview-3day-resolution-fix, US2)", () => {
     const callsAfter7Day = vi.mocked(getObservations).mock.calls.length;
 
     await user.click(screen.getByRole("button", { name: "3 Days" }));
-    await screen.findByText("Morning");
+    await screen.findAllByText("Morning");
     await user.click(screen.getByRole("button", { name: "7 Days" }));
 
     expect(vi.mocked(getObservations).mock.calls.length).toBe(callsAfter7Day);
@@ -462,7 +462,7 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
       .length;
   }
 
-  it("shows all 15 sub-day columns on a direct 24h -> 3-day click (no intermediate 7-day visit)", async () => {
+  it("shows all 30 sub-day columns on a direct 24h -> 3-day click (no intermediate 7-day visit)", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -478,7 +478,8 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
     await screen.findAllByText("Morning");
 
-    expect(await countTimePeriods(container)).toBe(15);
+    // 3 past days (15 periods) + 3 forecast days (15, capped) — 026-fix-3-day follow-up.
+    expect(await countTimePeriods(container)).toBe(30);
   });
 
   it("shows the correct column count across a full toggle sequence: 3-day -> 7-day -> 3-day -> 24h -> 3-day", async () => {
@@ -502,7 +503,7 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
 
     await user.click(screen.getByRole("button", { name: "3 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    expect(await countTimePeriods(container)).toBe(15);
+    expect(await countTimePeriods(container)).toBe(30);
 
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     // 7 observed-window + 4 forecast days — unaffected by the forecast-reach cap
@@ -510,16 +511,16 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
     expect(await countTimePeriods(container)).toBe(11);
 
     await user.click(screen.getByRole("button", { name: "3 Days" }));
-    expect(await countTimePeriods(container)).toBe(15);
+    expect(await countTimePeriods(container)).toBe(30);
 
     await user.click(screen.getByRole("button", { name: "24 Hours" }));
     expect(await countTimePeriods(container)).toBe(1); // the single 24h-window observation
 
     await user.click(screen.getByRole("button", { name: "3 Days" }));
-    expect(await countTimePeriods(container)).toBe(15);
+    expect(await countTimePeriods(container)).toBe(30);
   });
 
-  it("shows exactly 5 columns (today only) when the location has no forecast data at all", async () => {
+  it("shows the 3 past days' 15 columns when the location has no forecast data at all", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -535,9 +536,10 @@ describe("3-day view period-count regression guard (016-dashboard-polish-round-t
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
     await user.click(screen.getByRole("button", { name: "3 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
-    await screen.findByText("Morning");
+    await screen.findAllByText("Morning");
 
-    expect(await countTimePeriods(container)).toBe(5);
+    // 3 past days x 5 periods, with no forward extension (026-fix-3-day follow-up).
+    expect(await countTimePeriods(container)).toBe(15);
   });
 });
 
@@ -625,7 +627,7 @@ describe("Day-boundary marker (016-dashboard-polish-round-two, US3)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("shows 2 day-boundary markers on the 3-day view (3 days)", async () => {
+  it("shows a day-boundary marker between each pair of rendered days on the 3-day view", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -643,7 +645,9 @@ describe("Day-boundary marker (016-dashboard-polish-round-two, US3)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
     await screen.findAllByText("Morning");
 
-    expect(container.querySelectorAll(".weather-timeline-day-boundary")).toHaveLength(2);
+    // 3 past days + 3 forecast days = 6 rendered days, so 5 boundaries between them
+    // (026-fix-3-day follow-up).
+    expect(container.querySelectorAll(".weather-timeline-day-boundary")).toHaveLength(5);
   });
 
   it("shows no day-boundary marker on the 7-day view", async () => {
@@ -671,7 +675,7 @@ describe("Weekday labels on the 3-day view (026-fix-3-day, US2)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("shows exactly 3 non-empty weekday labels on the 3-day view, one per day-group", async () => {
+  it("shows one non-empty weekday label per rendered day-group on the 3-day view", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -689,8 +693,9 @@ describe("Weekday labels on the 3-day view (026-fix-3-day, US2)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
     await screen.findAllByText("Morning");
 
+    // 3 past days + 3 forecast days = 6 rendered day-groups (026-fix-3-day follow-up).
     const labels = Array.from(container.querySelectorAll(".weather-timeline-weekday-label"));
-    expect(labels).toHaveLength(3);
+    expect(labels).toHaveLength(6);
     for (const label of labels) {
       expect(label.textContent).not.toBe("");
     }

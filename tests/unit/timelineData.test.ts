@@ -311,12 +311,15 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
     expect(data.periods.every((p) => subDayLabels.includes(p.label))).toBe(true);
   });
 
-  it("never returns more than 15 periods (3 days x 5 sub-day periods)", () => {
+  it("caps the forecast side at 3 days' worth of periods, however far the forecast reaches (026-fix-3-day follow-up)", () => {
     const data = build3DayTimelineData(
       series([obs({ timestamp: hoursFromNow(24 * 6), temperature: 5, isForecast: true })]),
       "metric"
     );
-    expect(data.periods.length).toBeLessThanOrEqual(15);
+    // 3 past days (15 periods) + at most 3 forward days (15 periods). Note the isForecast flag
+    // also covers today's own not-yet-finished periods, so it isn't a proxy for "forward days".
+    expect(data.periods.length).toBeLessThanOrEqual(30);
+    expect(data.periods.length % 5).toBe(0); // always whole days, never a partial trailing day
   });
 
   it("carries high/low onto a sub-day temperature point the same way a daily point does (015, FR-007)", () => {
@@ -333,10 +336,13 @@ describe("build3DayTimelineData (015-overview-3day-resolution-fix, US2/US3)", ()
     expect(populatedPoint?.low).not.toBeUndefined();
   });
 
-  it("does not fabricate a day beyond what the observations' forecast actually reaches", () => {
+  it("does not fabricate a forward day beyond what the observations' forecast actually reaches", () => {
     const data = build3DayTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]), "metric");
-    // No forecast at all — only "today"'s 5 sub-day periods should exist.
-    expect(data.periods).toHaveLength(5);
+    // No forecast data at all — the 3 past days' 15 sub-day periods only, with no forward
+    // extension (026-fix-3-day follow-up: the past side is always rendered, matching the
+    // 24h/7-day views). Today's own not-yet-finished periods are still flagged isForecast by the
+    // existing wall-clock rule, which this test deliberately doesn't assert on.
+    expect(data.periods).toHaveLength(15);
   });
 });
 

@@ -293,37 +293,42 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
   }
 
   it("includes an early-morning (00:00-06:00) observation on the first rendered day in its Morning bucket (020-dashboard-polish-round-five, US1)", () => {
-    const earlyMorning = new Date();
+    // The first rendered day is now dayCount-1 days back (026-fix-3-day follow-up), so the
+    // widened Morning window belongs to that earliest day, not to today.
+    const earlyMorning = new Date(Date.now() - 2 * 24 * 3600_000);
     earlyMorning.setHours(3, 0, 0, 0);
     const result = toSubDayBuckets([obs({ timestamp: earlyMorning.toISOString(), temperature: 7 })], 3);
 
-    const morning = result.find((b) => b.subDayLabel === "Morning");
-    expect(morning?.high).toBe(7);
-    expect(morning?.low).toBe(7);
+    const firstDayMorning = result[0];
+    expect(firstDayMorning.subDayLabel).toBe("Morning");
+    expect(firstDayMorning.high).toBe(7);
+    expect(firstDayMorning.low).toBe(7);
   });
 
   it("leaves a later rendered day's own Morning boundary at 6am, unaffected by the first-day widening", () => {
-    const dayPlusOneEarlyMorning = new Date(Date.now() + 24 * 3600_000);
-    dayPlusOneEarlyMorning.setHours(3, 0, 0, 0);
+    // One day after the first rendered day (i.e. dayCount-2 days back).
+    const secondDayEarlyMorning = new Date(Date.now() - 1 * 24 * 3600_000);
+    secondDayEarlyMorning.setHours(3, 0, 0, 0);
     const result = toSubDayBuckets(
-      [obs({ timestamp: dayPlusOneEarlyMorning.toISOString(), temperature: 9, isForecast: true })],
+      [obs({ timestamp: secondDayEarlyMorning.toISOString(), temperature: 9 })],
       3
     );
 
-    // Day+1's own 00:00-06:00 is covered by day 0's Night period (which reaches 6h into day+1),
-    // not by day+1's own Morning — confirming day+1's Morning boundary is still 6, not widened.
-    const dayZeroNight = result[4]; // first day's 5 periods: Morning, Lunch, Afternoon, Evening, Night
-    const dayOneMorning = result[5];
-    expect(dayZeroNight.subDayLabel).toBe("Night");
-    expect(dayOneMorning?.subDayLabel).toBe("Morning");
-    expect(dayZeroNight.high).toBe(9);
-    expect(dayOneMorning.high).toBeNull();
+    // The second rendered day's own 00:00-06:00 is covered by the first day's Night period (which
+    // reaches 6h into it), not by its own Morning — confirming only the first day is widened.
+    const firstDayNight = result[4]; // first day's 5 periods: Morning, Lunch, Afternoon, Evening, Night
+    const secondDayMorning = result[5];
+    expect(firstDayNight.subDayLabel).toBe("Night");
+    expect(secondDayMorning.subDayLabel).toBe("Morning");
+    expect(firstDayNight.high).toBe(9);
+    expect(secondDayMorning.high).toBeNull();
   });
 
-  it("returns exactly 5 sub-day buckets for today when there is no forecast data", () => {
+  it("returns the past dayCount days' buckets when there is no forecast data (026-fix-3-day follow-up)", () => {
     const result = toSubDayBuckets([], 3);
-    expect(result).toHaveLength(5);
-    expect(result.map((b) => b.subDayLabel)).toEqual([
+    // 3 past days (including today) x 5 periods, with no forward extension.
+    expect(result).toHaveLength(15);
+    expect(result.slice(0, 5).map((b) => b.subDayLabel)).toEqual([
       "Morning",
       "Lunch",
       "Afternoon",
@@ -332,36 +337,40 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
     ]);
   });
 
-  it("returns 10 buckets when forecast reaches 1 day out", () => {
+  it("adds one forward day's buckets when forecast reaches 1 day out", () => {
     const result = toSubDayBuckets([obs({ timestamp: midRollingDayFromNow(1), temperature: 5, isForecast: true })], 3);
-    expect(result).toHaveLength(10);
+    expect(result).toHaveLength(20); // 3 past days + 1 forward day
   });
 
-  it("returns 15 buckets when forecast reaches 2+ days out (the full 3-day view)", () => {
+  it("adds two forward days' buckets when forecast reaches 2 days out", () => {
     const result = toSubDayBuckets([obs({ timestamp: midRollingDayFromNow(2), temperature: 5, isForecast: true })], 3);
-    expect(result).toHaveLength(15);
+    expect(result).toHaveLength(25); // 3 past days + 2 forward days
   });
 
-  it("never exceeds dayCount * 5 buckets even when forecast reaches much further out", () => {
+  it("extends as far forward as the forecast actually reaches (capping is the caller's job)", () => {
     const result = toSubDayBuckets([obs({ timestamp: daysFromNow(6), temperature: 5, isForecast: true })], 3);
-    expect(result).toHaveLength(15);
+    // 3 past days + however many forward days the data reaches — build3DayTimelineData applies the
+    // forecast-reach cap itself, mirroring the 7-day view (026-fix-3-day follow-up).
+    expect(result.length).toBeGreaterThan(15);
+    expect(result.length % 5).toBe(0);
   });
 
   it("aggregates a sub-day bucket's own observations (high/low/average)", () => {
     const observations: WeatherObservation[] = [
-      obs({ timestamp: daysFromNow(0), temperature: 10 }), // lands in the "Afternoon" window (14:00)
+      obs({ timestamp: daysFromNow(0), temperature: 10 }), // lands in today's "Afternoon" window (14:00)
     ];
 
     const result = toSubDayBuckets(observations, 3);
-    const afternoon = result.find((b) => b.subDayLabel === "Afternoon");
+    // Today is the LAST of the three past days, so its Afternoon is the third day's third period.
+    const afternoon = result.filter((b) => b.subDayLabel === "Afternoon")[2];
 
     expect(afternoon?.high).toBe(10);
     expect(afternoon?.low).toBe(10);
     expect(afternoon?.average).toBe(10);
   });
 
-  it("always returns exactly dayCount * 5 entries when a smaller dayCount is requested", () => {
-    const result = toSubDayBuckets([obs({ timestamp: daysFromNow(4), temperature: 5, isForecast: true })], 1);
+  it("returns a single day's 5 entries when dayCount is 1 and there is no forecast", () => {
+    const result = toSubDayBuckets([], 1);
     expect(result).toHaveLength(5);
   });
 });

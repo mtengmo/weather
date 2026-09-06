@@ -154,11 +154,22 @@ function subDayBucketsForDate(
 }
 
 /**
- * Every day from "today" through `dayCount - 1` days ahead, each broken into the same 5 fixed
- * sub-day periods — a single, uniform resolution throughout, never mixed with plain daily columns
- * (015-overview-3day-resolution-fix, FR-003/FR-004). A day beyond how far the underlying
- * observations' forecast actually reaches is omitted entirely, never fabricated (FR-005) —
- * mirrors `toDailyAggregates`' own `forwardBucketCount` convention.
+ * The last `dayCount` days (ending with today) plus up to `dayCount` days forward — as far as the
+ * underlying observations' forecast actually reaches — each broken into the same 5 fixed sub-day
+ * periods: a single, uniform resolution throughout, never mixed with plain daily columns
+ * (015-overview-3day-resolution-fix, FR-003/FR-004).
+ *
+ * The past side mirrors `toDailyAggregates`' own "N past buckets" semantics, which the 24-hour and
+ * 7-day views both already follow — this view previously started at *today* and only went forward,
+ * making it the odd one out with no observed data at all (and, before ~11:00 local, not even one
+ * completed period of today), which read as "the 3-day view's observations are broken"
+ * (026-fix-3-day follow-up). A forward day beyond the forecast's real reach is omitted
+ * entirely, never fabricated (FR-005).
+ *
+ * The forward side is capped here, in whole days, rather than by trimming entries afterwards the
+ * way the 7-day view's `capForecastReach` does — an entry-count trim would cut mid-day and leave a
+ * partial trailing day, breaking the "always exactly 5 periods per day" contract that the
+ * day-boundary markers and weekday labels both rely on.
  */
 export function toSubDayBuckets(
   observations: WeatherObservation[],
@@ -167,15 +178,16 @@ export function toSubDayBuckets(
   const now = Date.now();
   const indices = observations.map((o) => bucketIndexOf(o, now));
   const minIndex = indices.length > 0 ? Math.min(...indices) : 0;
-  const forwardBucketCount = minIndex < 0 ? -minIndex : 0;
-  // Day 0 ("today") always renders, same as toDailyAggregates' index 0 always existing; day N
-  // (N >= 1) only renders when forecast data reaches at least N days out.
-  const availableDayCount = Math.min(dayCount, 1 + forwardBucketCount);
+  const forwardDayCount = Math.min(minIndex < 0 ? -minIndex : 0, dayCount);
 
+  const firstDayOffset = -(dayCount - 1);
   const buckets: DailyAggregate[] = [];
-  for (let dayOffset = 0; dayOffset < availableDayCount; dayOffset++) {
+  for (let dayOffset = firstDayOffset; dayOffset <= forwardDayCount; dayOffset++) {
     const date = new Date(now + dayOffset * BUCKET_MS);
-    buckets.push(...subDayBucketsForDate(date, observations, now, dayOffset === 0));
+    // The Morning-widened-to-midnight rule applies to whichever day renders first — no day before
+    // it exists to cover its own 00:00-06:00 window via that earlier day's Night period
+    // (020-dashboard-polish-round-five, research.md §1).
+    buckets.push(...subDayBucketsForDate(date, observations, now, dayOffset === firstDayOffset));
   }
   return buckets;
 }

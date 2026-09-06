@@ -363,7 +363,10 @@ export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSyst
 const SUB_DAY_VIEW_DAY_COUNT = 3;
 
 /** Builds the synchronized sub-day timeline (3-day view) from an already-loaded series — every
- *  day at the same sub-day resolution, never mixed with plain daily columns (015, FR-003/FR-004). */
+ *  day at the same sub-day resolution, never mixed with plain daily columns (015, FR-003/FR-004).
+ *  `toSubDayBuckets` caps its own forward reach in whole days (026-fix-3-day follow-up), so no
+ *  `capForecastReach` entry-trim is applied here — that would cut mid-day and leave a partial
+ *  trailing day. */
 export function build3DayTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
   return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit);
 }

@@ -642,43 +642,46 @@ export default function WeatherIconOverview({
               ))}
 
               <div className="weather-timeline-sections" aria-hidden="true">
-                {showObservedSection && (
+                <div className="weather-timeline-sections-bands">
+                  {showObservedSection && (
+                    <div
+                      className="weather-timeline-section-observed"
+                      style={{ width: `${(observedCount / timelinePeriodCount) * 100}%` }}
+                    >
+                      Observed
+                    </div>
+                  )}
+                  {showForecastSection && (
+                    <div
+                      className="weather-timeline-section-forecast"
+                      style={{ width: `${((timelinePeriodCount - observedCount) / timelinePeriodCount) * 100}%` }}
+                    >
+                      Forecast
+                    </div>
+                  )}
+                </div>
+                {/* Weekday labels share this same row as the Observed/Forecast bands rather than
+                    taking a row of their own (026-fix-3-day follow-up) — one label per
+                    5-column day group, spanning that group's full width. */}
+                {displayMode === "last-3-days" && (
                   <div
-                    className="weather-timeline-section-observed"
-                    style={{ width: `${(observedCount / timelinePeriodCount) * 100}%` }}
+                    className="weather-timeline-sections-weekdays"
+                    style={{ gridTemplateColumns: `repeat(${timeline.periods.length}, 1fr)` }}
                   >
-                    Observed
-                  </div>
-                )}
-                {showForecastSection && (
-                  <div
-                    className="weather-timeline-section-forecast"
-                    style={{ width: `${((timelinePeriodCount - observedCount) / timelinePeriodCount) * 100}%` }}
-                  >
-                    Forecast
+                    {timeline.periods.map((period, i) =>
+                      i % 5 === 0 ? (
+                        <span
+                          key={period.key}
+                          className="weather-timeline-weekday-label"
+                          style={{ gridColumn: "span 5" }}
+                        >
+                          {new Date(period.key).toLocaleDateString([], { weekday: "short" })}
+                        </span>
+                      ) : null
+                    )}
                   </div>
                 )}
               </div>
-
-              {displayMode === "last-3-days" && (
-                <div className="weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-weekday">
-                  <div className="weather-timeline-row-title" aria-hidden="true" />
-                  <PeriodGrid
-                    periods={timeline.periods}
-                    className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-grid-cells"
-                  >
-                    {(period, i) =>
-                      i % 5 === 0 ? (
-                        <span className="weather-timeline-weekday-label">
-                          {new Date(period.key).toLocaleDateString([], { weekday: "short" })}
-                        </span>
-                      ) : (
-                        <span aria-hidden="true" />
-                      )
-                    }
-                  </PeriodGrid>
-                </div>
-              )}
 
               <div className="weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-time">
                 <div className="weather-timeline-row-title" aria-hidden="true" />
