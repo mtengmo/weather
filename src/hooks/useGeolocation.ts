@@ -41,40 +41,25 @@ export function useGeolocation(): UseGeolocationResult {
         });
         setStatus("granted");
 
-        // Reuses the same nearest-station lookup that already names nearby comparison
-        // stations, independent of SMHI's 50km data-coverage gate (research.md §6) — a
-        // naming-lookup failure must not block the location from becoming usable.
-        getNearestStations(coords, 1)
-          .then((stations) => {
-            const name = stations[0]?.displayName;
-            if (name && name !== UNNAMED_STATION) {
-              setLocation((current) =>
-                current && current.source === "current-position"
-                  ? { ...current, displayName: name }
-                  : current
-              );
-              return;
-            }
+        // A human-recognizable place name is preferred over the nearest weather station's own
+        // raw name (032-dashboard-polish-round-seven, US2, research.md §3) — both are fetched
+        // independently (one's failure never blocks the other) and resolved together so the
+        // location's name is only ever set once, directly to the best available name, rather
+        // than risking a later, worse update overwriting an already-good one.
+        Promise.allSettled([reverseGeocode(coords), getNearestStations(coords, 1)]).then(
+          ([placeResult, stationResult]) => {
+            const placeName = placeResult.status === "fulfilled" ? placeResult.value : null;
+            const stationName =
+              stationResult.status === "fulfilled" ? stationResult.value[0]?.displayName : undefined;
 
-            // The station has no usable name — attempt to resolve an approximate place
-            // name from its coordinates instead (006-forecast-now-marker, FR-008–FR-010).
-            // Fire-and-forget: must not block `status` or delay the rest of the page.
-            reverseGeocode(coords)
-              .then((placeName) => {
-                if (!placeName) return;
-                setLocation((current) =>
-                  current && current.source === "current-position"
-                    ? { ...current, displayName: `near ${placeName}` }
-                    : current
-                );
-              })
-              .catch(() => {
-                // Keep the "Unnamed station" placeholder.
-              });
-          })
-          .catch(() => {
-            // Keep the "Unnamed station" placeholder.
-          });
+            const name = placeName ?? (stationName && stationName !== UNNAMED_STATION ? stationName : null);
+            if (!name) return;
+
+            setLocation((current) =>
+              current && current.source === "current-position" ? { ...current, displayName: name } : current
+            );
+          }
+        );
       },
       (error) => {
         setStatus(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");

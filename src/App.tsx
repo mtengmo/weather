@@ -6,6 +6,7 @@ import { useUnitPreference } from "./hooks/useUnitPreference";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
 import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
+import { useWarningDismissal } from "./hooks/useWarningDismissal";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
@@ -44,6 +45,7 @@ export default function App() {
     useNearbyStationCountPreference();
   const { visible: highLowVisible, setVisible: setHighLowVisible } =
     useHighLowVisibilityPreference();
+  const { dismissedIds, dismiss: dismissWarning } = useWarningDismissal();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -51,9 +53,6 @@ export default function App() {
   // Overview is the primary, most digestible view of current conditions — the app opens on it
   // whenever a location resolves, rather than the classic line-graph (013, FR-001).
   const [view, setView] = useState<View>("overview");
-  // The view active immediately before opening the map, so "Back" can return to it
-  // (019-dashboard-polish-round-four, US2) — the map previously had no way to leave.
-  const [previousView, setPreviousView] = useState<View>("overview");
   // True once Details/graph has been opened at least once this session — gates nearby-station
   // comparison fetching, which only that view ever renders (025-reduce-api-requests, US1). Never
   // reset back to false once set, so returning to the Overview keeps the data already fetched.
@@ -151,12 +150,13 @@ export default function App() {
   }
 
   function openMap() {
-    setPreviousView(view);
     setView("map");
   }
 
   function closeMap() {
-    setView(previousView);
+    // "Home" always means the Overview, everywhere it appears (032-dashboard-polish-round-seven,
+    // US3) — no longer "whatever view was open before the Map."
+    viewOverview();
   }
 
   const locationUnavailable =
@@ -210,9 +210,9 @@ export default function App() {
           {view !== "overview" && (
             <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
           )}
-          {/* "Back" always means "go to the Overview," everywhere in the app; "Details" always
+          {/* "Home" always means "go to the Overview," everywhere in the app; "Details" always
               means "go to the Details table" — one consistent navigation vocabulary across
-              Overview, graph, details, and map (020-dashboard-polish-round-five, US4). */}
+              Overview, graph, details, and map (032-dashboard-polish-round-seven, US3). */}
           {view === "overview" && (
             <button type="button" onClick={() => setView("graph")}>
               Details
@@ -224,18 +224,18 @@ export default function App() {
                 Details
               </button>
               <button type="button" onClick={viewOverview}>
-                Back
+                Home
               </button>
             </>
           )}
           {view === "details" && (
             <button type="button" onClick={viewOverview}>
-              Back
+              Home
             </button>
           )}
           {view === "map" ? (
             <button type="button" onClick={closeMap}>
-              Back
+              Home
             </button>
           ) : (
             <button type="button" onClick={openMap}>
@@ -245,7 +245,12 @@ export default function App() {
         </div>
       </header>
 
-      {selected && <WarningBanner warnings={warnings} />}
+      {selected && (
+        <WarningBanner
+          warnings={warnings.filter((w) => !dismissedIds.has(w.id))}
+          onDismiss={dismissWarning}
+        />
+      )}
 
       {locationUnavailable && (
         <p className="error-banner" role="alert">

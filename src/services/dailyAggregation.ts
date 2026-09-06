@@ -191,3 +191,31 @@ export function toSubDayBuckets(
   }
   return buckets;
 }
+
+/**
+ * Sums precipitation over the *local calendar day* containing `reference` — midnight to
+ * midnight, combining already-elapsed (observed) and still-upcoming (forecast) hours — rather
+ * than a rolling 24-hour window from `reference` itself, which can spill into tomorrow
+ * (033-todays-rain-total). Returns `null`, not `0`, when there's no non-null precipitation
+ * reading anywhere in that span, matching this module's existing never-fabricate convention.
+ */
+export function sumCalendarDayPrecipitation(
+  observations: WeatherObservation[],
+  reference: Date
+): number | null {
+  const dayStart = new Date(reference);
+  dayStart.setHours(0, 0, 0, 0);
+  const startMs = dayStart.getTime();
+  const endMs = startMs + BUCKET_MS;
+
+  const readings = nonNull(
+    observations
+      .filter((o) => {
+        const t = Date.parse(o.timestamp);
+        return t >= startMs && t < endMs;
+      })
+      .map((o) => o.precipitation)
+  );
+
+  return readings.length > 0 ? readings.reduce((sum, v) => sum + v, 0) : null;
+}

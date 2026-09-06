@@ -33,18 +33,18 @@ describe("deriveWeatherCondition (007-weather-icon-overview)", () => {
     expect(deriveWeatherCondition(base({ temperature: null, precipitation: 0 }))).not.toBeNull();
   });
 
-  it("returns snowy when precipitation is positive and temperature is at or below freezing", () => {
-    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: 0 }))).toBe("snowy");
-    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: -5 }))).toBe("snowy");
+  it("returns light-snow below the heavy threshold, and heavy-snow at/above it, when freezing (032-dashboard-polish-round-seven, US5)", () => {
+    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: 0 }))).toBe("light-snow");
+    expect(deriveWeatherCondition(base({ precipitation: 2.5, temperature: -5 }))).toBe("heavy-snow");
   });
 
-  it("returns rainy when precipitation is positive and temperature is above freezing", () => {
-    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: 0.1 }))).toBe("rainy");
-    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: 10 }))).toBe("rainy");
+  it("returns light-rain below the heavy threshold, and heavy-rain at/above it, when above freezing", () => {
+    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: 0.1 }))).toBe("light-rain");
+    expect(deriveWeatherCondition(base({ precipitation: 2.5, temperature: 10 }))).toBe("heavy-rain");
   });
 
-  it("returns rainy (not snowy) when precipitation is positive but temperature is unknown", () => {
-    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: null }))).toBe("rainy");
+  it("returns light-rain (not snow) when precipitation is positive but temperature is unknown", () => {
+    expect(deriveWeatherCondition(base({ precipitation: 1, temperature: null }))).toBe("light-rain");
   });
 
   it("returns windy when wind speed meets the threshold and there is no precipitation", () => {
@@ -77,12 +77,12 @@ describe("deriveWeatherCondition (007-weather-icon-overview)", () => {
   });
 
   it("resolves exactly one condition (the highest priority) when multiple are simultaneously true", () => {
-    // Rainy AND windy AND cloudy all technically true — snowy > rainy > windy > cloudy > clear.
+    // Rainy AND windy AND cloudy all technically true — snow/rain > windy > cloudy > clear.
     expect(
       deriveWeatherCondition(
         base({ precipitation: 1, temperature: 10, windSpeed: 20, cloudCoverPercent: 100 })
       )
-    ).toBe("rainy");
+    ).toBe("light-rain");
 
     // Windy AND cloudy, no precipitation — windy wins.
     expect(deriveWeatherCondition(base({ windSpeed: 20, cloudCoverPercent: 100, precipitation: 0 }))).toBe(
@@ -122,10 +122,36 @@ describe("deriveWeatherCondition symbol-code precedence (022-met-forecast-source
     ).toBe("clear-night");
   });
 
-  it("falls back to the existing six-condition logic unchanged when no symbolCondition is present", () => {
+  it("falls back to the existing threshold logic unchanged when no symbolCondition is present", () => {
     expect(deriveWeatherCondition(base({ symbolCondition: undefined }))).toBe("clear-day");
     expect(deriveWeatherCondition(base({ symbolCondition: null, precipitation: 1, temperature: 5 }))).toBe(
-      "rainy"
+      "light-rain"
     );
+  });
+});
+
+describe("deriveWeatherCondition precipitation intensity (032-dashboard-polish-round-seven, US5)", () => {
+  it("takes the symbolCondition directly for each of the four light/heavy rain+snow values, even with very high wind", () => {
+    for (const condition of ["light-rain", "heavy-rain", "light-snow", "heavy-snow"] as const) {
+      expect(
+        deriveWeatherCondition(base({ symbolCondition: condition, windSpeed: 25, precipitation: 0 }))
+      ).toBe(condition);
+    }
+  });
+
+  it("symbolCondition intensity wins even when the raw amount would suggest the other tier", () => {
+    // A tiny amount, but the source's own symbol code already says "heavy" — trust the symbol.
+    expect(
+      deriveWeatherCondition(base({ symbolCondition: "heavy-rain", precipitation: 0.1, temperature: 10 }))
+    ).toBe("heavy-rain");
+    // A large amount, but the source's own symbol code already says "light".
+    expect(
+      deriveWeatherCondition(base({ symbolCondition: "light-snow", precipitation: 10, temperature: -5 }))
+    ).toBe("light-snow");
+  });
+
+  it("mm-threshold fallback: exactly at the heavy boundary counts as heavy (inclusive)", () => {
+    expect(deriveWeatherCondition(base({ precipitation: 2.5, temperature: 10 }))).toBe("heavy-rain");
+    expect(deriveWeatherCondition(base({ precipitation: 2.4999, temperature: 10 }))).toBe("light-rain");
   });
 });

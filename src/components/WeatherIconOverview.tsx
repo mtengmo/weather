@@ -16,7 +16,7 @@ import { WEATHER_ICONS } from "./weatherIcons";
 import { deriveWeatherCondition } from "../services/weatherCondition";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
 import { dataSourceNote, formatValue } from "../services/format";
-import { toDailyAggregates } from "../services/dailyAggregation";
+import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
 import TodaySummaryCard from "./TodaySummaryCard";
 import WeeklyForecastStrip from "./WeeklyForecastStrip";
 
@@ -97,16 +97,29 @@ interface Pt {
   isForecast: boolean;
 }
 
-function buildSegments(row: TimelineRow): Pt[][] {
-  const n = row.points.length;
-  const values = row.points.map((p) => p.value);
-  const nonNull = values.filter((v): v is number => v !== null);
-  if (nonNull.length === 0) return [];
+interface YScale {
+  min: number;
+  max: number;
+  yFor: (v: number) => number;
+}
+
+/** The row's own current min/max -> SVG-Y mapping, shared by the polyline itself (buildSegments)
+ *  and the degree-scale ticks/gridlines below (032-dashboard-polish-round-seven, US7,
+ *  research.md §9) — computed once so a tick's gridline and the polyline crossing that value
+ *  can never disagree. `null` when the row has no non-null value to scale against. */
+function computeYScale(row: TimelineRow): YScale | null {
+  const nonNull = row.points.map((p) => p.value).filter((v): v is number => v !== null);
+  if (nonNull.length === 0) return null;
 
   const min = Math.min(...nonNull);
   const max = Math.max(...nonNull);
   const range = max - min || 1;
-  const yFor = (v: number) => 90 - ((v - min) / range) * 80; // keep within a 10-90 vertical band
+  return { min, max, yFor: (v: number) => 90 - ((v - min) / range) * 80 }; // keep within a 10-90 vertical band
+}
+
+function buildSegments(row: TimelineRow, scale: YScale | null): Pt[][] {
+  if (scale === null) return [];
+  const n = row.points.length;
 
   const segments: Pt[][] = [];
   let current: Pt[] = [];
@@ -116,10 +129,30 @@ function buildSegments(row: TimelineRow): Pt[][] {
       current = [];
       return;
     }
-    current.push({ x: xPercent(i, n), y: yFor(p.value), isForecast: p.isForecast });
+    current.push({ x: xPercent(i, n), y: scale.yFor(p.value), isForecast: p.isForecast });
   });
   if (current.length) segments.push(current);
   return segments;
+}
+
+const TEMPERATURE_TICK_STEP = 5;
+
+interface Tick {
+  value: number;
+  y: number;
+}
+
+/** One tick per `TEMPERATURE_TICK_STEP`-degree step spanning the row's own min/max, rounded
+ *  outward to the nearest step (032-dashboard-polish-round-seven, US7, research.md §9). */
+function buildTicks(scale: YScale): Tick[] {
+  const start = Math.floor(scale.min / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP;
+  const end = Math.ceil(scale.max / TEMPERATURE_TICK_STEP) * TEMPERATURE_TICK_STEP;
+
+  const ticks: Tick[] = [];
+  for (let value = start; value <= end; value += TEMPERATURE_TICK_STEP) {
+    ticks.push({ value, y: scale.yFor(value) });
+  }
+  return ticks;
 }
 
 function toPointsAttr(points: Pt[]): string {
@@ -163,7 +196,10 @@ function LineRow({
   subLabel?: string;
 }) {
   if (!row.available) return null;
-  const segments = buildSegments(row);
+  const scale = computeYScale(row);
+  const segments = buildSegments(row, scale);
+  const isTemperature = row.key === "temperature";
+  const ticks = isTemperature && scale !== null ? buildTicks(scale) : [];
 
   return (
     <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
@@ -173,8 +209,21 @@ function LineRow({
       </div>
       <div className="weather-timeline-row-grid-cells">
         <div className="weather-timeline-line-area">
+          {isTemperature && ticks.length > 0 && (
+            <div className="weather-timeline-temp-scale" aria-hidden="true">
+              {ticks.map((tick) => (
+                <span
+                  key={tick.value}
+                  className="weather-timeline-temp-scale-tick"
+                  style={{ top: `${tick.y}%` }}
+                >
+                  {tick.value}°
+                </span>
+              ))}
+            </div>
+          )}
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="weather-timeline-svg" aria-hidden="true">
-            {row.key === "temperature" && (
+            {isTemperature && (
               <defs>
                 <linearGradient id="weather-timeline-temperature-gradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--row-temperature)" stopOpacity="0.35" />
@@ -182,7 +231,19 @@ function LineRow({
                 </linearGradient>
               </defs>
             )}
-            {row.key === "temperature" &&
+            {isTemperature &&
+              ticks.map((tick) => (
+                <line
+                  key={`grid-${tick.value}`}
+                  x1="0"
+                  y1={tick.y}
+                  x2="100"
+                  y2={tick.y}
+                  className="weather-timeline-temp-gridline"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+            {isTemperature &&
               segments.map((segment, si) => (
                 <polygon
                   key={`area-${si}`}
@@ -233,6 +294,13 @@ function LineRow({
   );
 }
 
+/**
+ * Renders as two adjacent rows sharing the same column grid — a bars-only row, then a
+ * values-only row directly beneath it, each column aligned to its counterpart above/below
+ * (032-dashboard-polish-round-seven, US6; previously one row stacking a bar and its value/
+ * chance-of-rain text in the same cell, which crowded the bar). Applies to both the
+ * precipitation and snow rows, since both share this one component.
+ */
 function BarRow({
   row,
   periods,
@@ -249,21 +317,42 @@ function BarRow({
   const max = values.length > 0 ? Math.max(...values, 0.001) : 1;
 
   return (
-    <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
-      <div className="weather-timeline-row-title">
-        {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
-        {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
+    <>
+      <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
+        <div className="weather-timeline-row-title">
+          {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
+          {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
+        </div>
+        <div className="weather-timeline-row-grid-cells">
+          <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-bars">
+            {(_period, i) => {
+              const point = row.points[i];
+              if (point.value === null) {
+                return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+              }
+              const heightPercent = Math.max(2, (point.value / max) * 100);
+              return (
+                <div className="weather-timeline-bar-cell">
+                  <div
+                    className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
+                    style={{ height: `${heightPercent}%` }}
+                  />
+                </div>
+              );
+            }}
+          </PeriodGrid>
+        </div>
       </div>
-      <div className="weather-timeline-row-grid-cells">
-        <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-bars">
-          {(_period, i) => {
-            const point = row.points[i];
-            if (point.value === null) {
-              return <span className="weather-timeline-gap" aria-label="No data">—</span>;
-            }
-            const heightPercent = Math.max(2, (point.value / max) * 100);
-            return (
-              <div className="weather-timeline-bar-cell">
+      <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}-values`}>
+        <div className="weather-timeline-row-title" aria-hidden="true" />
+        <div className="weather-timeline-row-grid-cells">
+          <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-bar-values">
+            {(_period, i) => {
+              const point = row.points[i];
+              if (point.value === null) {
+                return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+              }
+              return (
                 <span
                   className={[
                     "weather-timeline-bar-value",
@@ -279,16 +368,12 @@ function BarRow({
                     <span className="weather-timeline-bar-chance"> · {Math.round(point.chanceOfRain)}%</span>
                   )}
                 </span>
-                <div
-                  className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
-                  style={{ height: `${heightPercent}%` }}
-                />
-              </div>
-            );
-          }}
-        </PeriodGrid>
+              );
+            }}
+          </PeriodGrid>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -564,6 +649,13 @@ export default function WeatherIconOverview({
   })();
   const today = todayIndex >= 0 ? weeklyDays[todayIndex] : null;
 
+  // The Today card's rain figure specifically uses a calendar-day sum (midnight to midnight)
+  // rather than `today.totalPrecipitation`'s own rolling next-24h-from-now window, which can
+  // include part of tomorrow (033-todays-rain-total) — every other value on the card still reads
+  // from `today` unchanged.
+  const todaysRainTotalMm =
+    weeklySeries !== null ? sumCalendarDayPrecipitation(weeklySeries.observations, new Date()) : null;
+
   // The single nearest forward-looking reading (the first forecast-tagged entry, or — only when
   // there's no forecast at all — the latest observed one) — used to override the Today card's own
   // whole-next-24h-average condition. That average can read "Cloudy" purely because a cloudier
@@ -612,7 +704,13 @@ export default function WeatherIconOverview({
         {location.displayName} — overview
       </h2>
 
-      <TodaySummaryCard today={today} unit={unit} location={location} currentCondition={currentCondition} />
+      <TodaySummaryCard
+        today={today}
+        unit={unit}
+        location={location}
+        currentCondition={currentCondition}
+        todaysRainTotalMm={todaysRainTotalMm}
+      />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast
           section design to protect, so it always prioritizes the days ahead over older history. */}

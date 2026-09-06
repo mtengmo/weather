@@ -1,12 +1,16 @@
-/** One of nine recognizable weather conditions, or the input didn't have enough data
- * (007-weather-icon-overview; thunderstorm/foggy/sleet added 022-met-forecast-source). */
+/** One of eleven recognizable weather conditions, or the input didn't have enough data
+ * (007-weather-icon-overview; thunderstorm/foggy/sleet added 022-met-forecast-source;
+ * light/heavy rain and snow replace the previous flat "rainy"/"snowy" values,
+ * 032-dashboard-polish-round-seven, US5). */
 export type WeatherCondition =
   | "clear-day"
   | "clear-night"
   | "cloudy"
-  | "rainy"
+  | "light-rain"
+  | "heavy-rain"
   | "windy"
-  | "snowy"
+  | "light-snow"
+  | "heavy-snow"
   | "thunderstorm"
   | "foggy"
   | "sleet";
@@ -32,6 +36,12 @@ const WINDY_THRESHOLD_MS = 8;
 // Conventional midpoint between "partly" and "mostly" cloudy.
 const CLOUDY_THRESHOLD_PERCENT = 50;
 const FREEZING_CELSIUS = 0;
+// Standard light/heavy hourly rain-rate boundary, applied uniformly across every period
+// granularity this function is called with (same "fixed constant, no per-granularity scaling"
+// pattern already established by WINDY_THRESHOLD_MS/CLOUDY_THRESHOLD_PERCENT above) — used only
+// when no symbol-code intensity is available (032-dashboard-polish-round-seven, US5,
+// research.md §6).
+const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
 // Fixed local-clock-hour day/night rule (research.md §3) — not sunrise/sunset calculation.
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
@@ -45,14 +55,20 @@ const SYMBOL_PRECIPITATION_CONDITIONS: ReadonlySet<WeatherCondition> = new Set([
   "thunderstorm",
   "foggy",
   "sleet",
+  "light-rain",
+  "heavy-rain",
+  "light-snow",
+  "heavy-snow",
 ]);
 
 /**
  * Derives a single WeatherCondition from one period's values, evaluated in a fixed priority
- * order (contracts/weather-condition.md, extended 022-met-forecast-source research.md §3):
- * no-data -> symbol-code storm/fog/sleet -> snowy -> rainy -> windy -> symbol-code cloudy/clear
- * -> cloudy -> clear (day/night). Returns null when there isn't enough data to classify the
- * period, reusing the same gap-detection rule already used elsewhere in the app
+ * order (contracts/weather-condition.md, extended 022-met-forecast-source research.md §3;
+ * light/heavy rain+snow added 032-dashboard-polish-round-seven, US5): no-data -> symbol-code
+ * storm/fog/sleet/light-or-heavy-rain/light-or-heavy-snow -> precipitation-amount-threshold
+ * light-or-heavy snow/rain -> windy -> symbol-code cloudy/clear -> cloudy -> clear (day/night).
+ * Returns null when there isn't enough data to classify the period, reusing the same
+ * gap-detection rule already used elsewhere in the app
  * (`temperature === null && precipitation === null`).
  */
 export function deriveWeatherCondition(input: WeatherConditionInput): WeatherCondition | null {
@@ -65,8 +81,11 @@ export function deriveWeatherCondition(input: WeatherConditionInput): WeatherCon
   }
 
   if (precipitation !== null && precipitation > 0) {
-    if (temperature !== null && temperature <= FREEZING_CELSIUS) return "snowy";
-    return "rainy";
+    const heavy = precipitation >= PRECIPITATION_HEAVY_THRESHOLD_MM;
+    if (temperature !== null && temperature <= FREEZING_CELSIUS) {
+      return heavy ? "heavy-snow" : "light-snow";
+    }
+    return heavy ? "heavy-rain" : "light-rain";
   }
 
   if (windSpeed !== null && windSpeed >= WINDY_THRESHOLD_MS) return "windy";

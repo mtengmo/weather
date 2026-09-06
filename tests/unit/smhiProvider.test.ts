@@ -299,6 +299,56 @@ describe("smhiProvider", () => {
         expect(["clear-day", "clear-night"]).toContain(condition);
       });
 
+      it("maps symbol_code 8/18 (light rain) and 9/10/19/20 (moderate/heavy rain) per the two-tier model (032-dashboard-polish-round-seven, US5)", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 8 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("light-rain");
+      });
+
+      it("maps symbol_code 10 (heavy rain) to symbolCondition heavy-rain", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 10 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("heavy-rain");
+      });
+
+      it("maps symbol_code 15 (light snow) and 27 (heavy snow) per the two-tier model", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: -2, symbol_code: 15 } },
+          ]),
+        });
+        const { getObservations: getObservations1 } = await freshProvider();
+        const result1 = await getObservations1(STOCKHOLM, "last-24-hours");
+        expect(result1.observations.find((o) => o.isForecast)?.symbolCondition).toBe("light-snow");
+
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: -2, symbol_code: 27 } },
+          ]),
+        });
+        const { getObservations: getObservations2 } = await freshProvider();
+        const result2 = await getObservations2(STOCKHOLM, "last-24-hours");
+        expect(result2.observations.find((o) => o.isForecast)?.symbolCondition).toBe("heavy-snow");
+      });
+
       it("leaves symbolCondition null when no symbol_code is present", async () => {
         mockFetchRouter({
           ...baseStations,

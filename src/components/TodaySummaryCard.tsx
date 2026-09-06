@@ -15,13 +15,24 @@ interface TodaySummaryCardProps {
    *  disagreeing with the header's own current-conditions reading right above it (027 follow-up).
    *  Falls back to the whole-day average when there's no current reading (e.g. still loading). */
   currentCondition?: WeatherCondition | null;
+  /** Precipitation summed over today's local calendar day (midnight to midnight) — used for the
+   *  rain figure instead of `today.totalPrecipitation`'s own rolling next-24h window, which can
+   *  include part of tomorrow (033-todays-rain-total). `null` renders the same "—" gap treatment
+   *  a missing value already gets. */
+  todaysRainTotalMm?: number | null;
 }
 
 /**
  * Persistent "Today" summary — high/low, description, rain, wind+compass, sunrise/sunset —
  * shown on all three overview tabs, not just the daily one (018-dashboard-visual-redesign, US4).
  */
-export default function TodaySummaryCard({ today, unit, location, currentCondition }: TodaySummaryCardProps) {
+export default function TodaySummaryCard({
+  today,
+  unit,
+  location,
+  currentCondition,
+  todaysRainTotalMm,
+}: TodaySummaryCardProps) {
   if (today === null) return null;
 
   const dayCondition = deriveWeatherCondition({
@@ -32,6 +43,7 @@ export default function TodaySummaryCard({ today, unit, location, currentConditi
   });
   const condition = currentCondition ?? dayCondition;
   const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
+  const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
   const { sunrise, sunset } = getSunTimes(location, new Date());
   const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
@@ -51,7 +63,7 @@ export default function TodaySummaryCard({ today, unit, location, currentConditi
       <p className="today-summary-description">{iconInfo ? `${iconInfo.label}.` : "—"}</p>
       <div className="today-summary-detail">
         <span>
-          Rain {formatValue(convertPrecipitation(today.totalPrecipitation, unit), 1)}
+          Rain {formatValue(convertPrecipitation(rainTotal, unit), 1)}
           {unit === "imperial" ? " in" : " mm"}
         </span>
         <span>

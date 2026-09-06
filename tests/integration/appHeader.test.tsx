@@ -244,10 +244,10 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     await user.click(await screen.findByRole("button", { name: "Details" }));
 
     expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
-    // From the graph view, "Details" (→ the details table) and "Back" (→ Overview) both remain
+    // From the graph view, "Details" (→ the details table) and "Home" (→ Overview) both remain
     // available (020-dashboard-polish-round-five, US4 — replaces the old "View details" button).
     expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
   });
 
   it("shows a 'Details' button in the persistent header on the Overview and the graph view, and a 'Back' button once past the Overview (020-dashboard-polish-round-five, US4)", async () => {
@@ -259,12 +259,12 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
 
     const detailsButton = await screen.findByRole("button", { name: "Details" });
     expect(screen.getByRole("banner")).toContainElement(detailsButton);
-    expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
 
     await user.click(detailsButton);
-    // Now on the graph view: "Details" (→ the details table) and "Back" (→ Overview) both show.
+    // Now on the graph view: "Details" (→ the details table) and "Home" (→ Overview) both show.
     expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
   });
 });
 
@@ -640,12 +640,12 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     await user.click(screen.getByRole("button", { name: "Map" }));
     expect(screen.queryByRole("button", { name: "Map" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Home" }));
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
   });
 
-  it("returns to the graph view after opening the map from there", async () => {
+  it("returns to the Overview — not the graph view — even when the map was opened from there (032-dashboard-polish-round-seven, US3)", async () => {
     addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
     localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
 
@@ -656,10 +656,11 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     await screen.findByRole("heading", { name: "Stockholm" });
 
     await user.click(screen.getByRole("button", { name: "Map" }));
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Home" }));
 
-    expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
+    // "Home" always means the Overview — not back to whichever view was open before the Map.
+    expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
   });
 });
 
@@ -709,7 +710,7 @@ describe("Nearby-station data is deferred until Details/graph is opened (025-red
     await waitFor(() => expect(getNearbyStationSeries).toHaveBeenCalledTimes(1));
 
     // Returning to the Overview must not clear or re-fetch nearby-station data.
-    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Home" }));
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
     expect(getNearbyStationSeries).toHaveBeenCalledTimes(1);
   });

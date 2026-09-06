@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
+import { sumCalendarDayPrecipitation, toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
 import type { WeatherObservation } from "../../src/models/types";
 
 function hoursAgo(h: number): string {
@@ -372,5 +372,54 @@ describe("toSubDayBuckets (015-overview-3day-resolution-fix)", () => {
   it("returns a single day's 5 entries when dayCount is 1 and there is no forecast", () => {
     const result = toSubDayBuckets([], 1);
     expect(result).toHaveLength(5);
+  });
+});
+
+describe("sumCalendarDayPrecipitation (033-todays-rain-total)", () => {
+  // A fixed reference time (14:00 local, an arbitrary day) rather than the real system clock —
+  // avoids any flakiness from a test happening to run near real midnight.
+  const reference = new Date(2026, 5, 15, 14, 0, 0);
+
+  function atLocalHour(hour: number): string {
+    const d = new Date(reference);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  }
+
+  function nextDayAtLocalHour(hour: number): string {
+    const d = new Date(reference);
+    d.setDate(d.getDate() + 1);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  }
+
+  it("sums both already-elapsed and still-forecast hours of today into one total", () => {
+    const observations = [
+      obs({ timestamp: atLocalHour(9), precipitation: 1 }), // elapsed (before 14:00)
+      obs({ timestamp: atLocalHour(18), precipitation: 2, isForecast: true }), // still ahead
+    ];
+
+    expect(sumCalendarDayPrecipitation(observations, reference)).toBe(3);
+  });
+
+  it("excludes an hour belonging to tomorrow, even late at night", () => {
+    const lateReference = new Date(reference);
+    lateReference.setHours(23, 30, 0, 0);
+    const observations = [
+      obs({ timestamp: atLocalHour(22), precipitation: 1 }),
+      obs({ timestamp: nextDayAtLocalHour(1), precipitation: 5, isForecast: true }), // tomorrow
+    ];
+
+    expect(sumCalendarDayPrecipitation(observations, lateReference)).toBe(1);
+  });
+
+  it("returns null, not 0, when there is no non-null reading anywhere in today's span", () => {
+    const observations = [
+      obs({ timestamp: atLocalHour(9), precipitation: null }),
+      obs({ timestamp: nextDayAtLocalHour(9), precipitation: 5 }), // tomorrow — irrelevant
+    ];
+
+    expect(sumCalendarDayPrecipitation(observations, reference)).toBeNull();
+    expect(sumCalendarDayPrecipitation([], reference)).toBeNull();
   });
 });

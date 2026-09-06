@@ -15,6 +15,12 @@ import {
 
 const DAILY_BUCKET_COUNT = 7;
 
+/** True for either snow tier (032-dashboard-polish-round-seven, US5) — replaces the previous
+ *  `=== "snowy"` check now that snow is split into `light-snow`/`heavy-snow`. */
+function isSnowyCondition(condition: WeatherCondition | null): boolean {
+  return condition === "light-snow" || condition === "heavy-snow";
+}
+
 /**
  * Caps an oldest->newest `DailyAggregate[]` (toDailyAggregates' own output) at `maxForecastDays`
  * *forecast* days, leaving every observed/historical day untouched
@@ -308,14 +314,15 @@ export function buildHourlyTimelineData(
     windDirection: obs.windDirection,
     windGust: obs.windGust,
     cloudCoverPercent: obs.cloudCoverPercent,
-    isSnowy:
+    isSnowy: isSnowyCondition(
       deriveWeatherCondition({
         temperature: obs.temperature,
         precipitation: obs.precipitation,
         windSpeed: obs.windSpeed,
         cloudCoverPercent: obs.cloudCoverPercent,
         timestamp: obs.timestamp,
-      }) === "snowy",
+      })
+    ),
     isForecast: obs.isForecast ?? false,
     chanceOfRain: obs.chanceOfRain,
   }));
@@ -377,13 +384,14 @@ function daysToTimelineData(
     windDirection: day.windDirection ?? null,
     windGust: day.windGustHigh,
     cloudCoverPercent: day.cloudAverage,
-    isSnowy:
+    isSnowy: isSnowyCondition(
       deriveWeatherCondition({
         temperature: day.average,
         precipitation: day.totalPrecipitation,
         windSpeed: day.windAverage,
         cloudCoverPercent: day.cloudAverage,
-      }) === "snowy",
+      })
+    ),
     isForecast: day.isForecast ?? false,
     chanceOfRain: day.chanceOfRainMax,
     high: day.high,

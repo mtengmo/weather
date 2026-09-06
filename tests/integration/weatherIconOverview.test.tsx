@@ -6,6 +6,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WeatherIconOverview from "../../src/components/WeatherIconOverview";
 import { useObservationData } from "../../src/hooks/useObservationData";
+import { sumCalendarDayPrecipitation } from "../../src/services/dailyAggregation";
 import type { Location, ObservationWindow } from "../../src/models/types";
 
 vi.mock("../../src/services/weatherApi", () => ({
@@ -121,7 +122,7 @@ describe("US1: synchronized 24h timeline", () => {
 
     // Condition row: one icon per column, with a visible text label alongside the icon.
     expect(await screen.findByText("Clear")).toBeInTheDocument();
-    expect(screen.getByText("Rain")).toBeInTheDocument();
+    expect(screen.getByText("Light rain")).toBeInTheDocument();
     expect(screen.getByText("No data")).toBeInTheDocument();
     expect(screen.getAllByText("Forecast").length).toBeGreaterThan(0);
 
@@ -1152,8 +1153,8 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
       observations: [
         { timestamp: "2026-08-31T23:00:00", temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }, // clear-night
         { timestamp: hoursAgo(2), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 90 }, // cloudy
-        { timestamp: hoursAgo(1), temperature: 10, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // rainy
-        { timestamp: hoursAgo(0), temperature: -5, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // snowy
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // light-rain
+        { timestamp: hoursAgo(0), temperature: -5, precipitation: 2, windSpeed: 1, cloudCoverPercent: 90 }, // light-snow
       ],
     });
 
@@ -1163,8 +1164,8 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
 
     expect(container.querySelector(".weather-condition-clear-night")).toBeInTheDocument();
     expect(container.querySelector(".weather-condition-cloudy")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-rainy")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-snowy")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-light-rain")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-light-snow")).toBeInTheDocument();
   });
 });
 
@@ -1570,6 +1571,45 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     expect(iconWrapper).toHaveClass("weather-condition-clear-day");
   });
 
+  it("shows a calendar-day rain total, not the rolling next-24h bucket's own total (033-todays-rain-total)", async () => {
+    const weeklyObservations = [
+      { timestamp: hoursAgo(3), temperature: 10, precipitation: 1.5, windSpeed: 1, cloudCoverPercent: 5 },
+      {
+        timestamp: hoursFromNow(1),
+        temperature: 10,
+        precipitation: 2,
+        windSpeed: 1,
+        cloudCoverPercent: 5,
+        isForecast: true,
+      },
+      // Far enough out to fall in the old rolling-24h "today" bucket for much of the day but,
+      // depending on wall-clock time, potentially outside today's own calendar day — exactly the
+      // discrepancy this feature exists to resolve. The assertion below computes the expected
+      // value the same way the component does, so it's correct regardless of current time.
+      {
+        timestamp: hoursFromNow(20),
+        temperature: 10,
+        precipitation: 4,
+        windSpeed: 1,
+        cloudCoverPercent: 5,
+        isForecast: true,
+      },
+    ];
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: w === "last-7-days" ? weeklyObservations : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const expectedMm = sumCalendarDayPrecipitation(weeklyObservations, new Date());
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent(`Rain ${expectedMm !== null ? expectedMm.toFixed(1) : "—"}`);
+  });
+
   it("shows the gap indicator, not a fabricated value, for missing fields", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
@@ -1793,6 +1833,74 @@ describe("Rain bar scaling (019-dashboard-polish-round-four, US4)", () => {
 
     expect(rowBarsRule).not.toBeNull();
     expect(rowBarsRule![0]).not.toContain("align-items: end");
+  });
+});
+
+describe("Precipitation/snow chart: bars and values in separate rows (032-dashboard-polish-round-seven, US6)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("renders no text inside the bars row, and each column's mm/percentage in a separate row beneath it, aligned by column", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 1.5, windSpeed: 1, cloudCoverPercent: 10 },
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 8,
+          precipitation: 2,
+          windSpeed: 3,
+          cloudCoverPercent: 90,
+          isForecast: true,
+          chanceOfRain: 60,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("1.5 mm")).toBeInTheDocument());
+
+    const barsRow = container.querySelector(".weather-timeline-row-precipitation .weather-timeline-row-bars");
+    expect(barsRow).not.toBeNull();
+    expect(barsRow!.textContent).toBe("");
+    expect(barsRow!.querySelectorAll(".weather-timeline-bar")).toHaveLength(2);
+
+    const valuesRow = container.querySelector(".weather-timeline-row-precipitation-values .weather-timeline-row-bar-values");
+    expect(valuesRow).not.toBeNull();
+    const valueCells = valuesRow!.querySelectorAll(".weather-timeline-cell");
+    expect(valueCells).toHaveLength(2);
+    expect(valueCells[0].textContent).toBe("1.5 mm");
+    expect(valueCells[1].textContent).toBe("2.0 mm · 60%");
+  });
+
+  it("applies the same two-row split to the snow row", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: -5, precipitation: 3, windSpeed: 1, cloudCoverPercent: 90 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(container.querySelector(".weather-timeline-row-snow .weather-timeline-bar")).not.toBeNull()
+    );
+
+    const snowBarsRow = container.querySelector(".weather-timeline-row-snow .weather-timeline-row-bars");
+    expect(snowBarsRow!.textContent).toBe("");
+
+    const snowValuesRow = container.querySelector(".weather-timeline-row-snow-values .weather-timeline-row-bar-values");
+    expect(snowValuesRow).not.toBeNull();
+    expect(snowValuesRow!.textContent).toContain("3.0 mm");
   });
 });
 
@@ -2128,5 +2236,65 @@ describe("UV risk badge (027-uv-index-alert)", () => {
     await screen.findByRole("region", { name: `Weather overview for ${stockholm.displayName}` });
 
     expect(screen.queryByTitle("High UV")).not.toBeInTheDocument();
+  });
+});
+
+describe("Temperature chart degree scale (032-dashboard-polish-round-seven, US7)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("renders 5-degree-step tick labels and matching gridlines spanning the data's own min/max", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(2), temperature: 6, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursAgo(1), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
+
+    // min=6 -> floor to 5; max=14 -> ceil to 15; step 5 => 5, 10, 15.
+    const tickLabels = Array.from(
+      container.querySelectorAll(".weather-timeline-temp-scale-tick")
+    ).map((el) => el.textContent);
+    expect(tickLabels).toEqual(["5°", "10°", "15°"]);
+
+    const gridlines = container.querySelectorAll(".weather-timeline-temp-gridline");
+    expect(gridlines).toHaveLength(3);
+  });
+
+  it("renders no degree scale or gridlines for the wind/precipitation/snow rows", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: -5, precipitation: 3, windSpeed: 4, cloudCoverPercent: 90 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
+
+    expect(
+      container.querySelector(".weather-timeline-row-wind .weather-timeline-temp-scale")
+    ).toBeNull();
+    expect(
+      container.querySelector(".weather-timeline-row-precipitation .weather-timeline-temp-gridline")
+    ).toBeNull();
+    expect(
+      container.querySelector(".weather-timeline-row-snow .weather-timeline-temp-gridline")
+    ).toBeNull();
+    // Exactly one scale/gridline set exists in total (the temperature row's own).
+    expect(container.querySelectorAll(".weather-timeline-temp-scale")).toHaveLength(1);
   });
 });

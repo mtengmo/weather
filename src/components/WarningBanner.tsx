@@ -3,18 +3,21 @@ import type { WeatherWarning } from "../models/types";
 
 interface WarningBannerProps {
   warnings: WeatherWarning[];
+  /** Dismisses one specific warning by its own id, hiding it in this browser for as long as it
+   *  remains that exact warning (032-dashboard-polish-round-seven, US4). */
+  onDismiss: (id: string) => void;
 }
 
 /**
  * A persistent, collapsible banner for the viewed location's currently-active official weather
  * warnings — leads with the most severe (already sorted by `getWarningsForLocation`), expandable
  * to the full list (028-severe-weather-warnings, US1/US2). Renders nothing when there are no
- * active warnings, matching `TodaySummaryCard`'s own "nothing to show" convention. Not
- * permanently dismissible within a session — it reflects a real, currently active official
- * warning, so it reappears on every load for as long as the warning stays active (spec
- * Assumptions: "Dismissal").
+ * active (undismissed) warnings, matching `TodaySummaryCard`'s own "nothing to show" convention.
+ * Each listed warning can be individually dismissed — App.tsx filters dismissed ids out of the
+ * `warnings` this component receives, so a dismissed warning simply stops appearing here
+ * (032-dashboard-polish-round-seven, US4, replacing the original "not dismissible" design note).
  */
-export default function WarningBanner({ warnings }: WarningBannerProps) {
+export default function WarningBanner({ warnings, onDismiss }: WarningBannerProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (warnings.length === 0) return null;
@@ -24,23 +27,43 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
 
   return (
     <section className="warning-banner" aria-label="Weather warnings">
-      <button
-        type="button"
-        className={`warning-banner-summary warning-level-${leading.severityCode.toLowerCase()}`}
-        onClick={() => setExpanded((e) => !e)}
-        aria-expanded={expanded}
-      >
-        <span className="warning-banner-severity">{leading.severityLabel}</span>
-        <span className="warning-banner-title">{leading.title}</span>
-        {moreCount > 0 && <span className="warning-banner-more">+{moreCount} more</span>}
-      </button>
+      <div className={`warning-banner-summary warning-level-${leading.severityCode.toLowerCase()}`}>
+        <button
+          type="button"
+          className="warning-banner-summary-toggle"
+          onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
+        >
+          <span className="warning-banner-severity">{leading.severityLabel}</span>
+          <span className="warning-banner-title">{leading.title}</span>
+          {moreCount > 0 && <span className="warning-banner-more">+{moreCount} more</span>}
+        </button>
+        <button
+          type="button"
+          className="warning-banner-dismiss"
+          aria-label={`Dismiss warning: ${leading.title}`}
+          onClick={() => onDismiss(leading.id)}
+        >
+          ×
+        </button>
+      </div>
       {expanded && (
         <div className="warning-banner-details">
           {warnings.map((warning) => (
             <article key={warning.id} className={`warning-banner-item warning-level-${warning.severityCode.toLowerCase()}`}>
-              <h3 className="warning-banner-item-title">
-                {warning.severityLabel}: {warning.title}
-              </h3>
+              <div className="warning-banner-item-header">
+                <h3 className="warning-banner-item-title">
+                  {warning.severityLabel}: {warning.title}
+                </h3>
+                <button
+                  type="button"
+                  className="warning-banner-dismiss"
+                  aria-label={`Dismiss warning: ${warning.title}`}
+                  onClick={() => onDismiss(warning.id)}
+                >
+                  ×
+                </button>
+              </div>
               <p className="warning-banner-item-area">{warning.areaName}</p>
               <p className="warning-banner-item-validity">
                 Since {new Date(warning.validFrom).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}

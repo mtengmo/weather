@@ -87,6 +87,10 @@ interface SmhiForecastData {
 // documentation) mapped into this app's WeatherCondition enum (022-met-forecast-source,
 // research.md §3). Codes 1-2 (clear/nearly clear) are resolved to clear-day/clear-night via the
 // observation's own timestamp where this table is consumed, not baked in here.
+// Codes 8/18 are SMHI's own "light" rain tier; 9/19 ("moderate") and 10/20 ("heavy") both fold
+// into this app's single "heavy" tier, since only a light/heavy distinction is needed
+// (032-dashboard-polish-round-seven, US5, research.md §6) — likewise 15/25 "light" snow vs.
+// 16/17/26/27 moderate+heavy.
 const SMHI_SYMBOL_CONDITIONS: Record<number, WeatherCondition | "clear"> = {
   1: "clear",
   2: "clear",
@@ -95,26 +99,26 @@ const SMHI_SYMBOL_CONDITIONS: Record<number, WeatherCondition | "clear"> = {
   5: "cloudy",
   6: "cloudy",
   7: "foggy",
-  8: "rainy",
-  9: "rainy",
-  10: "rainy",
+  8: "light-rain",
+  9: "heavy-rain",
+  10: "heavy-rain",
   11: "thunderstorm",
   12: "sleet",
   13: "sleet",
   14: "sleet",
-  15: "snowy",
-  16: "snowy",
-  17: "snowy",
-  18: "rainy",
-  19: "rainy",
-  20: "rainy",
+  15: "light-snow",
+  16: "heavy-snow",
+  17: "heavy-snow",
+  18: "light-rain",
+  19: "heavy-rain",
+  20: "heavy-rain",
   21: "thunderstorm",
   22: "sleet",
   23: "sleet",
   24: "sleet",
-  25: "snowy",
-  26: "snowy",
-  27: "snowy",
+  25: "light-snow",
+  26: "heavy-snow",
+  27: "heavy-snow",
 };
 
 function symbolCodeToCondition(symbolCode: number | undefined, timestamp: string): WeatherCondition | null {

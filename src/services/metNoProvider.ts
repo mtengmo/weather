@@ -53,13 +53,20 @@ function roundCoordinate(value: number): number {
  * research.md §3) rather than an exhaustive lookup table of all ~100 day/night/polartwilight
  * variants. Returns null for a code this doesn't recognize, so callers fall back to the existing
  * threshold-based classification rather than guessing.
+ *
+ * MET Norway's own codes are already prefixed `light`/`heavy`/unprefixed ("moderate") for rain
+ * and snow (e.g. `lightrain`, `heavyrainshowers`, plain `snow`) — checked before the generic
+ * `rain`/`snow` substring so light gets its own tier; an unprefixed ("moderate") code falls
+ * through to the same "heavy" tier a `heavy`-prefixed code gets, matching this app's two-tier
+ * model and mirroring the same moderate-folds-into-heavy policy already used for SMHI's own
+ * three-tier codes (032-dashboard-polish-round-seven, US5, research.md §6).
  */
 export function classifyMetNoSymbol(code: string): WeatherCondition | null {
   if (code.includes("thunder")) return "thunderstorm";
   if (code.includes("fog")) return "foggy";
   if (code.includes("sleet")) return "sleet";
-  if (code.includes("snow")) return "snowy";
-  if (code.includes("rain")) return "rainy";
+  if (code.includes("snow")) return code.includes("light") ? "light-snow" : "heavy-snow";
+  if (code.includes("rain")) return code.includes("light") ? "light-rain" : "heavy-rain";
   if (code.includes("clearsky")) return code.includes("night") ? "clear-night" : "clear-day";
   if (code.includes("cloud") || code.includes("fair")) return "cloudy";
   return null;

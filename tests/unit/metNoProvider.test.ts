@@ -34,12 +34,28 @@ describe("metNoProvider", () => {
       expect(classifyMetNoSymbol("lightsleet")).toBe("sleet");
     });
 
-    it("matches snow", () => {
-      expect(classifyMetNoSymbol("heavysnowshowers_day")).toBe("snowy");
+    it("matches snow, heavy-tier for a 'heavy'-prefixed code (032-dashboard-polish-round-seven, US5)", () => {
+      expect(classifyMetNoSymbol("heavysnowshowers_day")).toBe("heavy-snow");
     });
 
-    it("matches rain", () => {
-      expect(classifyMetNoSymbol("lightrainshowers_night")).toBe("rainy");
+    it("matches snow, light-tier for a 'light'-prefixed code", () => {
+      expect(classifyMetNoSymbol("lightsnowshowers_day")).toBe("light-snow");
+    });
+
+    it("matches snow, heavy-tier for an unprefixed ('moderate') code", () => {
+      expect(classifyMetNoSymbol("snow")).toBe("heavy-snow");
+    });
+
+    it("matches rain, light-tier for a 'light'-prefixed code", () => {
+      expect(classifyMetNoSymbol("lightrainshowers_night")).toBe("light-rain");
+    });
+
+    it("matches rain, heavy-tier for a 'heavy'-prefixed code", () => {
+      expect(classifyMetNoSymbol("heavyrainshowers_night")).toBe("heavy-rain");
+    });
+
+    it("matches rain, heavy-tier for an unprefixed ('moderate') code", () => {
+      expect(classifyMetNoSymbol("rain")).toBe("heavy-rain");
     });
 
     it("resolves clearsky to clear-night when the code says night", () => {

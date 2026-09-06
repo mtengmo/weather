@@ -44,43 +44,66 @@ function station(id: string, displayName: string) {
   return { id, displayName, distanceKm: 1, latitude: 1, longitude: 1 };
 }
 
-describe("useGeolocation (005-add-weather-forecast: station naming)", () => {
+describe("useGeolocation (032-dashboard-polish-round-seven, US2: place name preferred)", () => {
   beforeEach(() => {
     vi.mocked(smhiProvider.getNearestStations).mockReset();
     vi.mocked(geocoding.reverseGeocode).mockReset();
-    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("resolves displayName to the nearest station's name after request() succeeds", async () => {
+  it("prefers a resolved place name over a resolved station name", async () => {
     mockGeolocation("success");
-    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Bromma")]);
+    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Uppsala Aut")]);
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue("Uppsala");
 
     const { result } = renderHook(() => useGeolocation());
     act(() => result.current.request());
 
     expect(result.current.status).toBe("granted");
+    await waitFor(() => expect(result.current.location?.displayName).toBe("Uppsala"));
+  });
+
+  it("falls back to the station name when reverse geocoding fails", async () => {
+    mockGeolocation("success");
+    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Bromma")]);
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
+
+    const { result } = renderHook(() => useGeolocation());
+    act(() => result.current.request());
+
     await waitFor(() => expect(result.current.location?.displayName).toBe("Bromma"));
   });
 
-  it("falls back to 'Unnamed station' when the lookup finds no stations", async () => {
+  it("falls back to the station name when reverse geocoding rejects", async () => {
+    mockGeolocation("success");
+    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Bromma")]);
+    vi.mocked(geocoding.reverseGeocode).mockRejectedValue(new Error("network down"));
+
+    const { result } = renderHook(() => useGeolocation());
+    act(() => result.current.request());
+
+    await waitFor(() => expect(result.current.location?.displayName).toBe("Bromma"));
+  });
+
+  it("falls back to 'Unnamed station' when both the place name and station name are unavailable", async () => {
     mockGeolocation("success");
     vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([]);
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
 
     const { result } = renderHook(() => useGeolocation());
     act(() => result.current.request());
 
     await waitFor(() => expect(result.current.location).not.toBeNull());
-    // No update was applied — placeholder value persists.
     expect(result.current.location?.displayName).toBe("Unnamed station");
   });
 
-  it("falls back to 'Unnamed station' when the lookup fails, without blocking the location", async () => {
+  it("falls back to 'Unnamed station' when the station lookup fails and there's no place name", async () => {
     mockGeolocation("success");
     vi.mocked(smhiProvider.getNearestStations).mockRejectedValue(new Error("network down"));
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
 
     const { result } = renderHook(() => useGeolocation());
     act(() => result.current.request());
@@ -88,11 +111,23 @@ describe("useGeolocation (005-add-weather-forecast: station naming)", () => {
     expect(result.current.status).toBe("granted");
     await waitFor(() => expect(result.current.location).not.toBeNull());
     expect(result.current.location?.displayName).toBe("Unnamed station");
+  });
+
+  it("uses the place name even when the station lookup fails outright", async () => {
+    mockGeolocation("success");
+    vi.mocked(smhiProvider.getNearestStations).mockRejectedValue(new Error("network down"));
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue("Uppsala");
+
+    const { result } = renderHook(() => useGeolocation());
+    act(() => result.current.request());
+
+    await waitFor(() => expect(result.current.location?.displayName).toBe("Uppsala"));
   });
 
   it("status still transitions idle -> loading -> granted, unaffected by naming resolution", async () => {
     mockGeolocation("success");
     vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Bromma")]);
+    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
 
     const { result } = renderHook(() => useGeolocation());
     expect(result.current.status).toBe("idle");
@@ -111,50 +146,6 @@ describe("useGeolocation (005-add-weather-forecast: station naming)", () => {
 
     expect(result.current.status).toBe("denied");
     expect(smhiProvider.getNearestStations).not.toHaveBeenCalled();
-  });
-});
-
-describe("useGeolocation (006-forecast-now-marker: reverse-geocoded place name)", () => {
-  beforeEach(() => {
-    vi.mocked(smhiProvider.getNearestStations).mockReset();
-    vi.mocked(geocoding.reverseGeocode).mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("updates displayName to the geocoded, approximate-prefixed name when the station has no usable name", async () => {
-    mockGeolocation("success");
-    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([]);
-    vi.mocked(geocoding.reverseGeocode).mockResolvedValue("Stockholm");
-
-    const { result } = renderHook(() => useGeolocation());
-    act(() => result.current.request());
-
-    await waitFor(() => expect(result.current.location?.displayName).toBe("near Stockholm"));
-  });
-
-  it("stays 'Unnamed station' when reverseGeocode also fails/returns null", async () => {
-    mockGeolocation("success");
-    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([]);
-    vi.mocked(geocoding.reverseGeocode).mockResolvedValue(null);
-
-    const { result } = renderHook(() => useGeolocation());
-    act(() => result.current.request());
-
-    await waitFor(() => expect(result.current.location).not.toBeNull());
-    expect(result.current.location?.displayName).toBe("Unnamed station");
-  });
-
-  it("never calls reverseGeocode when the station-name lookup already resolved a real name", async () => {
-    mockGeolocation("success");
-    vi.mocked(smhiProvider.getNearestStations).mockResolvedValue([station("1", "Bromma")]);
-
-    const { result } = renderHook(() => useGeolocation());
-    act(() => result.current.request());
-
-    await waitFor(() => expect(result.current.location?.displayName).toBe("Bromma"));
     expect(geocoding.reverseGeocode).not.toHaveBeenCalled();
   });
 });

@@ -101,7 +101,7 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     expect(banner).toHaveTextContent("Storm");
     expect(banner).not.toHaveTextContent("Strong winds expected.");
 
-    await user.click(within(banner).getByRole("button"));
+    await user.click(within(banner).getByRole("button", { expanded: false }));
 
     expect(banner).toHaveTextContent("Strong winds expected.");
     expect(banner).toHaveTextContent("Stockholm County");
@@ -121,7 +121,7 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     expect(banner).toHaveTextContent("Extreme storm");
     expect(banner).toHaveTextContent("+1 more");
 
-    await user.click(within(banner).getByRole("button"));
+    await user.click(within(banner).getByRole("button", { expanded: false }));
 
     expect(banner).toHaveTextContent("Extreme storm");
     expect(banner).toHaveTextContent("Water shortage");
@@ -135,5 +135,43 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     await waitFor(() => expect(screen.getAllByText(/Stockholm/).length).toBeGreaterThan(0));
 
     expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
+  });
+
+  it("hides a dismissed warning immediately, and keeps it hidden across a re-render (032-dashboard-polish-round-seven, US4)", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([warning()]);
+
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    await user.click(within(banner).getByRole("button", { name: /dismiss warning/i }));
+
+    expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
+
+    // Simulate a reload: unmount and render a fresh App instance against the same localStorage.
+    unmount();
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
+  });
+
+  it("dismissing one warning leaves a different warning id unaffected", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({ id: "1-100", severityCode: "CLASS_3", severityLabel: "Class 3", title: "Extreme storm" }),
+      warning({ id: "2-200", severityCode: "MESSAGE", severityLabel: "Message", title: "Water shortage" }),
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    await user.click(within(banner).getByRole("button", { name: /dismiss warning: extreme storm/i }));
+
+    // The banner still shows — the second (undismissed) warning takes over as the leading one.
+    const stillShowing = await screen.findByRole("region", { name: "Weather warnings" });
+    expect(stillShowing).toHaveTextContent("Water shortage");
+    expect(stillShowing).not.toHaveTextContent("Extreme storm");
   });
 });
