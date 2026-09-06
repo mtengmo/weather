@@ -654,6 +654,11 @@ a {
   height: 70px;
   background: var(--surface);
   pointer-events: none;
+  /* Clips a tick label's own box, not the element's sticky positioning (that's governed by this
+     box's own position, unaffected by clipping its children) — a second guard alongside the
+     label's percentage clamp in WeatherIconOverview.tsx against bleeding into the row above/
+     below (found live: "the highest value comes over to the temp row"). */
+  overflow: hidden;
 }
 
 .weather-timeline-temp-scale-tick {

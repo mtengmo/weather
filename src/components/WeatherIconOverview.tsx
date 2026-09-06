@@ -155,6 +155,20 @@ function buildTicks(scale: YScale): Tick[] {
   return ticks;
 }
 
+// Ticks are rounded *outward* beyond the data's own min/max (buildTicks), so the topmost/
+// bottommost tick can land right at the literal 0%/100% edge of the chart's 70px-tall box — with
+// the label's own centering transform, that pushed roughly half its height outside the box,
+// visually overlapping the row above/below it. Clamps only the *label's* vertical position (the
+// gridline itself stays mathematically exact) to leave enough room for a centered ~0.65rem label
+// to render fully inside the box (regression found live: "the highest value comes over to the
+// temp row" — a real overflow, not a rounding cosmetic).
+const TICK_LABEL_SAFE_MIN_PERCENT = 8;
+const TICK_LABEL_SAFE_MAX_PERCENT = 92;
+
+function clampTickLabelPercent(y: number): number {
+  return Math.min(TICK_LABEL_SAFE_MAX_PERCENT, Math.max(TICK_LABEL_SAFE_MIN_PERCENT, y));
+}
+
 function toPointsAttr(points: Pt[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(" ");
 }
@@ -215,7 +229,7 @@ function LineRow({
                 <span
                   key={tick.value}
                   className="weather-timeline-temp-scale-tick"
-                  style={{ top: `${tick.y}%` }}
+                  style={{ top: `${clampTickLabelPercent(tick.y)}%` }}
                 >
                   {tick.value}°
                 </span>
