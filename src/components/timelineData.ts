@@ -44,10 +44,16 @@ export function capForecastReach(days: DailyAggregate[], maxForecastDays: number
  * persistent weekly forecast-brief strip specifically, which (unlike the main 7-day timeline's
  * `capForecastReach`) has no Observed/Forecast dual-section design to protect, so prioritizing
  * "today and the days ahead" over older history is the better fit here.
+ *
+ * "Today" here MUST use the same forward-looking `(now, now+24h]` bucket the persistent Today
+ * summary card uses (023-fix-today-summary, research.md §1) — this function previously had its
+ * own independent copy of the older backward-looking definition, which caused the strip's first
+ * ("today") card to silently disagree with the Today card once the latter was fixed to be
+ * forward-looking. Both must stay in sync since they're meant to describe the same day.
  */
 export function windowAroundToday(days: DailyAggregate[], count: number): DailyAggregate[] {
   const firstForecastIndex = days.findIndex((d) => d.isForecast === true);
-  const todayIndex = firstForecastIndex === -1 ? days.length - 1 : firstForecastIndex - 1;
+  const todayIndex = firstForecastIndex === -1 ? days.length - 1 : firstForecastIndex;
   if (todayIndex < 0) return days.slice(-count);
   const end = Math.min(days.length, todayIndex + count);
   const start = Math.max(0, end - count);

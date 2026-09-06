@@ -4,7 +4,9 @@ import {
   buildDailyTimelineData,
   buildHourlyTimelineData,
   mergeMultiSourceIntoTimelinePoints,
+  windowAroundToday,
 } from "../../src/components/timelineData";
+import { toDailyAggregates } from "../../src/services/dailyAggregation";
 import type { ObservationSeries, WeatherObservation } from "../../src/models/types";
 import type { MultiSourceForecastEntry } from "../../src/services/weatherApi";
 
@@ -419,5 +421,29 @@ describe("mergeMultiSourceIntoTimelinePoints (019-dashboard-polish-round-four, U
     mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
 
     expect(data.temperature.points[0].combined).toBeUndefined();
+  });
+});
+
+describe("windowAroundToday's 'today' anchor matches WeatherIconOverview's Today card (023-fix-today-summary)", () => {
+  it("anchors on the forward-looking (now, now+24h] bucket, not the backward-looking one before it, when forecast reach is at least a full week", () => {
+    // A realistic forecast reach (7 forward days, one hourly reading each) so the window has
+    // enough forward data to start exactly at "today" rather than backfilling from history
+    // (windowAroundToday's own documented behavior — it only backfills when forward reach is
+    // shorter than `count - 1` days, which is not the case here).
+    const days = toDailyAggregates(
+      [
+        obs({ timestamp: hoursFromNow(-2), temperature: 10 }),
+        obs({ timestamp: hoursFromNow(-1), temperature: 10 }),
+        ...Array.from({ length: 7 }, (_, i) =>
+          obs({ timestamp: hoursFromNow(24 * i + 1), temperature: 20, isForecast: true })
+        ),
+      ],
+      7
+    );
+
+    const firstForecastDay = days.find((d) => d.isForecast === true);
+    const windowed = windowAroundToday(days, 7);
+
+    expect(windowed[0]).toBe(firstForecastDay);
   });
 });

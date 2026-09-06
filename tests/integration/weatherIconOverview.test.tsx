@@ -1468,6 +1468,50 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     expect(screen.getByRole("region", { name: "Today" })).toBeInTheDocument();
   });
+
+  it("reflects the forward-looking forecast, not a backward-looking cloudy stretch that already passed (023-fix-today-summary)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              // Trailing 24h (backward bucket): cloudy.
+              { timestamp: hoursAgo(2), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 90 },
+              // Next 24h (forward bucket): clear.
+              { timestamp: hoursFromNow(1), temperature: 12, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+              { timestamp: hoursFromNow(2), temperature: 12, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent("Clear.");
+    expect(card).not.toHaveTextContent("Cloudy.");
+  });
+
+  it("still summarizes the most recent observed day when there is no forecast at all (023-fix-today-summary, no-regression check)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent("Clear.");
+  });
 });
 
 describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {

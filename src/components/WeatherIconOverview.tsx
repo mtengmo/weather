@@ -524,9 +524,13 @@ export default function WeatherIconOverview({
       ? ((timeline.nowBoundaryIndex + 1) / timeline.periods.length) * 100
       : null;
 
-  // "Today" = the last non-forecast entry in the always-on 7-day series, or the final entry
-  // when there's no forecast at all — reused on all three tabs, not gated on displayMode
-  // (018-dashboard-visual-redesign, contracts/summary-cards.md).
+  // "Today" = the first forecast-tagged entry in the always-on 7-day series — the forward-looking
+  // (now, now+24h] window, matching what a user reading "Today" next to today's own sunrise/sunset
+  // expects (023-fix-today-summary, research.md §1). The bucket immediately before this one is the
+  // backward-looking (now-24h, now] window, which was the confirmed root cause of the Today card
+  // disagreeing with the visible forward-looking hourly forecast. Falls back to the most recent
+  // observed entry only when there is no forecast anywhere in the array at all — reused on all
+  // three tabs, not gated on displayMode (018-dashboard-visual-redesign, contracts/summary-cards.md).
   // Forecast reach capped at 7 days (019-dashboard-polish-round-four, US7): toDailyAggregates'
   // own forward-extension rule means it can return far more than 7 forecast days once a
   // location's forecast reaches beyond a week — capped here without touching the observed side,
@@ -539,8 +543,7 @@ export default function WeatherIconOverview({
   );
   const todayIndex = (() => {
     const firstForecastIndex = weeklyDays.findIndex((d) => d.isForecast === true);
-    if (firstForecastIndex === -1) return weeklyDays.length - 1;
-    return firstForecastIndex > 0 ? firstForecastIndex - 1 : -1;
+    return firstForecastIndex === -1 ? weeklyDays.length - 1 : firstForecastIndex;
   })();
   const today = todayIndex >= 0 ? weeklyDays[todayIndex] : null;
 
