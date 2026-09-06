@@ -1,4 +1,4 @@
-import { deriveWeatherCondition } from "../services/weatherCondition";
+import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { WEATHER_ICONS } from "./weatherIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
@@ -9,21 +9,28 @@ interface TodaySummaryCardProps {
   today: DailyAggregate | null;
   unit: UnitSystem;
   location: Pick<Location, "latitude" | "longitude">;
+  /** The right-now condition (from the latest actual observation), shown instead of the day-long
+   *  bucket's own whole-day-average condition when available — averaging cloud cover across the
+   *  entire next 24 hours could label the card "Cloudy" while it's clearly sunny at this moment,
+   *  disagreeing with the header's own current-conditions reading right above it (027 follow-up).
+   *  Falls back to the whole-day average when there's no current reading (e.g. still loading). */
+  currentCondition?: WeatherCondition | null;
 }
 
 /**
  * Persistent "Today" summary — high/low, description, rain, wind+compass, sunrise/sunset —
  * shown on all three overview tabs, not just the daily one (018-dashboard-visual-redesign, US4).
  */
-export default function TodaySummaryCard({ today, unit, location }: TodaySummaryCardProps) {
+export default function TodaySummaryCard({ today, unit, location, currentCondition }: TodaySummaryCardProps) {
   if (today === null) return null;
 
-  const condition = deriveWeatherCondition({
+  const dayCondition = deriveWeatherCondition({
     temperature: today.average,
     precipitation: today.totalPrecipitation,
     windSpeed: today.windAverage,
     cloudCoverPercent: today.cloudAverage,
   });
+  const condition = currentCondition ?? dayCondition;
   const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
   const { sunrise, sunset } = getSunTimes(location, new Date());
   const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };

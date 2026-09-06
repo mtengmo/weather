@@ -13,6 +13,7 @@ import {
   type TimelineRow,
 } from "./timelineData";
 import { WEATHER_ICONS } from "./weatherIcons";
+import { deriveWeatherCondition } from "../services/weatherCondition";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
 import { dataSourceNote, formatValue } from "../services/format";
 import { toDailyAggregates } from "../services/dailyAggregation";
@@ -260,10 +261,6 @@ function BarRow({
             const heightPercent = Math.max(2, (point.value / max) * 100);
             return (
               <div className="weather-timeline-bar-cell">
-                <div
-                  className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
-                  style={{ height: `${heightPercent}%` }}
-                />
                 <span
                   className={[
                     "weather-timeline-bar-value",
@@ -279,6 +276,10 @@ function BarRow({
                     <span className="weather-timeline-bar-chance"> · {Math.round(point.chanceOfRain)}%</span>
                   )}
                 </span>
+                <div
+                  className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
+                  style={{ height: `${heightPercent}%` }}
+                />
               </div>
             );
           }}
@@ -554,6 +555,29 @@ export default function WeatherIconOverview({
   })();
   const today = todayIndex >= 0 ? weeklyDays[todayIndex] : null;
 
+  // The single nearest forward-looking reading (the first forecast-tagged entry, or — only when
+  // there's no forecast at all — the latest observed one) — used to override the Today card's own
+  // whole-next-24h-average condition. That average can read "Cloudy" purely because a cloudier
+  // stretch later today outweighs a currently-clear sky, disagreeing with the header's own
+  // current-conditions reading directly above this card (027 follow-up). Deliberately still
+  // forward-looking, never the latest *observed* reading on its own — falling back to history here
+  // would resurrect the exact backward-looking mismatch 023-fix-today-summary fixed.
+  const nearestObservation =
+    weeklySeries?.observations.find((o) => o.isForecast === true) ??
+    (weeklySeries !== null && weeklySeries.observations.length > 0
+      ? weeklySeries.observations[weeklySeries.observations.length - 1]
+      : null);
+  const currentCondition =
+    nearestObservation != null
+      ? deriveWeatherCondition({
+          temperature: nearestObservation.temperature,
+          precipitation: nearestObservation.precipitation,
+          windSpeed: nearestObservation.windSpeed,
+          cloudCoverPercent: nearestObservation.cloudCoverPercent,
+          timestamp: nearestObservation.timestamp,
+        })
+      : null;
+
   useEffect(() => {
     // Center the "now" column in the visible area on a fresh render whenever the timeline
     // overflows its container — otherwise the timeline opens scrolled to its leftmost (oldest)
@@ -579,7 +603,7 @@ export default function WeatherIconOverview({
         {location.displayName} — overview
       </h2>
 
-      <TodaySummaryCard today={today} unit={unit} location={location} />
+      <TodaySummaryCard today={today} unit={unit} location={location} currentCondition={currentCondition} />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast
           section design to protect, so it always prioritizes the days ahead over older history. */}

@@ -296,6 +296,25 @@ async function fetchForecastTimeSeries(
   }
 }
 
+function forecastObservationForHour(
+  hourKey: number,
+  data: SmhiForecastData | undefined
+): WeatherObservation {
+  const timestamp = new Date(hourKey * 3600_000).toISOString();
+  return {
+    timestamp,
+    temperature: data?.air_temperature ?? null,
+    precipitation: data?.precipitation_amount_mean ?? null,
+    windSpeed: data?.wind_speed ?? null,
+    cloudCoverPercent: data?.cloud_area_fraction !== undefined ? data.cloud_area_fraction * 12.5 : null,
+    windDirection: data?.wind_from_direction ?? null,
+    windGust: data?.wind_speed_of_gust ?? null,
+    symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
+    chanceOfRain: data?.probability_of_precipitation ?? null,
+    isForecast: true,
+  };
+}
+
 function buildForecastHourlySeries(
   hoursNeeded: number,
   timeSeries: SmhiForecastTimeSeriesEntry[]
@@ -311,22 +330,39 @@ function buildForecastHourlySeries(
   const forecast: WeatherObservation[] = [];
   for (let i = 1; i <= hoursNeeded; i++) {
     const hourKey = currentHour + i;
-    const timestamp = new Date(hourKey * 3600_000).toISOString();
-    const data = byHourEntry.get(hourKey);
-    forecast.push({
-      timestamp,
-      temperature: data?.air_temperature ?? null,
-      precipitation: data?.precipitation_amount_mean ?? null,
-      windSpeed: data?.wind_speed ?? null,
-      cloudCoverPercent: data?.cloud_area_fraction !== undefined ? data.cloud_area_fraction * 12.5 : null,
-      windDirection: data?.wind_from_direction ?? null,
-      windGust: data?.wind_speed_of_gust ?? null,
-      symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
-      chanceOfRain: data?.probability_of_precipitation ?? null,
-      isForecast: true,
-    });
+    forecast.push(forecastObservationForHour(hourKey, byHourEntry.get(hourKey)));
   }
   return forecast;
+}
+
+/**
+ * The station hasn't published the current (or a just-elapsed) hour's reading yet — its
+ * `buildHourlySeries` entry is all-null even though it isn't a forecast column — leaving a
+ * genuine "No data" gap right where the chart transitions from observed to forecast. Backfills
+ * each trailing null hour from the forecast's own reading for that exact hour (flagged
+ * `isForecast: true`) so the chart shows a value there until the real observation replaces it,
+ * rather than a hole (027 follow-up). Stops at the first hour with either a real reading or no
+ * matching forecast entry — older gaps mid-series are left untouched, since the forecast API
+ * never covers the past.
+ */
+function fillTrailingObservationGap(
+  observations: WeatherObservation[],
+  timeSeries: SmhiForecastTimeSeriesEntry[]
+): void {
+  if (timeSeries.length === 0) return;
+
+  const byHourEntry = new Map<number, SmhiForecastData>();
+  for (const entry of timeSeries) {
+    byHourEntry.set(Math.floor(Date.parse(entry.time) / 3600_000), entry.data);
+  }
+
+  for (let i = observations.length - 1; i >= 0; i--) {
+    if (observations[i].temperature !== null) break;
+    const hourKey = Math.floor(Date.parse(observations[i].timestamp) / 3600_000);
+    const data = byHourEntry.get(hourKey);
+    if (data === undefined) break;
+    observations[i] = forecastObservationForHour(hourKey, data);
+  }
 }
 
 async function fetchParameterValues(
@@ -383,6 +419,7 @@ export async function getObservations(
   const forecastHoursNeeded = FORECAST_HOURS[window];
   const { timeSeries: forecastTimeSeries, issuedAt: forecastIssuedAt } =
     forecastHoursNeeded > 0 ? await fetchForecastTimeSeries(location) : { timeSeries: [], issuedAt: null };
+  fillTrailingObservationGap(observations, forecastTimeSeries);
   const forecastObservations = buildForecastHourlySeries(forecastHoursNeeded, forecastTimeSeries);
 
   return {
