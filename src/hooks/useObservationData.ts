@@ -5,11 +5,14 @@ import type {
   NearbyStationSeries,
   ObservationSeries,
   ObservationWindow,
+  WeatherWarning,
 } from "../models/types";
 import {
   getMultiSourceForecast,
   getNearbyStationSeries,
   getObservations,
+  getUvRisk,
+  getWarningsForLocation,
   type MultiSourceForecastEntry,
 } from "../services/weatherApi";
 
@@ -24,6 +27,13 @@ export interface UseObservationDataResult {
   /** ISO timestamp of when `series` last finished loading, for the footer's "Updated HH:MM"
    *  (018-dashboard-visual-redesign, research.md §6). */
   lastUpdated: string | null;
+  /** Hour-bucket keys whose UV Index is at/above the risk threshold — empty outside SMHI
+   *  coverage, while loading, or on a failed fetch (027-uv-index-alert). */
+  uvRiskHours: Set<number>;
+  /** The viewed location's currently-active official weather warnings, most-to-least severe —
+   *  empty outside SMHI coverage, while loading, on a failed fetch, or genuinely no active
+   *  warning (028-severe-weather-warnings). */
+  warnings: WeatherWarning[];
 }
 
 export function useObservationData(
@@ -40,6 +50,8 @@ export function useObservationData(
   const [multiSourceForecast, setMultiSourceForecast] = useState<MultiSourceForecastEntry[]>([]);
   const [weeklySeries, setWeeklySeries] = useState<ObservationSeries | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [uvRiskHours, setUvRiskHours] = useState<Set<number>>(new Set());
+  const [warnings, setWarnings] = useState<WeatherWarning[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,5 +106,47 @@ export function useObservationData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location?.latitude, location?.longitude, window, nearbyStationCount, includeNearbyStations]);
 
-  return { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated };
+  // UV risk data is fetched independently, in its own effect, so a slow/failed fetch never
+  // delays or affects the primary series (027-uv-index-alert, research.md §4) — mirrors the
+  // nearby-station effect's own independent-failure pattern above.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (location === null) {
+      setUvRiskHours(new Set());
+      return;
+    }
+
+    getUvRisk(location, window).then((risky) => {
+      if (!cancelled) setUvRiskHours(risky);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.latitude, location?.longitude, window]);
+
+  // Warnings are location-scoped, not window-scoped (a currently-active warning doesn't depend
+  // on which observation window is selected) — its own independent effect, keyed only on
+  // location, so switching windows never re-triggers this fetch (028-severe-weather-warnings).
+  useEffect(() => {
+    let cancelled = false;
+
+    if (location === null) {
+      setWarnings([]);
+      return;
+    }
+
+    getWarningsForLocation(location).then((result) => {
+      if (!cancelled) setWarnings(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.latitude, location?.longitude]);
+
+  return { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated, uvRiskHours, warnings };
 }

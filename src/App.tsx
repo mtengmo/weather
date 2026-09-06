@@ -10,6 +10,7 @@ import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
 import WeatherIconOverview from "./components/WeatherIconOverview";
+import WarningBanner from "./components/WarningBanner";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import DisplayMenu from "./components/DisplayMenu";
 import LocationPanel from "./components/LocationPanel";
@@ -61,7 +62,7 @@ export default function App() {
     if (view === "graph" || view === "details") setHasOpenedDetails(true);
   }, [view]);
 
-  const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated } = useObservationData(
+  const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated, uvRiskHours, warnings } = useObservationData(
     selected,
     obsWindow,
     nearbyStationCount,
@@ -244,6 +245,8 @@ export default function App() {
         </div>
       </header>
 
+      {selected && <WarningBanner warnings={warnings} />}
+
       {locationUnavailable && (
         <p className="error-banner" role="alert">
           We couldn't determine your current location. Search for a place below, or pick a saved
@@ -286,6 +289,7 @@ export default function App() {
           highLowVisible={highLowVisible}
           multiSourceForecast={multiSourceForecast}
           weeklySeries={weeklySeries}
+          uvRiskHours={uvRiskHours}
         />
       )}
 

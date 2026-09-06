@@ -464,3 +464,61 @@ describe("windowAroundToday's 'today' anchor matches WeatherIconOverview's Today
     expect(windowed[0]).toBe(firstForecastDay);
   });
 });
+
+describe("uvRisk threading (027-uv-index-alert)", () => {
+  it("buildHourlyTimelineData flags a period true only when its own hour is a risky hour", () => {
+    const riskyTimestamp = hoursFromNow(-1);
+    const uvRiskHours = new Set([Math.floor(Date.parse(riskyTimestamp) / 3600_000)]);
+
+    const data = buildHourlyTimelineData(
+      series([
+        obs({ timestamp: riskyTimestamp, temperature: 20 }),
+        obs({ timestamp: hoursFromNow(-2), temperature: 18 }),
+      ]),
+      "metric",
+      uvRiskHours
+    );
+
+    expect(data.periods.find((p) => p.key === riskyTimestamp)?.uvRisk).toBe(true);
+    expect(data.periods.find((p) => p.key !== riskyTimestamp)?.uvRisk).toBe(false);
+  });
+
+  it("buildHourlyTimelineData defaults every period's uvRisk to false when uvRiskHours is omitted", () => {
+    const data = buildHourlyTimelineData(series([obs({ timestamp: hoursFromNow(-1), temperature: 20 })]), "metric");
+
+    expect(data.periods.every((p) => p.uvRisk === false)).toBe(true);
+  });
+
+  it("buildDailyTimelineData flags a day true when any hour within its span is risky", () => {
+    const riskyTimestamp = hoursFromNow(-30); // within the first (older) day's 24h span
+    const uvRiskHours = new Set([Math.floor(Date.parse(riskyTimestamp) / 3600_000)]);
+
+    const data = buildDailyTimelineData(
+      series([
+        obs({ timestamp: riskyTimestamp, temperature: 20 }),
+        obs({ timestamp: hoursFromNow(-2), temperature: 18 }),
+      ]),
+      "metric",
+      uvRiskHours
+    );
+
+    expect(data.periods.some((p) => p.uvRisk === true)).toBe(true);
+  });
+
+  it("never flags a forecast period as risky, even when its hour is in uvRiskHours", () => {
+    // STRÅNG never actually publishes a future hour key in practice (research.md §2), but this
+    // is defense-in-depth: the threading layer itself must not trust that as its only guarantee
+    // (data-model.md's validation rules) — a forecast period is always false regardless of
+    // uvRiskHours' contents.
+    const forecastTimestamp = hoursFromNow(2);
+    const uvRiskHours = new Set([Math.floor(Date.parse(forecastTimestamp) / 3600_000)]);
+
+    const data = buildHourlyTimelineData(
+      series([obs({ timestamp: forecastTimestamp, temperature: 20, isForecast: true })]),
+      "metric",
+      uvRiskHours
+    );
+
+    expect(data.periods[0].uvRisk).toBe(false);
+  });
+});

@@ -66,6 +66,11 @@ export interface TimelinePeriod {
   label: string;
   isForecast: boolean;
   condition: WeatherCondition | null;
+  /** True when any hour within this period's span is a UV-risky hour (UV Index >= 6), per
+   *  `uvRiskHours` — always `false` when no UV data is available for this period (a forecast
+   *  period, a location outside SMHI coverage, or a failed fetch), never `null`/`undefined`
+   *  (027-uv-index-alert, data-model.md). */
+  uvRisk: boolean;
 }
 
 /** One column's value for a single metric row. `value === null` renders as a gap (FR-006). */
@@ -139,6 +144,30 @@ function unitLabels(unit: UnitSystem) {
 function boundaryIndex(isForecastFlags: boolean[]): number | null {
   const idx = isForecastFlags.findIndex((f) => f);
   return idx === -1 ? null : idx - 1;
+}
+
+/** True when any whole hour in `(periodStartMs, periodEndMs]` is a member of `uvRiskHours` —
+ *  the same "was any hour in this period risky" rule the spec's Assumptions describe as using
+ *  the period's peak reading (027-uv-index-alert, research.md §3). A period spans at most a
+ *  week's worth of hours in this app, so a linear scan is cheap.
+ *
+ *  A forecast period is always `false`, defense-in-depth against `uvRiskHours` ever containing a
+ *  future hour key — STRÅNG only ever publishes analysed (already-elapsed) data in practice
+ *  (research.md §2), but this layer doesn't trust that as its only guarantee (spec Assumptions:
+ *  "forecast periods have no UV indicator"; data-model.md's validation rules). */
+function periodHasUvRisk(
+  isForecast: boolean,
+  periodStartMs: number,
+  periodEndMs: number,
+  uvRiskHours: Set<number>
+): boolean {
+  if (isForecast || uvRiskHours.size === 0) return false;
+  const firstHourKey = Math.floor(periodStartMs / 3600_000) + 1;
+  const lastHourKey = Math.floor(periodEndMs / 3600_000);
+  for (let key = firstHourKey; key <= lastHourKey; key++) {
+    if (uvRiskHours.has(key)) return true;
+  }
+  return false;
 }
 
 interface RowSource {
@@ -242,25 +271,35 @@ function interpolateNowBoundary(row: TimelineRow, nowBoundaryIndex: number | nul
   return { ...row, points };
 }
 
-/** Builds the synchronized hourly timeline (24h view) from an already-loaded series. */
-export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
+/** Builds the synchronized hourly timeline (24h view) from an already-loaded series.
+ *  `uvRiskHours` defaults to empty — every existing call site that doesn't yet know about UV
+ *  risk keeps compiling and every period simply gets `uvRisk: false` (027-uv-index-alert). */
+export function buildHourlyTimelineData(
+  series: ObservationSeries,
+  unit: UnitSystem,
+  uvRiskHours: Set<number> = new Set()
+): TimelineData {
   const observations = series.observations;
 
-  const periods: TimelinePeriod[] = observations.map((obs: WeatherObservation) => ({
-    key: obs.timestamp,
-    // Fixed 24-hour format regardless of the runtime's default locale — the previous
-    // locale-driven format rendered differently across devices for the same underlying hour
-    // (009-timeline-polish-and-header, FR-010, research.md §1).
-    label: new Date(obs.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", hourCycle: "h23" }),
-    isForecast: obs.isForecast ?? false,
-    condition: deriveWeatherCondition({
-      temperature: obs.temperature,
-      precipitation: obs.precipitation,
-      windSpeed: obs.windSpeed,
-      cloudCoverPercent: obs.cloudCoverPercent,
-      timestamp: obs.timestamp,
-    }),
-  }));
+  const periods: TimelinePeriod[] = observations.map((obs: WeatherObservation) => {
+    const periodEndMs = Date.parse(obs.timestamp);
+    return {
+      key: obs.timestamp,
+      // Fixed 24-hour format regardless of the runtime's default locale — the previous
+      // locale-driven format rendered differently across devices for the same underlying hour
+      // (009-timeline-polish-and-header, FR-010, research.md §1).
+      label: new Date(obs.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", hourCycle: "h23" }),
+      isForecast: obs.isForecast ?? false,
+      condition: deriveWeatherCondition({
+        temperature: obs.temperature,
+        precipitation: obs.precipitation,
+        windSpeed: obs.windSpeed,
+        cloudCoverPercent: obs.cloudCoverPercent,
+        timestamp: obs.timestamp,
+      }),
+      uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
+    };
+  });
 
   const sources: RowSource[] = observations.map((obs) => ({
     temperature: obs.temperature,
@@ -299,25 +338,34 @@ export function buildHourlyTimelineData(series: ObservationSeries, unit: UnitSys
  * (one plain-daily, one sub-day) into a `TimelineData` the exact same way; only the function that
  * produces the `days` array differs (015-overview-3day-resolution-fix, contracts/overview-resolution-split.md).
  */
-function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineData {
-  const periods: TimelinePeriod[] = days.map((day) => ({
-    key: day.bucketEnd,
-    // A sub-day bucket (3-day view) labels itself by period name instead of weekday+date; a
-    // plain daily bucket (7-day view) never carries subDayLabel, so it always falls through —
-    // includes the calendar date, not just the weekday, per 019-dashboard-polish-round-four US7.
-    label:
-      day.subDayLabel ??
-      new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
-    isForecast: day.isForecast ?? false,
-    // No timestamp passed: a clear day always shows the sun, never the moon (007/008
-    // research.md §3) — a whole day inherently spans both.
-    condition: deriveWeatherCondition({
-      temperature: day.average,
-      precipitation: day.totalPrecipitation,
-      windSpeed: day.windAverage,
-      cloudCoverPercent: day.cloudAverage,
-    }),
-  }));
+function daysToTimelineData(
+  days: DailyAggregate[],
+  unit: UnitSystem,
+  uvRiskHours: Set<number> = new Set()
+): TimelineData {
+  const periods: TimelinePeriod[] = days.map((day, i) => {
+    const periodEndMs = Date.parse(day.bucketEnd);
+    const periodStartMs = i > 0 ? Date.parse(days[i - 1].bucketEnd) : periodEndMs - 24 * 3600_000;
+    return {
+      key: day.bucketEnd,
+      // A sub-day bucket (3-day view) labels itself by period name instead of weekday+date; a
+      // plain daily bucket (7-day view) never carries subDayLabel, so it always falls through —
+      // includes the calendar date, not just the weekday, per 019-dashboard-polish-round-four US7.
+      label:
+        day.subDayLabel ??
+        new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
+      isForecast: day.isForecast ?? false,
+      // No timestamp passed: a clear day always shows the sun, never the moon (007/008
+      // research.md §3) — a whole day inherently spans both.
+      condition: deriveWeatherCondition({
+        temperature: day.average,
+        precipitation: day.totalPrecipitation,
+        windSpeed: day.windAverage,
+        cloudCoverPercent: day.cloudAverage,
+      }),
+      uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
+    };
+  });
 
   const sources: RowSource[] = days.map((day) => ({
     temperature: day.average,
@@ -352,11 +400,17 @@ function daysToTimelineData(days: DailyAggregate[], unit: UnitSystem): TimelineD
 }
 
 /** Builds the synchronized daily timeline (7-day view) from an already-loaded series — always
- *  one column per day, at a single consistent resolution (015, FR-001/FR-002). */
-export function buildDailyTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
+ *  one column per day, at a single consistent resolution (015, FR-001/FR-002). `uvRiskHours`
+ *  defaults to empty (027-uv-index-alert) — see `buildHourlyTimelineData`'s own note. */
+export function buildDailyTimelineData(
+  series: ObservationSeries,
+  unit: UnitSystem,
+  uvRiskHours: Set<number> = new Set()
+): TimelineData {
   return daysToTimelineData(
     capForecastReach(toDailyAggregates(series.observations, DAILY_BUCKET_COUNT), DAILY_BUCKET_COUNT),
-    unit
+    unit,
+    uvRiskHours
   );
 }
 
@@ -366,9 +420,13 @@ const SUB_DAY_VIEW_DAY_COUNT = 3;
  *  day at the same sub-day resolution, never mixed with plain daily columns (015, FR-003/FR-004).
  *  `toSubDayBuckets` caps its own forward reach in whole days (026-fix-3-day follow-up), so no
  *  `capForecastReach` entry-trim is applied here — that would cut mid-day and leave a partial
- *  trailing day. */
-export function build3DayTimelineData(series: ObservationSeries, unit: UnitSystem): TimelineData {
-  return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit);
+ *  trailing day. `uvRiskHours` defaults to empty (027-uv-index-alert). */
+export function build3DayTimelineData(
+  series: ObservationSeries,
+  unit: UnitSystem,
+  uvRiskHours: Set<number> = new Set()
+): TimelineData {
+  return daysToTimelineData(toSubDayBuckets(series.observations, SUB_DAY_VIEW_DAY_COUNT), unit, uvRiskHours);
 }
 
 /**

@@ -31,6 +31,9 @@ interface WeatherIconOverviewProps {
   multiSourceForecast: MultiSourceForecastEntry[];
   /** Always-on 7-day series, for the persistent Today card / 7-day strip (018-dashboard-visual-redesign). */
   weeklySeries: ObservationSeries | null;
+  /** Hour-bucket keys whose UV Index is at/above the risk threshold — empty outside SMHI
+   *  coverage, while loading, or on a failed fetch (027-uv-index-alert). */
+  uvRiskHours: Set<number>;
 }
 
 // The overview only supports 24h/3d/7d (007 spec Edge Cases, extended by 015) — 30-day is out
@@ -377,12 +380,17 @@ function ConditionRow({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                aria-label={`${period.label}: ${iconInfo ? iconInfo.label : "No data"}${period.isForecast ? " (forecast)" : ""}`}
+                aria-label={`${period.label}: ${iconInfo ? iconInfo.label : "No data"}${period.isForecast ? " (forecast)" : ""}${period.uvRisk ? " · High UV" : ""}`}
               >
                 {iconInfo ? (
                   <iconInfo.Icon aria-hidden="true" size={28} />
                 ) : (
                   <span className="weather-timeline-gap" aria-hidden="true">—</span>
+                )}
+                {period.uvRisk && (
+                  <span className="weather-timeline-uv-badge" aria-hidden="true" title="High UV">
+                    UV
+                  </span>
                 )}
                 <span className="weather-timeline-condition-label">
                   {iconInfo ? iconInfo.label : "No data"}
@@ -452,6 +460,7 @@ export default function WeatherIconOverview({
   highLowVisible,
   multiSourceForecast,
   weeklySeries,
+  uvRiskHours,
 }: WeatherIconOverviewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
@@ -488,10 +497,10 @@ export default function WeatherIconOverview({
   const timeline: TimelineData | null =
     series !== null && series.status === "ready"
       ? displayMode === "last-24-hours"
-        ? buildHourlyTimelineData(series, unit)
+        ? buildHourlyTimelineData(series, unit, uvRiskHours)
         : displayMode === "last-3-days"
-          ? build3DayTimelineData(series, unit)
-          : buildDailyTimelineData(series, unit)
+          ? build3DayTimelineData(series, unit, uvRiskHours)
+          : buildDailyTimelineData(series, unit, uvRiskHours)
       : null;
 
   // Always averaged across sources when 2+ have data — no user toggle anymore

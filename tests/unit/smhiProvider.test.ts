@@ -421,5 +421,94 @@ describe("smhiProvider", () => {
         expect(result).toEqual({ observations: [], issuedAt: null });
       });
     });
+
+    describe("getUvIndex (027-uv-index-alert)", () => {
+      it("converts STRÅNG irradiance (mW/m²) to UV Index and returns only hour keys at/above the risk threshold", async () => {
+        const middayIso = new Date(Math.floor(Date.now() / 3600_000 + 3) * 3600_000).toISOString();
+        const eveningIso = new Date(Math.floor(Date.now() / 3600_000 + 4) * 3600_000).toISOString();
+
+        mockFetchRouter({
+          "strang1g": [
+            { date_time: middayIso, value: 200 }, // 200/25 = UV Index 8 -> risky
+            { date_time: eveningIso, value: 50 }, // 50/25 = UV Index 2 -> not risky
+          ],
+        });
+
+        const { getUvIndex } = await freshProvider();
+        const riskyHours = await getUvIndex(STOCKHOLM, "last-24-hours");
+
+        expect(riskyHours.has(Math.floor(Date.parse(middayIso) / 3600_000))).toBe(true);
+        expect(riskyHours.has(Math.floor(Date.parse(eveningIso) / 3600_000))).toBe(false);
+        expect(riskyHours.size).toBe(1);
+      });
+
+      it("treats exactly UV Index 6 as risky (inclusive threshold)", async () => {
+        const hourIso = new Date(Math.floor(Date.now() / 3600_000 + 2) * 3600_000).toISOString();
+        mockFetchRouter({ "strang1g": [{ date_time: hourIso, value: 150 }] }); // 150/25 = 6 exactly
+
+        const { getUvIndex } = await freshProvider();
+        const riskyHours = await getUvIndex(STOCKHOLM, "last-24-hours");
+
+        expect(riskyHours.has(Math.floor(Date.parse(hourIso) / 3600_000))).toBe(true);
+      });
+
+      it("degrades to an empty Set when the request fails, never throws", async () => {
+        mockFetchRouter({}); // no handler -> 404
+
+        const { getUvIndex } = await freshProvider();
+        const riskyHours = await getUvIndex(STOCKHOLM, "last-24-hours");
+
+        expect(riskyHours.size).toBe(0);
+      });
+
+      it("degrades to an empty Set when fetch itself rejects", async () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () => {
+            throw new Error("network error");
+          })
+        );
+
+        const { getUvIndex } = await freshProvider();
+        const riskyHours = await getUvIndex(STOCKHOLM, "last-24-hours");
+
+        expect(riskyHours.size).toBe(0);
+      });
+    });
+
+    describe("getActiveWarnings (028-severe-weather-warnings)", () => {
+      it("returns the parsed warning list on success", async () => {
+        const sample = [{ id: 1, event: { en: "Storm" }, warningAreas: [] }];
+        mockFetchRouter({ "ibww/api/version/1/warning.json": sample });
+
+        const { getActiveWarnings } = await freshProvider();
+        const result = await getActiveWarnings();
+
+        expect(result).toEqual(sample);
+      });
+
+      it("degrades to an empty array when the request fails", async () => {
+        mockFetchRouter({}); // no handler -> 404
+
+        const { getActiveWarnings } = await freshProvider();
+        const result = await getActiveWarnings();
+
+        expect(result).toEqual([]);
+      });
+
+      it("degrades to an empty array when fetch itself rejects", async () => {
+        vi.stubGlobal(
+          "fetch",
+          vi.fn(async () => {
+            throw new Error("network error");
+          })
+        );
+
+        const { getActiveWarnings } = await freshProvider();
+        const result = await getActiveWarnings();
+
+        expect(result).toEqual([]);
+      });
+    });
   });
 });

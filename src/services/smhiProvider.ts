@@ -13,9 +13,20 @@ const WIND_DIRECTION_PARAM = 3;
 const WIND_GUST_PARAM = 21; // "Byvind", max/hour, m/s
 const COVERAGE_RADIUS_KM = 50;
 
+// SMHI's Impact-Based Weather Warnings feed — the full national list of currently-published
+// warnings (028-severe-weather-warnings, research.md §1).
+const WARNINGS_URL = "https://opendata-download-warnings.smhi.se/ibww/api/version/1/warning.json";
+
 // Point-forecast API (lat/lon grid point, no station id) — replaces the deprecated
 // pmp3g/version/2 endpoint, which SMHI shut down 2026-03-31 (research.md §1).
 const FORECAST_BASE_URL = "https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point";
+
+// STRÅNG analysed-irradiance point query (027-uv-index-alert, research.md §1). Parameter 116 is
+// erythemally-weighted UV irradiance in mW/m² — divide by 25 to get the standard 0-11+ UV Index.
+const UV_BASE_URL = "https://opendata-download-metanalys.smhi.se/api/category/strang1g/version/1/geotype/point";
+const UV_PARAMETER = 116;
+const UV_IRRADIANCE_PER_INDEX_UNIT = 25; // mW/m² per UV Index unit
+const UV_RISK_THRESHOLD = 6; // WHO "High" boundary (027-uv-index-alert spec Assumptions)
 
 const WINDOW_HOURS: Record<ObservationWindow, number> = {
   "last-24-hours": 24,
@@ -455,6 +466,88 @@ export async function getForecastOnly(
   const { timeSeries, issuedAt } = await fetchForecastTimeSeries(location);
   const observations = buildForecastHourlySeries(forecastHoursNeeded, timeSeries);
   return { observations, issuedAt: observations.length > 0 ? issuedAt : null };
+}
+
+interface StrangValue {
+  date_time: string;
+  value: number;
+}
+
+/**
+ * The hour-bucket keys (`Math.floor(epochMs / 3600_000)`, same convention as `byHour`) whose UV
+ * Index (converted from STRÅNG's raw mW/m² irradiance reading) meets or exceeds the risk
+ * threshold (027-uv-index-alert, research.md §1/§3). STRÅNG only ever publishes analysed
+ * (already-elapsed) data — no future hour key is ever present, by construction of the source
+ * itself, not by any filtering done here. Never throws — a fetch/parse failure resolves to an
+ * empty `Set`, matching every other provider function's degrade-to-empty convention.
+ */
+export async function getUvIndex(
+  location: Pick<import("../models/types").Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<Set<number>> {
+  const riskyHours = new Set<number>();
+  try {
+    const days = Math.max(1, Math.ceil(WINDOW_HOURS[window] / 24));
+    const from = new Date(Date.now() - days * 24 * 3600_000);
+    const fromParam = `${from.getUTCFullYear()}${String(from.getUTCMonth() + 1).padStart(2, "0")}${String(from.getUTCDate()).padStart(2, "0")}`;
+    const lon = roundCoordinate(location.longitude);
+    const lat = roundCoordinate(location.latitude);
+    const url = `${UV_BASE_URL}/lon/${lon}/lat/${lat}/parameter/${UV_PARAMETER}/data.json?from=${fromParam}`;
+
+    const response = await fetch(url);
+    if (!response.ok) return riskyHours;
+    const values = (await response.json()) as StrangValue[];
+
+    for (const entry of values) {
+      const uvIndex = entry.value / UV_IRRADIANCE_PER_INDEX_UNIT;
+      if (uvIndex >= UV_RISK_THRESHOLD) {
+        riskyHours.add(Math.floor(Date.parse(entry.date_time) / 3600_000));
+      }
+    }
+  } catch {
+    // Best-effort — a failed UV fetch degrades to "no risky hours" rather than failing the caller.
+  }
+  return riskyHours;
+}
+
+interface SmhiBilingualText {
+  sv?: string;
+  en?: string;
+  code?: string;
+}
+
+/** One warning's own affected sub-area — a single top-level warning can list several, each with
+ *  its own boundary, severity, and validity window (028-severe-weather-warnings, research.md §1,
+ *  confirmed via a live sample request). */
+export interface SmhiWarningArea {
+  id: number;
+  approximateStart: string;
+  approximateEnd?: string; // not observed in any live sample (research.md §2) — read defensively
+  areaName?: SmhiBilingualText;
+  warningLevel: SmhiBilingualText;
+  descriptions: { title: SmhiBilingualText; text: SmhiBilingualText }[];
+  area: { type: "Feature"; geometry: import("./geo").GeoGeometry };
+}
+
+export interface RawSmhiWarning {
+  id: number;
+  event: SmhiBilingualText;
+  warningAreas: SmhiWarningArea[];
+}
+
+/**
+ * The full national list of currently-published warnings. Never throws — a fetch/parse failure
+ * resolves to `[]`, matching every other provider function's degrade-to-empty convention
+ * (028-severe-weather-warnings, contracts/warnings.md).
+ */
+export async function getActiveWarnings(): Promise<RawSmhiWarning[]> {
+  try {
+    const response = await fetch(WARNINGS_URL);
+    if (!response.ok) return [];
+    return (await response.json()) as RawSmhiWarning[];
+  } catch {
+    return [];
+  }
 }
 
 export async function getNearestStations(

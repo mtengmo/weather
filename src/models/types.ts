@@ -138,3 +138,20 @@ export const DEFAULT_NEARBY_STATION_COUNT: NearbyStationCount = 4;
 export type HighLowVisibility = boolean;
 
 export const DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = true;
+
+/** An official weather warning covering the viewed location, reduced from SMHI's Impact-Based
+ *  Weather Warnings feed to just what the UI needs (028-severe-weather-warnings,
+ *  data-model.md) — already filtered to currently-valid and sorted most-to-least severe by the
+ *  time it reaches a component. */
+export interface WeatherWarning {
+  id: string;
+  /** SMHI's own warning-level code (e.g. "MESSAGE"), used for severity ordering and as a CSS hook. */
+  severityCode: string;
+  severityLabel: string;
+  title: string;
+  areaName: string;
+  description: string;
+  validFrom: string; // ISO 8601 timestamp
+  /** null means "no stated end — still active per the feed's own presence" (research.md §2). */
+  validUntil: string | null;
+}

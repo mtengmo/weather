@@ -37,7 +37,11 @@ export default function TodaySummaryCard({ today, unit, location, currentConditi
 
   return (
     <section className="today-summary-card" aria-label="Today">
-      <div className="today-summary-icon">
+      <div
+        className={["today-summary-icon", condition !== null ? `weather-condition-${condition}` : null]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {iconInfo ? <iconInfo.Icon aria-hidden="true" size={40} /> : null}
       </div>
       <div className="today-summary-highlow">

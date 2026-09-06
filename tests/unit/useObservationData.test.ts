@@ -6,12 +6,16 @@ vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
   getNearbyStationSeries: vi.fn(),
   getMultiSourceForecast: vi.fn(),
+  getUvRisk: vi.fn(),
+  getWarningsForLocation: vi.fn(),
 }));
 
 import {
   getMultiSourceForecast,
   getNearbyStationSeries,
   getObservations,
+  getUvRisk,
+  getWarningsForLocation,
 } from "../../src/services/weatherApi";
 import { useObservationData } from "../../src/hooks/useObservationData";
 
@@ -39,6 +43,10 @@ describe("useObservationData nearby-station lazy fetch (025-reduce-api-requests,
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
     vi.mocked(getMultiSourceForecast).mockReset();
     vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getWarningsForLocation).mockReset();
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
   });
 
   it("never calls getNearbyStationSeries when includeNearbyStations is false", async () => {
@@ -81,5 +89,81 @@ describe("useObservationData nearby-station lazy fetch (025-reduce-api-requests,
     // location/window.
     expect(getObservations).toHaveBeenCalledTimes(observationsCallCountBefore);
     expect(getMultiSourceForecast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useObservationData UV risk fetch isolation (027-uv-index-alert)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue(series());
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getWarningsForLocation).mockReset();
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
+  });
+
+  it("resolves series/weeklySeries without waiting on a still-pending UV fetch", async () => {
+    // getUvRisk (per its own contract, never-throwing) is left pending indefinitely here — the
+    // primary/weekly fetch must resolve regardless, confirming the two effects are independent.
+    vi.mocked(getUvRisk).mockReturnValue(new Promise<Set<number>>(() => {}));
+
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    expect(result.current.weeklySeries).not.toBeNull();
+    expect(result.current.uvRiskHours.size).toBe(0);
+  });
+
+  it("exposes the resolved risky hours once the UV fetch succeeds", async () => {
+    const risky = new Set([123456]);
+    vi.mocked(getUvRisk).mockResolvedValue(risky);
+
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+    await waitFor(() => expect(result.current.uvRiskHours).toBe(risky));
+  });
+});
+
+describe("useObservationData warnings fetch isolation (028-severe-weather-warnings)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue(series());
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getWarningsForLocation).mockReset();
+  });
+
+  it("resolves series/weeklySeries without waiting on a still-pending warnings fetch", async () => {
+    vi.mocked(getWarningsForLocation).mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    expect(result.current.weeklySeries).not.toBeNull();
+    expect(result.current.warnings).toEqual([]);
+  });
+
+  it("does not re-fetch warnings when only the window changes", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
+
+    const { rerender } = renderHook(
+      ({ window }: { window: "last-24-hours" | "last-7-days" }) =>
+        useObservationData(STOCKHOLM, window, 0, false),
+      { initialProps: { window: "last-24-hours" } }
+    );
+
+    await waitFor(() => expect(getWarningsForLocation).toHaveBeenCalledTimes(1));
+
+    rerender({ window: "last-7-days" });
+
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(STOCKHOLM, "last-7-days"));
+    expect(getWarningsForLocation).toHaveBeenCalledTimes(1);
   });
 });

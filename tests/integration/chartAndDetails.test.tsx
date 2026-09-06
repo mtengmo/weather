@@ -20,6 +20,8 @@ vi.mock("../../src/services/weatherApi", () => ({
   // (020-dashboard-polish-round-five, US2 — no toggle to gate it), so every test needs a
   // resolvable default even if it never cares about multi-source data specifically.
   getMultiSourceForecast: vi.fn().mockResolvedValue([]),
+  getUvRisk: vi.fn().mockResolvedValue(new Set()),
+  getWarningsForLocation: vi.fn().mockResolvedValue([]),
 }));
 
 import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";

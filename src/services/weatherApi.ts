@@ -6,10 +6,12 @@ import type {
   ObservationWindow,
   StationInfo,
   WeatherObservation,
+  WeatherWarning,
 } from "../models/types";
 import * as metNoProvider from "./metNoProvider";
 import * as openMeteoProvider from "./openMeteoProvider";
 import * as smhiProvider from "./smhiProvider";
+import { pointInPolygon } from "./geo";
 
 async function isSmhiCovered(location: Pick<Location, "latitude" | "longitude">): Promise<boolean> {
   try {
@@ -58,6 +60,77 @@ export async function getObservations(
   }
 
   return { ...(await openMeteoProvider.getObservations(location, window)), primarySource: "open-meteo" };
+}
+
+/**
+ * The set of risky (UV Index >= 6) hour-bucket keys for `location`/`window`, or an empty `Set`
+ * for a non-Swedish location — STRÅNG is SMHI-only, so this reuses the same coverage gate every
+ * other SMHI-only extra already uses (027-uv-index-alert, research.md §5).
+ */
+export async function getUvRisk(
+  location: Pick<Location, "latitude" | "longitude">,
+  window: ObservationWindow
+): Promise<Set<number>> {
+  if (!(await isSmhiCovered(location))) {
+    return new Set();
+  }
+  return smhiProvider.getUvIndex(location, window);
+}
+
+// SMHI's own published warning-level scale, from an informational message up through its
+// highest-impact class (028-severe-weather-warnings, research.md §4) — an unrecognized/future
+// code sorts below every recognized one (defensive default, never crashes or wrongly promotes).
+const SEVERITY_ORDER: Record<string, number> = {
+  MESSAGE: 0,
+  CLASS_1: 1,
+  CLASS_2: 2,
+  CLASS_3: 3,
+};
+
+function severityRank(code: string): number {
+  return SEVERITY_ORDER[code] ?? -1;
+}
+
+/**
+ * The location's currently-active warnings, most-to-least severe — empty for a location outside
+ * SMHI coverage, a fetch failure, or genuinely no active warning (all three are indistinguishable
+ * by design, 028-severe-weather-warnings, data-model.md).
+ */
+export async function getWarningsForLocation(
+  location: Pick<Location, "latitude" | "longitude">
+): Promise<WeatherWarning[]> {
+  if (!(await isSmhiCovered(location))) {
+    return [];
+  }
+
+  const raw = await smhiProvider.getActiveWarnings();
+  const now = Date.now();
+  const warnings: WeatherWarning[] = [];
+
+  for (const warning of raw) {
+    for (const area of warning.warningAreas) {
+      const validFrom = Date.parse(area.approximateStart);
+      const validUntil = area.approximateEnd ? Date.parse(area.approximateEnd) : null;
+      if (validFrom > now) continue;
+      if (validUntil !== null && validUntil <= now) continue;
+      if (!pointInPolygon(location, area.area.geometry)) continue;
+
+      warnings.push({
+        id: `${warning.id}-${area.id}`,
+        severityCode: area.warningLevel.code ?? "",
+        severityLabel: area.warningLevel.en ?? area.warningLevel.sv ?? "",
+        title: warning.event.en ?? warning.event.sv ?? "",
+        areaName: area.areaName?.en ?? area.areaName?.sv ?? "",
+        description: area.descriptions
+          .map((d) => `${d.title.en ?? d.title.sv ?? ""}: ${d.text.en ?? d.text.sv ?? ""}`)
+          .join("\n\n"),
+        validFrom: area.approximateStart,
+        validUntil: area.approximateEnd ?? null,
+      });
+    }
+  }
+
+  return warnings.sort((a, b) => severityRank(b.severityCode) - severityRank(a.severityCode));
 }
 
 export async function getNearbyStationSeries(

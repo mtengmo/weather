@@ -15,9 +15,18 @@ vi.mock("../../src/services/weatherApi", () => ({
   // (020-dashboard-polish-round-five, US2 — no toggle to gate it), so every test needs a
   // resolvable default even if it never cares about multi-source data specifically.
   getMultiSourceForecast: vi.fn().mockResolvedValue([]),
+  // Likewise always fetched, in its own independent effect (027-uv-index-alert) — default to an
+  // empty Set so every existing test (which doesn't care about UV) keeps working unchanged.
+  getUvRisk: vi.fn().mockResolvedValue(new Set()),
+  getWarningsForLocation: vi.fn().mockResolvedValue([]),
 }));
 
-import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import {
+  getMultiSourceForecast,
+  getNearbyStationSeries,
+  getObservations,
+  getUvRisk,
+} from "../../src/services/weatherApi";
 
 const stockholm: Location = {
   latitude: 59.33,
@@ -42,7 +51,12 @@ function OverviewHarness({
   highLowVisible?: boolean;
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
-  const { series, multiSourceForecast, weeklySeries } = useObservationData(location, window, 0, false);
+  const { series, multiSourceForecast, weeklySeries, uvRiskHours } = useObservationData(
+    location,
+    window,
+    0,
+    false
+  );
 
   return (
     <WeatherIconOverview
@@ -54,6 +68,7 @@ function OverviewHarness({
       highLowVisible={highLowVisible}
       multiSourceForecast={multiSourceForecast}
       weeklySeries={weeklySeries}
+      uvRiskHours={uvRiskHours}
     />
   );
 }
@@ -1536,6 +1551,25 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     expect(card).toHaveTextContent(/Sunset/);
   });
 
+  it("colors the icon by its condition, matching the color used elsewhere for the same condition (029-colorful-brief-icons)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    const iconWrapper = card.querySelector(".today-summary-icon");
+    expect(iconWrapper).toHaveClass("weather-condition-clear-day");
+  });
+
   it("shows the gap indicator, not a fabricated value, for missing fields", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
@@ -2034,5 +2068,65 @@ describe("Now line and day-boundary line positioning (020-dashboard-polish-round
       expect(boundary.style.left).toMatch(/^calc\(7rem \+/);
       expect(boundary.style.left).toContain("100% - 7rem");
     }
+  });
+});
+
+describe("UV risk badge (027-uv-index-alert)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+  });
+
+  it("shows the badge only on the observed hour whose UV Index is risky, never on a forecast hour", async () => {
+    const riskyTimestamp = hoursAgo(1);
+    const safeTimestamp = hoursAgo(2);
+    const forecastTimestamp = hoursFromNow(1);
+    vi.mocked(getUvRisk).mockResolvedValue(new Set([Math.floor(Date.parse(riskyTimestamp) / 3600_000)]));
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: safeTimestamp, temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: riskyTimestamp, temperature: 20, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: forecastTimestamp,
+          temperature: 20,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const badges = await screen.findAllByTitle("High UV");
+    expect(badges).toHaveLength(1);
+
+    const riskyCell = badges[0].closest(".weather-timeline-condition") as HTMLElement;
+    expect(riskyCell.getAttribute("aria-label")).toContain("High UV");
+  });
+
+  it("shows no badge anywhere when uvRiskHours is empty", async () => {
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 20, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    await screen.findByRole("region", { name: `Weather overview for ${stockholm.displayName}` });
+
+    expect(screen.queryByTitle("High UV")).not.toBeInTheDocument();
   });
 });

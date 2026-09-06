@@ -6,6 +6,8 @@ vi.mock("../../src/services/smhiProvider", () => ({
   getObservations: vi.fn(),
   getForecastOnly: vi.fn(),
   getNearestStations: vi.fn(),
+  getUvIndex: vi.fn(),
+  getActiveWarnings: vi.fn(),
 }));
 
 vi.mock("../../src/services/openMeteoProvider", () => ({
@@ -20,7 +22,14 @@ vi.mock("../../src/services/metNoProvider", () => ({
 import * as smhiProvider from "../../src/services/smhiProvider";
 import * as openMeteoProvider from "../../src/services/openMeteoProvider";
 import * as metNoProvider from "../../src/services/metNoProvider";
-import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import {
+  getMultiSourceForecast,
+  getNearbyStationSeries,
+  getObservations,
+  getUvRisk,
+  getWarningsForLocation,
+} from "../../src/services/weatherApi";
+import type { RawSmhiWarning } from "../../src/services/smhiProvider";
 
 const location = { latitude: 59.33, longitude: 18.06 };
 
@@ -403,5 +412,175 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7;
     const openMeteoEntry = result.find((r) => r.source === "open-meteo");
     expect(smhiEntry?.issuedAt).toBe("2026-09-05T06:00:00.000Z");
     expect(openMeteoEntry?.issuedAt).toBeNull();
+  });
+});
+
+// A square containing `location` (59.33, 18.06) — [lon, lat] order, per GeoJSON.
+const COVERING_SQUARE = {
+  type: "Polygon" as const,
+  coordinates: [
+    [
+      [17, 58],
+      [19, 58],
+      [19, 60],
+      [17, 60],
+      [17, 58],
+    ],
+  ],
+};
+
+const FAR_AWAY_SQUARE = {
+  type: "Polygon" as const,
+  coordinates: [
+    [
+      [100, 10],
+      [101, 10],
+      [101, 11],
+      [100, 11],
+      [100, 10],
+    ],
+  ],
+};
+
+function rawWarning(overrides: {
+  id?: number;
+  code?: string;
+  approximateStart?: string;
+  approximateEnd?: string;
+  geometry?: typeof COVERING_SQUARE;
+}): RawSmhiWarning {
+  return {
+    id: overrides.id ?? 1,
+    event: { sv: "Storm", en: "Storm", code: "STORM" },
+    warningAreas: [
+      {
+        id: 100 + (overrides.id ?? 1),
+        approximateStart: overrides.approximateStart ?? new Date(Date.now() - 3600_000).toISOString(),
+        ...(overrides.approximateEnd ? { approximateEnd: overrides.approximateEnd } : {}),
+        areaName: { sv: "Stockholms län", en: "Stockholm County" },
+        warningLevel: { sv: "Klass 1", en: "Class 1", code: overrides.code ?? "CLASS_1" },
+        descriptions: [{ title: { sv: "T", en: "Title" }, text: { sv: "B", en: "Body" } }],
+        area: { type: "Feature", geometry: overrides.geometry ?? COVERING_SQUARE },
+      },
+    ],
+  };
+}
+
+describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () => {
+  beforeEach(() => {
+    vi.mocked(smhiProvider.isCovered).mockReset();
+    vi.mocked(smhiProvider.getActiveWarnings).mockReset();
+  });
+
+  it("returns [] without calling getActiveWarnings when the location isn't SMHI-covered", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(false);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toEqual([]);
+    expect(smhiProvider.getActiveWarnings).not.toHaveBeenCalled();
+  });
+
+  it("excludes a warning whose area doesn't contain the location", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ geometry: FAR_AWAY_SQUARE }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toEqual([]);
+  });
+
+  it("excludes a warning whose approximateStart is in the future", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ approximateStart: new Date(Date.now() + 3600_000).toISOString() }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toEqual([]);
+  });
+
+  it("excludes a warning whose approximateEnd is in the past", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({
+        approximateStart: new Date(Date.now() - 7200_000).toISOString(),
+        approximateEnd: new Date(Date.now() - 3600_000).toISOString(),
+      }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toEqual([]);
+  });
+
+  it("includes a currently-valid warning covering the location, mapped to the reduced shape", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([rawWarning({})]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      severityCode: "CLASS_1",
+      severityLabel: "Class 1",
+      title: "Storm",
+      areaName: "Stockholm County",
+    });
+  });
+
+  it("sorts multiple active warnings most-to-least severe", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ id: 1, code: "MESSAGE" }),
+      rawWarning({ id: 2, code: "CLASS_3" }),
+      rawWarning({ id: 3, code: "CLASS_1" }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result.map((w) => w.severityCode)).toEqual(["CLASS_3", "CLASS_1", "MESSAGE"]);
+  });
+
+  it("sorts an unrecognized severity code below every recognized one", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ id: 1, code: "SOMETHING_NEW" }),
+      rawWarning({ id: 2, code: "MESSAGE" }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result.map((w) => w.severityCode)).toEqual(["MESSAGE", "SOMETHING_NEW"]);
+  });
+});
+
+describe("weatherApi.getUvRisk (027-uv-index-alert)", () => {
+  beforeEach(() => {
+    vi.mocked(smhiProvider.isCovered).mockReset();
+    vi.mocked(smhiProvider.getUvIndex).mockReset();
+  });
+
+  it("returns an empty Set without calling smhiProvider.getUvIndex when the location isn't SMHI-covered", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(false);
+
+    const result = await getUvRisk(location, "last-24-hours");
+
+    expect(result.size).toBe(0);
+    expect(smhiProvider.getUvIndex).not.toHaveBeenCalled();
+  });
+
+  it("delegates to smhiProvider.getUvIndex when the location is covered", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    const risky = new Set([123456]);
+    vi.mocked(smhiProvider.getUvIndex).mockResolvedValue(risky);
+
+    const result = await getUvRisk(location, "last-24-hours");
+
+    expect(result).toBe(risky);
+    expect(smhiProvider.getUvIndex).toHaveBeenCalledWith(location, "last-24-hours");
   });
 });

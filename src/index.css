@@ -589,6 +589,18 @@ a {
   color: var(--text-muted);
 }
 
+/* Small UV-risk badge on the existing condition icon — never a separate row/section
+   (027-uv-index-alert, FR-001). Reuses the sun color token rather than a new palette entry. */
+.weather-timeline-uv-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+  border-radius: 999px;
+  color: #1a1300;
+  background: var(--wx-sun);
+}
+
 .weather-timeline-cell-forecast {
   font-size: 0.65rem;
   color: var(--text-muted);
@@ -991,4 +1003,97 @@ a {
   align-self: flex-end;
   line-height: 1;
   padding: 0.25rem 0.6rem;
+}
+
+/* Persistent warning banner (028-severe-weather-warnings) — reuses the app's existing themed
+   error tokens for its base surface, with a severity-colored left border matching SMHI's own
+   Message/Class 1/2/3 scale (a fixed, internationally-recognizable warning color progression,
+   not tied to any one visual theme). */
+.warning-banner {
+  margin: 0.75rem 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
+}
+
+.warning-banner-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-left: 4px solid var(--text-muted);
+  color: var(--error-text);
+  cursor: pointer;
+}
+
+.warning-banner-severity {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.warning-banner-title {
+  flex: 1;
+}
+
+.warning-banner-more {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.warning-banner-details {
+  padding: 0 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.warning-banner-item {
+  border-left: 4px solid var(--text-muted);
+  padding-left: 0.6rem;
+}
+
+.warning-banner-item-title {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--error-text);
+}
+
+.warning-banner-item-area,
+.warning-banner-item-validity {
+  margin: 0.15rem 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.warning-banner-item-description {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+.warning-level-message.warning-banner-summary,
+.warning-level-message.warning-banner-item {
+  border-left-color: #6b7280;
+}
+
+.warning-level-class_1.warning-banner-summary,
+.warning-level-class_1.warning-banner-item {
+  border-left-color: #eab308;
+}
+
+.warning-level-class_2.warning-banner-summary,
+.warning-level-class_2.warning-banner-item {
+  border-left-color: #f97316;
+}
+
+.warning-level-class_3.warning-banner-summary,
+.warning-level-class_3.warning-banner-item {
+  border-left-color: #dc2626;
 }

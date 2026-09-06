@@ -12,6 +12,8 @@ vi.mock("../../src/services/weatherApi", () => ({
   // getMultiSourceForecast is now always fetched, unconditionally
   // (020-dashboard-polish-round-five, US2 — no toggle to gate it).
   getMultiSourceForecast: vi.fn().mockResolvedValue([]),
+  getUvRisk: vi.fn().mockResolvedValue(new Set()),
+  getWarningsForLocation: vi.fn().mockResolvedValue([]),
 }));
 
 import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
