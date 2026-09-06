@@ -41,22 +41,22 @@ describe("directionToCompass (018-dashboard-visual-redesign)", () => {
 
 describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names only the observation source, no per-mode forecast-source naming)", () => {
   it("returns null when primarySource is absent", () => {
-    expect(dataSourceDisclosure({}, null, false)).toBeNull();
+    expect(dataSourceDisclosure({}, null, [])).toBeNull();
   });
 
   it("describes SMHI observations", () => {
-    expect(dataSourceDisclosure({ primarySource: "smhi" }, null, false)).toBe("SMHI observations");
+    expect(dataSourceDisclosure({ primarySource: "smhi" }, null, [])).toBe("SMHI observations");
   });
 
   it("describes Open-Meteo observations", () => {
-    expect(dataSourceDisclosure({ primarySource: "open-meteo" }, null, false)).toBe("Open-Meteo observations");
+    expect(dataSourceDisclosure({ primarySource: "open-meteo" }, null, [])).toBe("Open-Meteo observations");
   });
 
   it("appends the source's own forecastIssuedAt time when available", () => {
     const result = dataSourceDisclosure(
       { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
       "2026-09-05T06:47:00.000Z",
-      false
+      []
     );
     const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
       hour: "2-digit",
@@ -66,7 +66,7 @@ describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names o
   });
 
   it("falls back to lastUpdated when forecastIssuedAt is absent", () => {
-    const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z", false);
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z", []);
     const expectedTime = new Date("2026-09-05T06:47:00.000Z").toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -75,17 +75,17 @@ describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names o
   });
 
   it("omits the freshness fragment entirely when neither is available", () => {
-    const result = dataSourceDisclosure({ primarySource: "smhi" }, null, false);
+    const result = dataSourceDisclosure({ primarySource: "smhi" }, null, []);
     expect(result).toBe("SMHI observations");
   });
 });
 
-describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-round-six, US2/FR-003)", () => {
-  it("names both forecast sources when combined is true", () => {
+describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-round-six, US2/FR-003; widened to N sources 022-met-forecast-source)", () => {
+  it("names both forecast sources when 2 sources contributed", () => {
     const result = dataSourceDisclosure(
       { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
       null,
-      true
+      ["SMHI", "Open-Meteo"]
     );
     const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
       hour: "2-digit",
@@ -94,11 +94,24 @@ describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-r
     expect(result).toBe(`SMHI observations · SMHI + Open-Meteo forecast updated ${expectedTime}`);
   });
 
-  it("keeps the plain 'Forecast' label when combined is false", () => {
+  it("names all three forecast sources when all three contributed (022-met-forecast-source)", () => {
     const result = dataSourceDisclosure(
       { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
       null,
-      false
+      ["SMHI", "Open-Meteo", "MET Norway"]
+    );
+    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    expect(result).toBe(`SMHI observations · SMHI + Open-Meteo + MET Norway forecast updated ${expectedTime}`);
+  });
+
+  it("keeps the plain 'Forecast' label when 0 or 1 sources contributed", () => {
+    const result = dataSourceDisclosure(
+      { primarySource: "smhi", forecastIssuedAt: "2026-09-05T06:00:00.000Z" },
+      null,
+      []
     );
     expect(result).not.toContain("Open-Meteo forecast");
   });

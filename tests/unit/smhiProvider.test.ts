@@ -241,6 +241,79 @@ describe("smhiProvider", () => {
       expect(result.observations.some((o) => o.isForecast)).toBe(false);
     });
 
+    describe("symbol_code -> symbolCondition (022-met-forecast-source, research.md §3)", () => {
+      it("maps symbol_code 11 (thunderstorm) to symbolCondition thunderstorm", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 11 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("thunderstorm");
+      });
+
+      it("maps symbol_code 7 (fog) to symbolCondition foggy", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 7 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("foggy");
+      });
+
+      it("maps symbol_code 22 (light sleet) to symbolCondition sleet", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 22 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("sleet");
+      });
+
+      it("resolves symbol_code 1 (clear) to clear-day or clear-night via the observation's own timestamp", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: 1 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        const condition = result.observations.find((o) => o.isForecast)?.symbolCondition;
+        expect(["clear-day", "clear-night"]).toContain(condition);
+      });
+
+      it("leaves symbolCondition null when no symbol_code is present", async () => {
+        mockFetchRouter({
+          ...baseStations,
+          "/category/snow1g/version/1/geotype/point": forecastBody([
+            { time: isoHourFromNow(1), data: { air_temperature: 10 } },
+          ]),
+        });
+
+        const { getObservations } = await freshProvider();
+        const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+        expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBeNull();
+      });
+    });
+
     it("rounds raw geolocation coordinates to 6 decimals before requesting the forecast (021 follow-up)", async () => {
       // SMHI's forecast API 404s (surfaced by the browser as a misleading CORS error) once the
       // URL's lat/lon exceed 6 decimal places — confirmed live. Raw browser geolocation

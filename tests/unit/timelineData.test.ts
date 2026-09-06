@@ -345,6 +345,23 @@ describe("mergeMultiSourceIntoTimelinePoints (019-dashboard-polish-round-four, U
     const point = data.temperature.points[0];
     expect(point.value).toBe(10); // mean of 8 and 12
     expect(point.combined).toBe(true);
+    expect(point.combinedSourceCount).toBe(2);
+  });
+
+  it("sets combinedSourceCount to 3 when three sources contribute (022-met-forecast-source)", () => {
+    const t = hoursFromNow(1);
+    const data = buildHourlyTimelineData(series([forecastObs(t, 10)]), "metric");
+    const entries: MultiSourceForecastEntry[] = [
+      { source: "smhi", observations: [forecastObs(t, 9)] },
+      { source: "open-meteo", observations: [forecastObs(t, 12)] },
+      { source: "met-no", observations: [forecastObs(t, 15)] },
+    ];
+
+    mergeMultiSourceIntoTimelinePoints(data.temperature, data.periods, entries, "metric");
+
+    const point = data.temperature.points[0];
+    expect(point.combined).toBe(true);
+    expect(point.combinedSourceCount).toBe(3);
   });
 
   it("does nothing with fewer than 2 sources", () => {

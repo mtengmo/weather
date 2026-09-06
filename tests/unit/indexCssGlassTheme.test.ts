@@ -50,3 +50,25 @@ describe("Location panel and Display menu contrast against dark backgrounds (021
     expect(rule).toContain("rgba(255, 255, 255, 0.08)");
   });
 });
+
+describe("New condition colors: thunderstorm, foggy, sleet (022-met-forecast-source, US3)", () => {
+  const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+
+  it("defines --wx-thunderstorm/--wx-fog/--wx-sleet in every theme block", () => {
+    const themeBlocks = css.match(/(?::root|\[data-theme="[^"]+"\])[^{]*\{[^}]*\}/g) ?? [];
+    const themeBlocksWithWxVars = themeBlocks.filter((block) => block.includes("--wx-sun"));
+
+    expect(themeBlocksWithWxVars.length).toBeGreaterThan(0);
+    for (const block of themeBlocksWithWxVars) {
+      expect(block).toContain("--wx-thunderstorm");
+      expect(block).toContain("--wx-fog");
+      expect(block).toContain("--wx-sleet");
+    }
+  });
+
+  it("colors each new condition's icon via its own --wx-* variable", () => {
+    expect(css).toMatch(/\.weather-condition-thunderstorm svg\s*\{\s*color:\s*var\(--wx-thunderstorm\);?\s*\}/);
+    expect(css).toMatch(/\.weather-condition-foggy svg\s*\{\s*color:\s*var\(--wx-fog\);?\s*\}/);
+    expect(css).toMatch(/\.weather-condition-sleet svg\s*\{\s*color:\s*var\(--wx-sleet\);?\s*\}/);
+  });
+});

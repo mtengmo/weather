@@ -1,4 +1,15 @@
-import { Cloud, CloudRain, CloudSnow, Moon, Sun, Wind, type LucideIcon } from "lucide-react";
+import {
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSnow,
+  Moon,
+  Sun,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
 import type { WeatherCondition } from "../services/weatherCondition";
 
 interface WeatherIconInfo {
@@ -6,7 +17,8 @@ interface WeatherIconInfo {
   label: string;
 }
 
-/** Maps each WeatherCondition to a recognizable icon and accessible label (FR-006). */
+/** Maps each WeatherCondition to a recognizable icon and accessible label (FR-006;
+ * thunderstorm/foggy/sleet added 022-met-forecast-source, US3). */
 export const WEATHER_ICONS: Record<WeatherCondition, WeatherIconInfo> = {
   "clear-day": { Icon: Sun, label: "Clear" },
   "clear-night": { Icon: Moon, label: "Clear" },
@@ -14,4 +26,7 @@ export const WEATHER_ICONS: Record<WeatherCondition, WeatherIconInfo> = {
   rainy: { Icon: CloudRain, label: "Rain" },
   windy: { Icon: Wind, label: "Windy" },
   snowy: { Icon: CloudSnow, label: "Snow" },
+  thunderstorm: { Icon: CloudLightning, label: "Thunderstorm" },
+  foggy: { Icon: CloudFog, label: "Fog" },
+  sleet: { Icon: CloudDrizzle, label: "Sleet" },
 };

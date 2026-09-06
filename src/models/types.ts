@@ -1,3 +1,5 @@
+import type { WeatherCondition } from "../services/weatherCondition";
+
 export type LocationSource = "current-position" | "favorite";
 
 export interface Location {
@@ -35,6 +37,10 @@ export interface WeatherObservation {
    * of what a provider returns (011-precipitation-chance).
    */
   chanceOfRain?: number | null;
+  /** This observation's own condition, pre-classified from the source's official weather-symbol
+   * code at fetch time (022-met-forecast-source, research.md §3). Absent when the source/period
+   * had no symbol code (e.g. Open-Meteo, which has none). */
+  symbolCondition?: WeatherCondition | null;
 }
 
 export type ObservationWindow = "last-24-hours" | "last-7-days" | "last-30-days";

@@ -12,8 +12,13 @@ vi.mock("../../src/services/openMeteoProvider", () => ({
   getForecastOnly: vi.fn(),
 }));
 
+vi.mock("../../src/services/metNoProvider", () => ({
+  getForecastOnly: vi.fn(),
+}));
+
 import * as smhiProvider from "../../src/services/smhiProvider";
 import * as openMeteoProvider from "../../src/services/openMeteoProvider";
+import * as metNoProvider from "../../src/services/metNoProvider";
 import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
 
 const location = { latitude: 59.33, longitude: 18.06 };
@@ -53,6 +58,8 @@ describe("weatherApi.getObservations (provider orchestration)", () => {
     vi.mocked(openMeteoProvider.getObservations).mockReset();
     vi.mocked(openMeteoProvider.getForecastOnly).mockReset();
     vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([]);
+    vi.mocked(metNoProvider.getForecastOnly).mockReset();
+    vi.mocked(metNoProvider.getForecastOnly).mockResolvedValue({ observations: [], issuedAt: null });
   });
 
   it("uses SMHI when the location is covered", async () => {
@@ -279,17 +286,46 @@ describe("weatherApi.getNearbyStationSeries", () => {
   });
 });
 
-describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7)", () => {
+describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7; MET Norway added 022-met-forecast-source)", () => {
   beforeEach(() => {
     vi.mocked(smhiProvider.isCovered).mockReset();
     vi.mocked(smhiProvider.getObservations).mockReset();
     vi.mocked(openMeteoProvider.getForecastOnly).mockReset();
+    vi.mocked(metNoProvider.getForecastOnly).mockReset();
+    vi.mocked(metNoProvider.getForecastOnly).mockResolvedValue({ observations: [], issuedAt: null });
   });
 
-  it("returns both sources when both have forecast data", async () => {
+  it("returns both sources when both SMHI and Open-Meteo have forecast data", async () => {
     vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
     vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", [forecastPoint()]));
     vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result.map((r) => r.source).sort()).toEqual(["open-meteo", "smhi"]);
+  });
+
+  it("returns all three sources when SMHI, Open-Meteo, and MET Norway all have forecast data", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", [forecastPoint()]));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+    vi.mocked(metNoProvider.getForecastOnly).mockResolvedValue({
+      observations: [forecastPoint()],
+      issuedAt: "2026-09-06T08:00:00.000Z",
+    });
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result.map((r) => r.source).sort()).toEqual(["met-no", "open-meteo", "smhi"]);
+    const metNoEntry = result.find((r) => r.source === "met-no");
+    expect(metNoEntry?.issuedAt).toBe("2026-09-06T08:00:00.000Z");
+  });
+
+  it("omits MET Norway alone when it fails, keeping the other two sources", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getObservations).mockResolvedValue(series("ready", [forecastPoint()]));
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+    vi.mocked(metNoProvider.getForecastOnly).mockRejectedValue(new Error("met.no down"));
 
     const result = await getMultiSourceForecast(location, "last-24-hours");
 

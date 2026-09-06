@@ -7,6 +7,7 @@ import type {
   StationInfo,
   WeatherObservation,
 } from "../models/types";
+import * as metNoProvider from "./metNoProvider";
 import * as openMeteoProvider from "./openMeteoProvider";
 import * as smhiProvider from "./smhiProvider";
 
@@ -96,25 +97,27 @@ export async function getNearbyStationSeries(
 }
 
 export interface MultiSourceForecastEntry {
-  source: "smhi" | "open-meteo";
+  source: "smhi" | "open-meteo" | "met-no";
   observations: WeatherObservation[];
-  /** Same meaning as `ObservationSeries.forecastIssuedAt` — SMHI's own approved-time when
-   *  available, always `null`/absent for Open-Meteo (019-dashboard-polish-round-four,
-   *  research.md §8). Optional so existing test fixtures/mocks that predate this field keep
-   *  compiling, matching this codebase's existing convention for `ObservationSeries.primarySource`. */
+  /** Same meaning as `ObservationSeries.forecastIssuedAt` — SMHI's/MET Norway's own genuine
+   *  "forecast generated at" time when available, always `null`/absent for Open-Meteo
+   *  (019-dashboard-polish-round-four, research.md §8; MET Norway added 022-met-forecast-source).
+   *  Optional so existing test fixtures/mocks that predate this field keep compiling, matching
+   *  this codebase's existing convention for `ObservationSeries.primarySource`. */
   issuedAt?: string | null;
 }
 
 /**
  * Every source's own forecast-only observations for a location, fetched independently so one
- * source's failure never blocks the other (014-dashboard-usability-fixes, FR-013–FR-017).
- * Forecast-only, by design — combining observed/historical data isn't in scope.
+ * source's failure never blocks the others (014-dashboard-usability-fixes, FR-013–FR-017; MET
+ * Norway added as a third source, 022-met-forecast-source). Forecast-only, by design — combining
+ * observed/historical data isn't in scope.
  */
 export async function getMultiSourceForecast(
   location: Pick<Location, "latitude" | "longitude">,
   window: ObservationWindow
 ): Promise<MultiSourceForecastEntry[]> {
-  const [smhiResult, openMeteoResult] = await Promise.allSettled([
+  const [smhiResult, openMeteoResult, metNoResult] = await Promise.allSettled([
     (async () => {
       if (!(await isSmhiCovered(location))) return { observations: [], issuedAt: null };
       const series = await smhiProvider.getObservations(location, window);
@@ -124,6 +127,7 @@ export async function getMultiSourceForecast(
       };
     })(),
     openMeteoProvider.getForecastOnly(location, window),
+    metNoProvider.getForecastOnly(location, window),
   ]);
 
   const entries: MultiSourceForecastEntry[] = [];
@@ -132,6 +136,9 @@ export async function getMultiSourceForecast(
   }
   if (openMeteoResult.status === "fulfilled" && openMeteoResult.value.length > 0) {
     entries.push({ source: "open-meteo", observations: openMeteoResult.value, issuedAt: null });
+  }
+  if (metNoResult.status === "fulfilled" && metNoResult.value.observations.length > 0) {
+    entries.push({ source: "met-no", observations: metNoResult.value.observations, issuedAt: metNoResult.value.issuedAt });
   }
   return entries;
 }

@@ -28,9 +28,11 @@ export function dataSourceNote(series: {
  * available, otherwise the app's own last-fetch time (`lastUpdated`) — never omitted when a
  * forecast is shown, since one of the two is always present once a fetch has completed.
  *
- * `combined` names both forecast sources when the forecast genuinely blends them
+ * `contributingForecastSourceNames` names every forecast source that genuinely blended
  * (021-dashboard-polish-round-six, US2/FR-003 — the per-period `(avg)` marker already existed,
- * but the footer never confirmed blending was happening at all).
+ * but the footer never confirmed blending was happening at all; widened from a boolean to a name
+ * list in 022-met-forecast-source to support a third source, MET Norway, whose CC BY 4.0 license
+ * requires attribution when it contributes).
  */
 export function dataSourceDisclosure(
   series: {
@@ -39,11 +41,14 @@ export function dataSourceDisclosure(
     forecastIssuedAt?: string | null;
   },
   lastUpdated: string | null,
-  combined: boolean
+  contributingForecastSourceNames: string[]
 ): string | null {
   if (series.primarySource === undefined) return null;
   const observedLabel = series.primarySource === "smhi" ? "SMHI observations" : "Open-Meteo observations";
-  const forecastLabel = combined ? "SMHI + Open-Meteo forecast" : "Forecast";
+  const forecastLabel =
+    contributingForecastSourceNames.length > 1
+      ? `${contributingForecastSourceNames.join(" + ")} forecast`
+      : "Forecast";
   const freshnessTime = series.forecastIssuedAt ?? lastUpdated;
   const freshness = freshnessTime
     ? ` · ${forecastLabel} updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`

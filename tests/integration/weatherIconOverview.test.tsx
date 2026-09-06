@@ -573,6 +573,28 @@ describe("Always-averaged forecast sources on the Overview (020-dashboard-polish
     expect(screen.queryByText(/O 12°/)).not.toBeInTheDocument();
   });
 
+  it("shows '(avg of 3)' when three sources have data for that period (022-met-forecast-source)", async () => {
+    const t = hoursFromNow(1);
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: t, temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true },
+      ],
+    });
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([
+      { source: "smhi", observations: [{ timestamp: t, temperature: 9, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+      { source: "open-meteo", observations: [{ timestamp: t, temperature: 12, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+      { source: "met-no", observations: [{ timestamp: t, temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10, isForecast: true }] },
+    ]);
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalled());
+
+    expect(await screen.findByText(/\(avg of 3\)/)).toBeInTheDocument();
+  });
+
   it("shows the plain value when only one source has forecast data for that period", async () => {
     const t = hoursFromNow(1);
     vi.mocked(getObservations).mockResolvedValue({
@@ -1466,6 +1488,36 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
 
     const strip = await screen.findByRole("region", { name: "7 day forecast" });
     expect(strip.querySelectorAll(".weekly-forecast-day")).toHaveLength(7);
+  });
+
+  it("colors each day's icon via the same weather-condition-* class the main timeline uses (022-met-forecast-source, US2)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              {
+                timestamp: hoursAgo(1),
+                temperature: 20,
+                precipitation: 0,
+                windSpeed: 1,
+                cloudCoverPercent: 5,
+              },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = strip.querySelectorAll(".weekly-forecast-day");
+    const coloredDays = Array.from(days).filter((day) =>
+      Array.from(day.classList).some((c) => c.startsWith("weather-condition-"))
+    );
+    expect(coloredDays.length).toBeGreaterThan(0);
   });
 
   it("is visible on all three tabs", async () => {

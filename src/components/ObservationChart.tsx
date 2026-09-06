@@ -28,6 +28,7 @@ import {
   buildMetricHourlyRows,
   buildWindDailyRows,
   mergeMultiSourceForecastIntoRows,
+  mergeMultiSourceForecastIntoDailyRows,
   findObservedExtremes,
   forecastBoundaryValue,
   forecastKey,
@@ -72,6 +73,7 @@ interface ObservationChartProps {
 const SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
   smhi: "SMHI",
   "open-meteo": "Open-Meteo",
+  "met-no": "MET Norway",
 };
 
 const METRIC_LABELS: Record<SingleSeriesMetric, { name: string; unit: (unit: UnitSystem) => string }> = {
@@ -167,20 +169,63 @@ export default function ObservationChart({
       ? findObservedExtremes(series.observations)
       : null;
 
-  // Only shown on the 24h temperature chart. Nothing renders with 0-1 sources — never a
-  // misleading single-source "average" (FR-017). Merged onto the primary hourly rows by
-  // timestamp (see mergeMultiSourceForecastIntoRows) rather than handed to Recharts as a
-  // second `data` array — a child `<Line>` with its own differently-shaped data silently
-  // stretches the shared category axis (confirmed via live testing, 014).
+  // Nothing renders with 0-1 sources — never a misleading single-source "average" (FR-017).
+  // Merged onto the primary rows by timestamp/bucketEnd (see mergeMultiSourceForecastIntoRows/
+  // ...IntoDailyRows) rather than handed to Recharts as a second `data` array — a child `<Line>`
+  // with its own differently-shaped data silently stretches the shared category axis (confirmed
+  // via live testing, 014). Originally 24h-Temperature-only; extended to the 7-day Temperature
+  // chart and the Rain/Wind tabs in 022-met-forecast-source, US4 (research.md §2).
   const hourlyRows =
     series !== null && series.status === "ready" && metric === "temperature" && window === "last-24-hours"
       ? buildHourlyRows(series, nearbyStations, unit)
       : null;
+  if (hourlyRows !== null) {
+    mergeMultiSourceForecastIntoRows(hourlyRows, multiSourceForecast, unit, "temperature");
+  }
+
+  const dailyBucketCountForMerge = window !== "last-24-hours" ? DAILY_BUCKET_COUNT[window] : undefined;
+  const dailyTemperatureRows =
+    series !== null &&
+    series.status === "ready" &&
+    metric === "temperature" &&
+    window !== "last-24-hours" &&
+    dailyBucketCountForMerge !== undefined
+      ? buildDailyRows(series, nearbyStations, unit, dailyBucketCountForMerge)
+      : null;
+  if (dailyTemperatureRows !== null) {
+    mergeMultiSourceForecastIntoDailyRows(dailyTemperatureRows, multiSourceForecast, unit, dailyBucketCountForMerge!, "temperature");
+  }
+
+  const rainRows =
+    series !== null && series.status === "ready" && metric === "rain"
+      ? window === "last-24-hours"
+        ? buildMetricHourlyRows(series, nearbyStations, unit, "rain")
+        : buildMetricDailyRows(series, nearbyStations, unit, "rain", DAILY_BUCKET_COUNT[window]!)
+      : null;
+  if (rainRows !== null) {
+    if (window === "last-24-hours") {
+      mergeMultiSourceForecastIntoRows(rainRows, multiSourceForecast, unit, "rain");
+    } else {
+      mergeMultiSourceForecastIntoDailyRows(rainRows, multiSourceForecast, unit, DAILY_BUCKET_COUNT[window]!, "rain");
+    }
+  }
+
+  const windRows =
+    series !== null && series.status === "ready" && metric === "wind"
+      ? window === "last-24-hours"
+        ? buildMetricHourlyRows(series, nearbyStations, unit, "wind")
+        : buildWindDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)
+      : null;
+  if (windRows !== null) {
+    if (window === "last-24-hours") {
+      mergeMultiSourceForecastIntoRows(windRows, multiSourceForecast, unit, "wind");
+    } else {
+      mergeMultiSourceForecastIntoDailyRows(windRows, multiSourceForecast, unit, DAILY_BUCKET_COUNT[window]!, "wind");
+    }
+  }
+
   // Always averaged across sources when 2+ have data — no user toggle anymore
   // (020-dashboard-polish-round-five, US2).
-  if (hourlyRows !== null) {
-    mergeMultiSourceForecastIntoRows(hourlyRows, multiSourceForecast, unit);
-  }
   const showCombinedForecast = multiSourceForecast.length > 1;
 
   return (
@@ -377,7 +422,7 @@ export default function ObservationChart({
         window !== "last-24-hours" && (
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart
-            data={buildDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)}
+            data={dailyTemperatureRows ?? buildDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)}
           >
             <defs>
               <linearGradient id="precipGradient-daily" x1="0" y1="0" x2="0" y2="1">
@@ -518,6 +563,32 @@ export default function ObservationChart({
                 dot={{ r: 3 }}
               />
             ))}
+            {showCombinedForecast &&
+              multiSourceForecast.map((entry, i) => (
+                <Line
+                  key={entry.source}
+                  yAxisId="temp"
+                  type="monotone"
+                  dataKey={sourceKey(i)}
+                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  stroke={seriesColor(nearbyStations.length + i + 1)}
+                  strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
+                  connectNulls={false}
+                  dot={{ r: 3 }}
+                />
+              ))}
+            {showCombinedForecast && (
+              <Line
+                yAxisId="temp"
+                type="monotone"
+                dataKey="combinedAverage"
+                name="Combined average forecast"
+                stroke="var(--text)"
+                strokeWidth={2}
+                connectNulls={false}
+                dot={{ r: 3 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}
@@ -529,9 +600,10 @@ export default function ObservationChart({
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart
             data={
-              window === "last-24-hours"
+              rainRows ??
+              (window === "last-24-hours"
                 ? buildMetricHourlyRows(series, nearbyStations, unit, "rain")
-                : buildMetricDailyRows(series, nearbyStations, unit, "rain", DAILY_BUCKET_COUNT[window]!)
+                : buildMetricDailyRows(series, nearbyStations, unit, "rain", DAILY_BUCKET_COUNT[window]!))
             }
           >
             <defs>
@@ -590,6 +662,30 @@ export default function ObservationChart({
                 fill={seriesColor(i + 1)}
               />
             ))}
+            {showCombinedForecast &&
+              multiSourceForecast.map((entry, i) => (
+                <Line
+                  key={entry.source}
+                  type="monotone"
+                  dataKey={sourceKey(i)}
+                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  stroke={seriesColor(nearbyStations.length + i + 1)}
+                  strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
+                  connectNulls={false}
+                  dot={{ r: 3 }}
+                />
+              ))}
+            {showCombinedForecast && (
+              <Line
+                type="monotone"
+                dataKey="combinedAverage"
+                name="Combined average forecast"
+                stroke="var(--text)"
+                strokeWidth={2}
+                connectNulls={false}
+                dot={{ r: 3 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}
@@ -601,9 +697,10 @@ export default function ObservationChart({
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart
             data={
-              window === "last-24-hours"
+              (metric === "wind" ? windRows : null) ??
+              (window === "last-24-hours"
                 ? buildMetricHourlyRows(series, nearbyStations, unit, metric)
-                : buildMetricDailyRows(series, nearbyStations, unit, metric, DAILY_BUCKET_COUNT[window]!)
+                : buildMetricDailyRows(series, nearbyStations, unit, metric, DAILY_BUCKET_COUNT[window]!))
             }
           >
             <CartesianGrid strokeDasharray="3 3" />
@@ -673,6 +770,31 @@ export default function ObservationChart({
                 dot={{ r: 3 }}
               />
             ))}
+            {metric === "wind" &&
+              showCombinedForecast &&
+              multiSourceForecast.map((entry, i) => (
+                <Line
+                  key={entry.source}
+                  type="monotone"
+                  dataKey={sourceKey(i)}
+                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  stroke={seriesColor(nearbyStations.length + i + 1)}
+                  strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
+                  connectNulls={false}
+                  dot={{ r: 3 }}
+                />
+              ))}
+            {metric === "wind" && showCombinedForecast && (
+              <Line
+                type="monotone"
+                dataKey="combinedAverage"
+                name="Combined average forecast"
+                stroke="var(--text)"
+                strokeWidth={2}
+                connectNulls={false}
+                dot={{ r: 3 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}
@@ -684,7 +806,7 @@ export default function ObservationChart({
         window !== "last-24-hours" && (
         <ResponsiveContainer width="100%" height={320}>
           <ComposedChart
-            data={buildWindDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)}
+            data={windRows ?? buildWindDailyRows(series, nearbyStations, unit, DAILY_BUCKET_COUNT[window]!)}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -798,6 +920,30 @@ export default function ObservationChart({
                 dot={{ r: 3 }}
               />
             ))}
+            {showCombinedForecast &&
+              multiSourceForecast.map((entry, i) => (
+                <Line
+                  key={entry.source}
+                  type="monotone"
+                  dataKey={sourceKey(i)}
+                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  stroke={seriesColor(nearbyStations.length + i + 1)}
+                  strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
+                  connectNulls={false}
+                  dot={{ r: 3 }}
+                />
+              ))}
+            {showCombinedForecast && (
+              <Line
+                type="monotone"
+                dataKey="combinedAverage"
+                name="Combined average forecast"
+                stroke="var(--text)"
+                strokeWidth={2}
+                connectNulls={false}
+                dot={{ r: 3 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}

@@ -80,6 +80,10 @@ export interface TimelineRowPoint {
    *  2+ sources have data for this period (019-dashboard-polish-round-four, FR-011 — replaces
    *  016's per-source `sources` list, which showed each source's reading side by side). */
   combined?: boolean;
+  /** How many sources contributed to `value` when `combined` is true (022-met-forecast-source,
+   *  research.md §6) — sourced from `mergeMultiSourceIntoTimelinePoints`'s own contributing-source
+   *  count, never a separate computation. */
+  combinedSourceCount?: number;
   /**
    * true when `value` was derived by interpolating this row's neighboring points at the
    * observed/forecast boundary, rather than measured/forecast directly
@@ -400,6 +404,7 @@ export function mergeMultiSourceIntoTimelinePoints(
         perSourceAverages.reduce((sum, v) => sum + v, 0) / perSourceAverages.length;
       point.value = convertTemperature(combinedAverage, unit)!;
       point.combined = true;
+      point.combinedSourceCount = perSourceAverages.length;
     }
   });
 }

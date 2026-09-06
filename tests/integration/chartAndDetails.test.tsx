@@ -1102,3 +1102,123 @@ describe("Always-averaged forecast sources (020-dashboard-polish-round-five, US2
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+describe("Per-source chart lines extended to more tabs/windows (022-met-forecast-source, US4)", () => {
+  // Same jsdom/Recharts limitation as above — these are smoke tests confirming the per-source
+  // overlay (already working on the 24h Temperature tab since 014) now also renders without
+  // error on the 7-day Temperature chart and the Rain/Wind tabs, not structural line assertions.
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+  });
+
+  function twoSourceForecast() {
+    const forecastTimestamp = new Date(Date.now() + 3600_000).toISOString();
+    return [
+      {
+        source: "smhi" as const,
+        observations: [
+          {
+            timestamp: forecastTimestamp,
+            temperature: 10,
+            precipitation: 1,
+            windSpeed: 4,
+            cloudCoverPercent: null,
+            isForecast: true,
+          },
+        ],
+      },
+      {
+        source: "open-meteo" as const,
+        observations: [
+          {
+            timestamp: forecastTimestamp,
+            temperature: 12,
+            precipitation: 2,
+            windSpeed: 5,
+            cloudCoverPercent: null,
+            isForecast: true,
+          },
+        ],
+      },
+    ];
+  }
+
+  it("renders without error on the 7-day Temperature chart with 2 sources", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: new Date().toISOString(), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+    vi.mocked(getMultiSourceForecast).mockResolvedValue(twoSourceForecast());
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders without error on the Rain tab with 2 sources, both windows", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: new Date().toISOString(), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+    vi.mocked(getMultiSourceForecast).mockResolvedValue(twoSourceForecast());
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+    await user.click(screen.getByRole("button", { name: "Rain" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders without error on the Wind tab with 2 sources, both windows", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        { timestamp: new Date().toISOString(), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        {
+          timestamp: new Date(Date.now() + 3600_000).toISOString(),
+          temperature: 11,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          isForecast: true,
+        },
+      ])
+    );
+    vi.mocked(getMultiSourceForecast).mockResolvedValue(twoSourceForecast());
+
+    const user = userEvent.setup();
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+    await user.click(screen.getByRole("button", { name: "Wind" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Last 7 days" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});

@@ -1,4 +1,5 @@
 import type { ObservationSeries, ObservationWindow, StationInfo, WeatherObservation } from "../models/types";
+import type { WeatherCondition } from "./weatherCondition";
 
 const BASE_URL = "https://opendata-download-metobs.smhi.se/api/version/1.0";
 const TEMPERATURE_PARAM = 1;
@@ -67,6 +68,52 @@ interface SmhiForecastData {
   wind_speed_of_gust?: number;
   precipitation_amount_mean?: number;
   cloud_area_fraction?: number; // octas, 0-8 — NOT the same 0-100 scale as the observation API
+  symbol_code?: number; // SMHI's Wsymb2 table, 1-27 (022-met-forecast-source, research.md §3)
+}
+
+// SMHI's own Wsymb2 weather-symbol table (numeric 1-27, SMHI's long-published, stable parameter
+// documentation) mapped into this app's WeatherCondition enum (022-met-forecast-source,
+// research.md §3). Codes 1-2 (clear/nearly clear) are resolved to clear-day/clear-night via the
+// observation's own timestamp where this table is consumed, not baked in here.
+const SMHI_SYMBOL_CONDITIONS: Record<number, WeatherCondition | "clear"> = {
+  1: "clear",
+  2: "clear",
+  3: "cloudy",
+  4: "cloudy",
+  5: "cloudy",
+  6: "cloudy",
+  7: "foggy",
+  8: "rainy",
+  9: "rainy",
+  10: "rainy",
+  11: "thunderstorm",
+  12: "sleet",
+  13: "sleet",
+  14: "sleet",
+  15: "snowy",
+  16: "snowy",
+  17: "snowy",
+  18: "rainy",
+  19: "rainy",
+  20: "rainy",
+  21: "thunderstorm",
+  22: "sleet",
+  23: "sleet",
+  24: "sleet",
+  25: "snowy",
+  26: "snowy",
+  27: "snowy",
+};
+
+function symbolCodeToCondition(symbolCode: number | undefined, timestamp: string): WeatherCondition | null {
+  if (symbolCode === undefined) return null;
+  const mapped = SMHI_SYMBOL_CONDITIONS[symbolCode];
+  if (mapped === undefined) return null;
+  if (mapped === "clear") {
+    const hour = new Date(timestamp).getHours();
+    return hour < 6 || hour >= 20 ? "clear-night" : "clear-day";
+  }
+  return mapped;
 }
 
 interface SmhiForecastTimeSeriesEntry {
@@ -273,6 +320,7 @@ function buildForecastHourlySeries(
       cloudCoverPercent: data?.cloud_area_fraction !== undefined ? data.cloud_area_fraction * 12.5 : null,
       windDirection: data?.wind_from_direction ?? null,
       windGust: data?.wind_speed_of_gust ?? null,
+      symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
       isForecast: true,
     });
   }

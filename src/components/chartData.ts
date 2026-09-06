@@ -343,22 +343,37 @@ export function sourceKey(index: number): string {
   return `source${index}`;
 }
 
+/** Which raw per-observation field a multi-source merge reads from, per metric
+ * (022-met-forecast-source, US4 — generalizes the original temperature-only merge). */
+export type MultiSourceMetric = "temperature" | SingleSeriesMetric;
+
+function multiSourceFieldAndConvert(
+  metric: MultiSourceMetric
+): { field: "temperature" | "precipitation" | "windSpeed" | "cloudCoverPercent"; convert: (v: number | null, u: UnitSystem) => number | null } {
+  if (metric === "temperature") return { field: "temperature", convert: convertTemperature };
+  const { hourlyField, convert } = METRIC_FIELDS[metric];
+  return { field: hourlyField, convert };
+}
+
 /**
  * One row per distinct forecast timestamp across every source, each carrying every source's
  * own value under its `sourceKey` plus an `average` of whichever sources have a value at that
- * timestamp (014-dashboard-usability-fixes, FR-014/FR-016). Forecast-only, by construction —
- * `entries` only ever holds forecast observations (weatherApi.ts's `getMultiSourceForecast`).
+ * timestamp (014-dashboard-usability-fixes, FR-014/FR-016; generalized beyond temperature-only
+ * in 022-met-forecast-source, US4). Forecast-only, by construction — `entries` only ever holds
+ * forecast observations (weatherApi.ts's `getMultiSourceForecast`).
  */
 export function buildMultiSourceForecastRows(
   entries: MultiSourceForecastEntry[],
-  unit: UnitSystem
+  unit: UnitSystem,
+  metric: MultiSourceMetric = "temperature"
 ): ChartRow[] {
+  const { field, convert } = multiSourceFieldAndConvert(metric);
   const byTimestamp = new Map<string, ChartRow>();
 
   entries.forEach((entry, i) => {
     for (const obs of entry.observations) {
       const row = byTimestamp.get(obs.timestamp) ?? { timestamp: obs.timestamp };
-      row[sourceKey(i)] = convertTemperature(obs.temperature, unit);
+      row[sourceKey(i)] = convert(obs[field], unit);
       byTimestamp.set(obs.timestamp, row);
     }
   });
@@ -386,14 +401,88 @@ export function buildMultiSourceForecastRows(
 export function mergeMultiSourceForecastIntoRows(
   primaryRows: ChartRow[],
   entries: MultiSourceForecastEntry[],
-  unit: UnitSystem
+  unit: UnitSystem,
+  metric: MultiSourceMetric = "temperature"
 ): void {
   if (entries.length < 2) return;
-  const sourceRows = buildMultiSourceForecastRows(entries, unit);
+  const sourceRows = buildMultiSourceForecastRows(entries, unit, metric);
   const byTimestamp = new Map(sourceRows.map((r) => [String(r.timestamp), r]));
 
   for (const row of primaryRows) {
     const match = byTimestamp.get(String(row.timestamp));
+    if (!match) continue;
+    entries.forEach((_entry, i) => {
+      row[sourceKey(i)] = match[sourceKey(i)] ?? null;
+    });
+    row.combinedAverage = match.average ?? null;
+  }
+}
+
+const MULTI_SOURCE_DAILY_FIELD: Record<
+  MultiSourceMetric,
+  keyof Pick<DailyAggregate, "average" | "totalPrecipitation" | "windAverage" | "cloudAverage">
+> = {
+  temperature: "average",
+  rain: "totalPrecipitation",
+  wind: "windAverage",
+  cloud: "cloudAverage", // no multi-source chart calls this today, but kept valid/typed
+};
+
+/**
+ * Daily-bucketed counterpart to `buildMultiSourceForecastRows`, for the 7-day (and 30-day, though
+ * forecast is out of scope there) charts, which key their rows by `bucketEnd` rather than a raw
+ * hourly `timestamp` (022-met-forecast-source, US4). Each source's own forecast observations are
+ * independently bucketed via `toDailyAggregates` — the same day-bucketing the primary series
+ * already uses — rather than matched hour-by-hour, since daily rows have no single timestamp to
+ * match against.
+ */
+export function buildMultiSourceForecastDailyRows(
+  entries: MultiSourceForecastEntry[],
+  unit: UnitSystem,
+  bucketCount: number,
+  metric: MultiSourceMetric = "temperature"
+): ChartRow[] {
+  const dailyField = MULTI_SOURCE_DAILY_FIELD[metric];
+  const convert = metric === "temperature" ? convertTemperature : METRIC_FIELDS[metric as SingleSeriesMetric].convert;
+  const byBucketEnd = new Map<string, ChartRow>();
+
+  entries.forEach((entry, i) => {
+    const daily = toDailyAggregates(entry.observations, bucketCount);
+    for (const day of daily) {
+      if (!day.isForecast) continue;
+      const row = byBucketEnd.get(day.bucketEnd) ?? { bucketEnd: day.bucketEnd };
+      row[sourceKey(i)] = convert(day[dailyField], unit);
+      byBucketEnd.set(day.bucketEnd, row);
+    }
+  });
+
+  for (const row of byBucketEnd.values()) {
+    const values = entries
+      .map((_, i) => row[sourceKey(i)])
+      .filter((v): v is number => typeof v === "number");
+    row.average = values.length > 0 ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+  }
+
+  return Array.from(byBucketEnd.values()).sort((a, b) =>
+    String(a.bucketEnd).localeCompare(String(b.bucketEnd))
+  );
+}
+
+/** Daily-bucketed counterpart to `mergeMultiSourceForecastIntoRows`, matched by `bucketEnd`
+ * (022-met-forecast-source, US4). */
+export function mergeMultiSourceForecastIntoDailyRows(
+  primaryRows: ChartRow[],
+  entries: MultiSourceForecastEntry[],
+  unit: UnitSystem,
+  bucketCount: number,
+  metric: MultiSourceMetric = "temperature"
+): void {
+  if (entries.length < 2) return;
+  const sourceRows = buildMultiSourceForecastDailyRows(entries, unit, bucketCount, metric);
+  const byBucketEnd = new Map(sourceRows.map((r) => [String(r.bucketEnd), r]));
+
+  for (const row of primaryRows) {
+    const match = byBucketEnd.get(String(row.bucketEnd));
     if (!match) continue;
     entries.forEach((_entry, i) => {
       row[sourceKey(i)] = match[sourceKey(i)] ?? null;

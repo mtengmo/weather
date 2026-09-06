@@ -90,3 +90,42 @@ describe("deriveWeatherCondition (007-weather-icon-overview)", () => {
     );
   });
 });
+
+describe("deriveWeatherCondition symbol-code precedence (022-met-forecast-source, research.md §3)", () => {
+  it("returns the symbolCondition for thunderstorm even with very high wind", () => {
+    expect(
+      deriveWeatherCondition(base({ symbolCondition: "thunderstorm", windSpeed: 25, precipitation: 0 }))
+    ).toBe("thunderstorm");
+  });
+
+  it("returns the symbolCondition for foggy even with very high wind", () => {
+    expect(deriveWeatherCondition(base({ symbolCondition: "foggy", windSpeed: 25, precipitation: 0 }))).toBe(
+      "foggy"
+    );
+  });
+
+  it("returns the symbolCondition for sleet even with very high wind", () => {
+    expect(deriveWeatherCondition(base({ symbolCondition: "sleet", windSpeed: 25, precipitation: 0 }))).toBe(
+      "sleet"
+    );
+  });
+
+  it("still classifies as windy when symbolCondition is cloudy and wind meets the threshold", () => {
+    expect(
+      deriveWeatherCondition(base({ symbolCondition: "cloudy", windSpeed: 20, precipitation: 0 }))
+    ).toBe("windy");
+  });
+
+  it("uses the symbolCondition for clear-day/clear-night when no higher-priority signal applies", () => {
+    expect(
+      deriveWeatherCondition(base({ symbolCondition: "clear-night", windSpeed: 0, cloudCoverPercent: 0 }))
+    ).toBe("clear-night");
+  });
+
+  it("falls back to the existing six-condition logic unchanged when no symbolCondition is present", () => {
+    expect(deriveWeatherCondition(base({ symbolCondition: undefined }))).toBe("clear-day");
+    expect(deriveWeatherCondition(base({ symbolCondition: null, precipitation: 1, temperature: 5 }))).toBe(
+      "rainy"
+    );
+  });
+});

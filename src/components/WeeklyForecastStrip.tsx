@@ -27,7 +27,15 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
         });
         const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
         return (
-          <div className="weekly-forecast-day" key={day.bucketEnd}>
+          <div
+            className={[
+              "weekly-forecast-day",
+              condition !== null ? `weather-condition-${condition}` : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            key={day.bucketEnd}
+          >
             <span className="weekly-forecast-weekday">
               {new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" })}
             </span>

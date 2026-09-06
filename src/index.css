@@ -21,6 +21,9 @@
   --wx-rain: #5b9bd9;
   --wx-snow: #dbe9f7;
   --wx-windy: #8a93a6;
+  --wx-thunderstorm: #f6c453;
+  --wx-fog: #9aa3b5;
+  --wx-sleet: #8fb8dd;
   --row-temperature: #f2924a;
   --row-wind: #4fb0a6;
   --row-precipitation: #5b9bd9;
@@ -51,6 +54,9 @@
   --wx-rain: #2f72b8;
   --wx-snow: #4a90c2;
   --wx-windy: #5b6472;
+  --wx-thunderstorm: #b8860b;
+  --wx-fog: #6b7280;
+  --wx-sleet: #4a7fa8;
   --row-temperature: #c1590f;
   --row-wind: #2f7a72;
   --row-precipitation: #2f72b8;
@@ -80,6 +86,9 @@
   --wx-rain: #7dd3fc;
   --wx-snow: #e0f2ff;
   --wx-windy: #9fb0d0;
+  --wx-thunderstorm: #fbbf24;
+  --wx-fog: #a9b6d9;
+  --wx-sleet: #93c5fd;
   --row-temperature: #fb923c;
   --row-wind: #67e8f9;
   --row-precipitation: #7dd3fc;
@@ -549,6 +558,18 @@ a {
 
 .weather-condition-windy svg {
   color: var(--wx-windy);
+}
+
+.weather-condition-thunderstorm svg {
+  color: var(--wx-thunderstorm);
+}
+
+.weather-condition-foggy svg {
+  color: var(--wx-fog);
+}
+
+.weather-condition-sleet svg {
+  color: var(--wx-sleet);
 }
 
 .weather-timeline-condition-label {

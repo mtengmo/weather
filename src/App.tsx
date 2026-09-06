@@ -17,12 +17,21 @@ import Footer from "./components/Footer";
 import MapView from "./components/MapView";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 import { deriveWeatherCondition } from "./services/weatherCondition";
+import type { MultiSourceForecastEntry } from "./services/weatherApi";
 import { WEATHER_ICONS } from "./components/weatherIcons";
 import { deriveFeelsLike } from "./services/feelsLike";
 import { convertTemperature } from "./services/units";
 import { formatValue } from "./services/format";
 
 type View = "graph" | "details" | "overview" | "map";
+
+// Display names for the footer's forecast-source attribution (022-met-forecast-source, FR-004) —
+// MET Norway's CC BY 4.0 license requires crediting it when it contributes to the blend.
+const SOURCE_DISPLAY_NAMES: Record<MultiSourceForecastEntry["source"], string> = {
+  smhi: "SMHI",
+  "open-meteo": "Open-Meteo",
+  "met-no": "MET Norway",
+};
 
 export default function App() {
   const { location: currentLocation, status: geoStatus, request: requestLocation } =
@@ -280,7 +289,11 @@ export default function App() {
         />
       )}
 
-      <Footer series={series} lastUpdated={lastUpdated} combinedForecast={multiSourceForecast.length > 1} />
+      <Footer
+        series={series}
+        lastUpdated={lastUpdated}
+        contributingForecastSourceNames={multiSourceForecast.map((e) => SOURCE_DISPLAY_NAMES[e.source])}
+      />
     </div>
   );
 }
