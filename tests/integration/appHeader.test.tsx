@@ -546,13 +546,55 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     expect(header).toHaveTextContent(/Feels like/);
   });
 
-  it("opens the Display menu to reveal theme/unit/high-low controls, and toggles the unit", async () => {
+  it("no longer offers a Display menu (037-header-controls-and-chart-fixes, US1/US2)", () => {
+    render(<App />);
+
+    expect(screen.queryByRole("button", { name: "Display" })).not.toBeInTheDocument();
+  });
+
+  it("shows a single Dark/Light button in the header that switches the theme in one click (US1)", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Display" }));
+    const themeButton = screen.getByRole("button", { name: "Dark" });
+    expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
 
-    expect(screen.getByRole("button", { name: /Fahrenheit|°F/i })).toBeInTheDocument();
+    await user.click(themeButton);
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
+    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Dark" })).not.toBeInTheDocument();
+  });
+
+  it("opens the Settings menu to reveal only unit and high/low controls, and toggles the unit (US2)", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+
+    const settingsPanel = screen.getByRole("button", { name: /Fahrenheit|°F/i }).closest(".settings-menu-content");
+    expect(settingsPanel).not.toBeNull();
+    expect(settingsPanel).toHaveTextContent(/High\/Low/);
+    expect(settingsPanel!.querySelector(".theme-toggle")).toBeNull();
+  });
+
+  it("defaults high/low markers off for a viewer with no saved preference (US2)", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("button", { name: "High/Low off" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("preserves a previously saved high/low preference (US2)", async () => {
+    localStorage.setItem("weather-app:high-low-visible:v1", "true");
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("button", { name: "High/Low on" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("no longer offers a Forecast sources control (020-dashboard-polish-round-five, US2)", () => {

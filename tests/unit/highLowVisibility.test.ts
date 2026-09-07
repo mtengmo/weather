@@ -6,8 +6,8 @@ describe("highLowVisibility service", () => {
     localStorage.clear();
   });
 
-  it("defaults to true when no preference is stored", () => {
-    expect(getHighLowVisibility()).toBe(true);
+  it("defaults to false when no preference is stored (037-header-controls-and-chart-fixes, US2)", () => {
+    expect(getHighLowVisibility()).toBe(false);
   });
 
   it("persists a manual selection and returns it on next read", () => {
@@ -18,8 +18,8 @@ describe("highLowVisibility service", () => {
     expect(getHighLowVisibility()).toBe(true);
   });
 
-  it("falls back to true for an invalid stored value", () => {
+  it("falls back to false for an invalid stored value", () => {
     localStorage.setItem("weather-app:high-low-visible:v1", "not-a-boolean");
-    expect(getHighLowVisibility()).toBe(true);
+    expect(getHighLowVisibility()).toBe(false);
   });
 });

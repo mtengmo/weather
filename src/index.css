@@ -64,38 +64,6 @@
   --now-accent: #0369a1;
 }
 
-[data-theme="glass"] {
-  color-scheme: dark;
-  --bg: #0f1729;
-  --surface: rgba(255, 255, 255, 0.08);
-  --text: #eef2ff;
-  --text-muted: #9fb0d0;
-  --accent: #a78bfa;
-  --accent-2: #67e8f9;
-  --border: rgba(255, 255, 255, 0.18);
-  --surface-alpha: 0.55;
-  --surface-blur: 14px;
-  --error-bg: rgba(239, 68, 68, 0.18);
-  --error-text: #fecaca;
-  --error-border: rgba(239, 68, 68, 0.35);
-
-  /* Timeline restyle from the reference mockup (010-timeline-visual-styling, research.md §1). */
-  --wx-sun: #facc15;
-  --wx-moon: #dbe4ff;
-  --wx-cloud: #a9b6d9;
-  --wx-rain: #7dd3fc;
-  --wx-snow: #e0f2ff;
-  --wx-windy: #9fb0d0;
-  --wx-thunderstorm: #fbbf24;
-  --wx-fog: #a9b6d9;
-  --wx-sleet: #93c5fd;
-  --row-temperature: #fb923c;
-  --row-wind: #67e8f9;
-  --row-precipitation: #7dd3fc;
-  --row-snow: #e0f2ff;
-  --now-accent: #7dd3fc;
-}
-
 :root {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -186,13 +154,15 @@ body {
   font-size: 0.85rem;
 }
 
-/* Display menu (018-dashboard-visual-redesign, US1): consolidates Theme/Unit/High-Low behind
-   one dropdown, same anchored-panel treatment as .location-panel above. */
-.display-menu {
+/* Settings menu (037-header-controls-and-chart-fixes, US2): consolidates Unit/High-Low behind
+   one dropdown (theme now lives in its own .theme-toggle button above), same anchored-panel
+   treatment as .location-panel below. Was .display-menu (018-dashboard-visual-redesign, US1)
+   before theme moved out of it. */
+.settings-menu {
   position: relative;
 }
 
-.display-menu-content {
+.settings-menu-content {
   position: absolute;
   top: calc(100% + 0.5rem);
   /* left, not right: on a narrow viewport the Display button sits near the header's left edge
@@ -240,7 +210,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  /* Two-layer shadow — see .display-menu-content above (021-dashboard-polish-round-six,
+  /* Two-layer shadow — see .settings-menu-content above (021-dashboard-polish-round-six,
      research.md §4). */
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.35),
@@ -383,7 +353,7 @@ h2[tabindex="-1"]:focus {
 
 .window-toggle button,
 .unit-toggle button,
-.theme-picker button,
+.theme-toggle,
 .metric-tabs button,
 .high-low-toggle button {
   margin-right: 0.5rem;
@@ -391,7 +361,6 @@ h2[tabindex="-1"]:focus {
 
 .window-toggle button[aria-pressed="true"],
 .unit-toggle button[aria-pressed="true"],
-.theme-picker button[aria-pressed="true"],
 .metric-tabs button[aria-pressed="true"],
 .high-low-toggle button[aria-pressed="true"] {
   font-weight: bold;
@@ -432,20 +401,6 @@ input[type="text"] {
 
 a {
   color: var(--accent);
-}
-
-/* Glass theme: translucent, blurred panels behind key content areas rather than
-   the flat --surface color the other themes use. */
-[data-theme="glass"] .app-header,
-[data-theme="glass"] .observation-table-wrap,
-[data-theme="glass"] .location-panel-content,
-[data-theme="glass"] .display-menu-content,
-[data-theme="glass"] .error-banner {
-  background: var(--surface);
-  backdrop-filter: blur(var(--surface-blur));
-  -webkit-backdrop-filter: blur(var(--surface-blur));
-  border-radius: 10px;
-  padding: 0.75rem;
 }
 
 @media (max-width: 480px) {
@@ -496,18 +451,17 @@ a {
      while wide content silently overflows it, and any percentage-based child positioned
      against this box (the "now" marker line, and 013's scroll-centering math which reads this
      same overflow width) resolves against the wrong, too-narrow reference frame
-     (013-overview-default-and-layout, discovered via US3's center-on-now testing). */
+     (013-overview-default-and-layout, discovered via US3's center-on-now testing).
+     min-width: 100% (alongside, not instead of, the 900px floor) lets the box also stretch to
+     fill a wide viewport when its natural content is narrower than the container — previously a
+     separate `.weather-timeline-fill { width: 100% }` class applied only for non-24h windows,
+     but that second competing `width` declaration was a likely source of a reported browser-zoom
+     dead-space bug on the 3-day view (037-header-controls-and-chart-fixes, US4, research.md):
+     `min-width: 100%` gives the same fill-when-narrower behavior via one unified rule that
+     applies identically to every window, matching 24h's already-correct zoom behavior. */
   width: max-content;
-  min-width: 900px;
+  min-width: max(900px, 100%);
   padding: 0.5rem 0;
-}
-
-/* Lets the 7-day view's columns stretch to fill a wide viewport instead of hugging the left
-   edge — overrides the base rule's width: max-content. min-width: 900px still wins over this
-   on a narrow viewport (CSS spec), so the horizontal-scroll fallback above is unaffected
-   (014-dashboard-usability-fixes, FR-006/FR-007). */
-.weather-timeline-fill {
-  width: 100%;
 }
 
 /* One shared row: every row uses the exact same grid-template-columns (set inline per
@@ -933,12 +887,6 @@ a {
   background: linear-gradient(to bottom, transparent, var(--border) 15%, var(--border) 85%, transparent);
   box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.15);
   pointer-events: none;
-}
-
-[data-theme="glass"] .weather-timeline-wrap {
-  background: var(--surface);
-  backdrop-filter: blur(var(--surface-blur));
-  -webkit-backdrop-filter: blur(var(--surface-blur));
 }
 
 /* Small, unobtrusive footer with the build version and a privacy notice link

@@ -19,6 +19,7 @@ import { dataSourceNote, formatValue } from "../services/format";
 import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
 import TodaySummaryCard from "./TodaySummaryCard";
 import WeeklyForecastStrip from "./WeeklyForecastStrip";
+import { buildGradientStops } from "../services/temperatureColorScale";
 
 interface WeatherIconOverviewProps {
   location: Location;
@@ -168,9 +169,11 @@ function buildTicks(scale: YScale): Tick[] {
 // visually overlapping the row above/below it. Clamps only the *label's* vertical position (the
 // gridline itself stays mathematically exact) to leave enough room for a centered ~0.65rem label
 // to render fully inside the box (regression found live: "the highest value comes over to the
-// temp row" — a real overflow, not a rounding cosmetic).
-const TICK_LABEL_SAFE_MIN_PERCENT = 8;
-const TICK_LABEL_SAFE_MAX_PERCENT = 92;
+// temp row" — a real overflow, not a rounding cosmetic). Widened from 8/92 to 12/88
+// (037-header-controls-and-chart-fixes, US3) for extra breathing room after a live report that
+// the top/bottom gridlines read as touching the rows above/below.
+const TICK_LABEL_SAFE_MIN_PERCENT = 12;
+const TICK_LABEL_SAFE_MAX_PERCENT = 88;
 
 function clampTickLabelPercent(y: number): number {
   return Math.min(TICK_LABEL_SAFE_MAX_PERCENT, Math.max(TICK_LABEL_SAFE_MIN_PERCENT, y));
@@ -284,6 +287,28 @@ function LineRow({
                   <stop offset="0%" stopColor="var(--row-temperature)" stopOpacity="0.35" />
                   <stop offset="100%" stopColor="var(--row-temperature)" stopOpacity="0" />
                 </linearGradient>
+                {scale !== null && (
+                  // userSpaceOnUse (not the default objectBoundingBox), pinned to the same
+                  // 0-100 viewBox Y coordinates `scale.yFor` already maps every value to: a row
+                  // can render several separate <polyline> segments (split by data gaps), and
+                  // objectBoundingBox scopes to each *referencing element's own* bounding box —
+                  // which would color each segment relative to its own local min/max instead of
+                  // the row's actual range. userSpaceOnUse with explicit y1/y2 makes every
+                  // segment share one coordinate system, so a given Y position (temperature)
+                  // always gets the same color regardless of which segment it's in.
+                  <linearGradient
+                    id="weather-timeline-temperature-line-gradient"
+                    gradientUnits="userSpaceOnUse"
+                    x1="0"
+                    y1={scale.yFor(scale.max)}
+                    x2="0"
+                    y2={scale.yFor(scale.min)}
+                  >
+                    {buildGradientStops(scale.min, scale.max).map((stop, i) => (
+                      <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                    ))}
+                  </linearGradient>
+                )}
               </defs>
             )}
             {isTemperature &&
@@ -311,10 +336,18 @@ function LineRow({
               return (
                 <g key={si}>
                   {observed.length > 1 && (
-                    <polyline points={toPointsAttr(observed)} className="weather-timeline-line-observed" />
+                    <polyline
+                      points={toPointsAttr(observed)}
+                      className="weather-timeline-line-observed"
+                      style={isTemperature ? { stroke: "url(#weather-timeline-temperature-line-gradient)" } : undefined}
+                    />
                   )}
                   {forecast.length > 1 && (
-                    <polyline points={toPointsAttr(forecast)} className="weather-timeline-line-forecast" />
+                    <polyline
+                      points={toPointsAttr(forecast)}
+                      className="weather-timeline-line-forecast"
+                      style={isTemperature ? { stroke: "url(#weather-timeline-temperature-line-gradient)" } : undefined}
+                    />
                   )}
                 </g>
               );
@@ -800,9 +833,7 @@ export default function WeatherIconOverview({
         <>
           <SunMoonSummary location={location} date={new Date()} />
           <div className="weather-timeline-wrap" ref={timelineWrapRef}>
-            <div
-              className={`weather-timeline${displayMode !== "last-24-hours" ? " weather-timeline-fill" : ""}`}
-            >
+            <div className="weather-timeline">
               {/* left is a percentage of the DATA columns' own width, but this element's
                   positioning parent (.weather-timeline) also includes the 7rem sticky label
                   column — calc() translates the fraction into the actual coordinate space

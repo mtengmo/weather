@@ -46,8 +46,13 @@ describe("theme service", () => {
   });
 
   it("applyTheme sets the data-theme attribute on the document root", () => {
-    applyTheme("glass");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("glass");
+    applyTheme("ivory");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
+  });
+
+  it("falls back to 'midnight' for a stored 'glass' value now that the theme was removed (037-header-controls-and-chart-fixes)", () => {
+    localStorage.setItem("weather-app:theme-preference:v1", "glass");
+    expect(getThemePreference()).toBe("midnight");
   });
 
   it("resolves a pre-existing persisted 'ivory' value to the restyled theme with no migration step (FR-003a)", () => {

@@ -178,6 +178,15 @@ describe("US1: ObservationChart + ObservationDetails", () => {
   });
 });
 
+// Note: ObservationChart's temperature-line gradient (037-header-controls-and-chart-fixes,
+// US6) isn't asserted here at the rendered-SVG level, consistent with the rest of this file —
+// Recharts' <ResponsiveContainer> relies on ResizeObserver, which jsdom doesn't provide (no
+// polyfill is configured), so it doesn't render real chart content in this test environment.
+// The color-mapping logic itself is covered by tests/unit/temperatureColorScale.test.ts, and
+// the equivalent raw-SVG timeline row (WeatherIconOverview, which doesn't depend on
+// ResponsiveContainer) has its own DOM-level gradient test. This chart is covered manually via
+// quickstart.md instead.
+
 describe("Condition column on the Details table (020-dashboard-polish-round-five, US7)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

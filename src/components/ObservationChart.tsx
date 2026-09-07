@@ -35,9 +35,11 @@ import {
   isMetricAvailable,
   seriesKey,
   sourceKey,
+  type ChartRow,
   type SingleSeriesMetric,
 } from "./chartData";
 import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
+import { buildGradientStops } from "../services/temperatureColorScale";
 import MetricTabs from "./MetricTabs";
 import { dataSourceNote, formatValue } from "../services/format";
 import { toDailyAggregates } from "../services/dailyAggregation";
@@ -56,6 +58,20 @@ function tooltipFormatter(value: unknown, name: unknown): [string, string] {
 // Shared forecast-segment styling: same color as the primary series, dashed (FR-004's
 // default), reusing the app's existing dashed-line convention for "not fully solid data."
 const FORECAST_DASH = "4 2";
+
+/** Min/max of one numeric column across a chart-row array, or `null` when there's nothing to
+ *  plot — used to build a temperature Line's own per-value color gradient
+ *  (037-header-controls-and-chart-fixes, US6). Each Line gets its own range (rather than one
+ *  shared across observed+forecast) because Recharts renders each `<Line>` as its own `<path>`,
+ *  and the default `objectBoundingBox` gradient units scope to *that* element's own rendered
+ *  bounding box — mismatched stops would misalign colors, though the absolute band-color lookup
+ *  itself (buildGradientStops) is unaffected either way. */
+function numericRange(rows: ChartRow[] | null, key: string): { min: number; max: number } | null {
+  if (rows === null) return null;
+  const values = rows.map((r) => r[key]).filter((v): v is number => typeof v === "number");
+  if (values.length === 0) return null;
+  return { min: Math.min(...values), max: Math.max(...values) };
+}
 
 interface ObservationChartProps {
   location: Location;
@@ -182,6 +198,8 @@ export default function ObservationChart({
   if (hourlyRows !== null) {
     mergeMultiSourceForecastIntoRows(hourlyRows, multiSourceForecast, unit, "temperature");
   }
+  const hourlyObservedRange = numericRange(hourlyRows, "primary");
+  const hourlyForecastRange = numericRange(hourlyRows, "primaryForecast");
 
   const dailyBucketCountForMerge = window !== "last-24-hours" ? DAILY_BUCKET_COUNT[window] : undefined;
   const dailyTemperatureRows =
@@ -195,6 +213,8 @@ export default function ObservationChart({
   if (dailyTemperatureRows !== null) {
     mergeMultiSourceForecastIntoDailyRows(dailyTemperatureRows, multiSourceForecast, unit, dailyBucketCountForMerge!, "temperature");
   }
+  const dailyObservedRange = numericRange(dailyTemperatureRows, "primaryAverage");
+  const dailyForecastRange = numericRange(dailyTemperatureRows, "primaryAverageForecast");
 
   const rainRows =
     series !== null && series.status === "ready" && metric === "rain"
@@ -307,6 +327,20 @@ export default function ObservationChart({
                 <stop offset="0%" stopColor="var(--accent-2)" stopOpacity={0.55} />
                 <stop offset="100%" stopColor={seriesColor(0)} stopOpacity={0.05} />
               </linearGradient>
+              {hourlyObservedRange && (
+                <linearGradient id="temp-line-gradient-observed-24h" x1="0" y1="0" x2="0" y2="1">
+                  {buildGradientStops(hourlyObservedRange.min, hourlyObservedRange.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                  ))}
+                </linearGradient>
+              )}
+              {hourlyForecastRange && (
+                <linearGradient id="temp-line-gradient-forecast-24h" x1="0" y1="0" x2="0" y2="1">
+                  {buildGradientStops(hourlyForecastRange.min, hourlyForecastRange.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                  ))}
+                </linearGradient>
+              )}
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -354,7 +388,7 @@ export default function ObservationChart({
               type="monotone"
               dataKey="primary"
               name={location.displayName}
-              stroke={seriesColor(0)}
+              stroke={hourlyObservedRange ? "url(#temp-line-gradient-observed-24h)" : seriesColor(0)}
               connectNulls={false}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
@@ -364,7 +398,7 @@ export default function ObservationChart({
               type="monotone"
               dataKey="primaryForecast"
               name={`${location.displayName} ${forecastLabelSuffix}`}
-              stroke={seriesColor(0)}
+              stroke={hourlyForecastRange ? "url(#temp-line-gradient-forecast-24h)" : seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={{ r: 3 }}
@@ -429,6 +463,20 @@ export default function ObservationChart({
                 <stop offset="0%" stopColor="var(--accent-2)" stopOpacity={0.55} />
                 <stop offset="100%" stopColor={seriesColor(0)} stopOpacity={0.05} />
               </linearGradient>
+              {dailyObservedRange && (
+                <linearGradient id="temp-line-gradient-observed-daily" x1="0" y1="0" x2="0" y2="1">
+                  {buildGradientStops(dailyObservedRange.min, dailyObservedRange.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                  ))}
+                </linearGradient>
+              )}
+              {dailyForecastRange && (
+                <linearGradient id="temp-line-gradient-forecast-daily" x1="0" y1="0" x2="0" y2="1">
+                  {buildGradientStops(dailyForecastRange.min, dailyForecastRange.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                  ))}
+                </linearGradient>
+              )}
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
@@ -534,7 +582,7 @@ export default function ObservationChart({
               type="monotone"
               dataKey="primaryAverage"
               name={`${location.displayName} average`}
-              stroke={seriesColor(0)}
+              stroke={dailyObservedRange ? "url(#temp-line-gradient-observed-daily)" : seriesColor(0)}
               connectNulls={false}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
@@ -544,7 +592,7 @@ export default function ObservationChart({
               type="monotone"
               dataKey="primaryAverageForecast"
               name={`${location.displayName} average ${forecastLabelSuffix}`}
-              stroke={seriesColor(0)}
+              stroke={dailyForecastRange ? "url(#temp-line-gradient-forecast-daily)" : seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
               dot={{ r: 3 }}

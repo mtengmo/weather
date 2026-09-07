@@ -1,7 +1,7 @@
 import { DEFAULT_THEME, type Theme } from "../models/types";
 
 const STORAGE_KEY = "weather-app:theme-preference:v1";
-const VALID_THEMES: Theme[] = ["midnight", "ivory", "glass"];
+const VALID_THEMES: Theme[] = ["midnight", "ivory"];
 
 export function getThemePreference(): Theme {
   try {

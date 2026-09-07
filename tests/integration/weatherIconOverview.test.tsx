@@ -289,16 +289,18 @@ describe("7-day timeline fill width (014-dashboard-usability-fixes, US3)", () =>
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("applies the fill class only on the 7-day window, not the 24h window", async () => {
+  it("uses the same timeline element/class on 24h and 7-day (037-header-controls-and-chart-fixes, US4 — fill-to-width is now a permanent base rule, not a conditional class, so all views size identically and match 24h's already-correct zoom behavior)", async () => {
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    expect(container.querySelector(".weather-timeline")).toBeInTheDocument();
     expect(container.querySelector(".weather-timeline-fill")).not.toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "7 Days" }));
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
 
-    expect(container.querySelector(".weather-timeline-fill")).toBeInTheDocument();
+    expect(container.querySelector(".weather-timeline")).toBeInTheDocument();
+    expect(container.querySelector(".weather-timeline-fill")).not.toBeInTheDocument();
   });
 });
 
@@ -2274,6 +2276,28 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     expect(gridlines).toHaveLength(3);
   });
 
+  it("shows both boundary ticks for an 11-20°C range, not a skipped middle step (037-header-controls-and-chart-fixes, US3 — reported live as a missing '10°' between '20°' and a mislabeled '0°')", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(2), temperature: 11, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursAgo(1), temperature: 20, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
+
+    // min=11 -> floor to 10; max=20 -> ceil to 20; step 10 => 10, 20 (no 0 forced or dropped).
+    const tickLabels = Array.from(
+      container.querySelectorAll(".weather-timeline-temp-scale-tick")
+    ).map((el) => el.textContent);
+    expect(tickLabels).toEqual(["10°", "20°"]);
+  });
+
   it("does not force a 0° tick into view for an all-positive range far from freezing", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -2343,5 +2367,39 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     ).toBeNull();
     // Exactly one scale/gridline set exists in total (the temperature row's own).
     expect(container.querySelectorAll(".weather-timeline-temp-scale")).toHaveLength(1);
+  });
+});
+
+describe("Temperature line colored by band (037-header-controls-and-chart-fixes, US6)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+  });
+
+  it("colors the temperature line via a per-value gradient instead of one flat color", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(2), temperature: 2, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursAgo(1), temperature: 18, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
+
+    const gradient = container.querySelector("#weather-timeline-temperature-line-gradient");
+    expect(gradient).not.toBeNull();
+    // Range 2-18 crosses the 5, 10, and 15 band boundaries -> at least 3 hard edges (6 stops)
+    // plus the 2 boundary stops.
+    expect(gradient!.querySelectorAll("stop").length).toBeGreaterThanOrEqual(8);
+
+    const line = container.querySelector(".weather-timeline-line-observed") as SVGElement | null;
+    expect(line).not.toBeNull();
+    expect(line!.style.stroke).toContain("url(#weather-timeline-temperature-line-gradient)");
   });
 });

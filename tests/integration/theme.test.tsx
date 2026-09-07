@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ThemePicker from "../../src/components/ThemePicker";
+import ThemeToggle from "../../src/components/ThemeToggle";
 import { useThemePreference } from "../../src/hooks/useThemePreference";
 
 function ThemeHarness() {
@@ -9,54 +9,50 @@ function ThemeHarness() {
   return (
     <div>
       <p data-testid="active-theme">{theme}</p>
-      <ThemePicker theme={theme} onChange={setTheme} />
+      <ThemeToggle theme={theme} onThemeChange={setTheme} />
     </div>
   );
 }
 
-describe("ThemePicker + useThemePreference", () => {
+describe("ThemeToggle + useThemePreference", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("defaults to Midnight and applies data-theme on mount", () => {
+  it("defaults to Dark and applies data-theme on mount", () => {
     render(<ThemeHarness />);
 
-    expect(screen.getByRole("button", { name: "Midnight" })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
+    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
   });
 
-  it("switching themes updates the active theme and the data-theme attribute", async () => {
+  it("switching themes updates the active theme and the data-theme attribute in one click", async () => {
     render(<ThemeHarness />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Bright" }));
+    await user.click(screen.getByRole("button", { name: "Dark" }));
 
     expect(screen.getByTestId("active-theme")).toHaveTextContent("ivory");
     expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
-    expect(screen.getByRole("button", { name: "Bright" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Midnight" })).toHaveAttribute(
-      "aria-pressed",
-      "false"
-    );
+    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Glass" }));
-    expect(document.documentElement.getAttribute("data-theme")).toBe("glass");
+    await user.click(screen.getByRole("button", { name: "Light" }));
+
+    expect(screen.getByTestId("active-theme")).toHaveTextContent("midnight");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
+    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
   });
 
   it("persists the selected theme across a fresh render (reload)", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<ThemeHarness />);
 
-    await user.click(screen.getByRole("button", { name: "Glass" }));
+    await user.click(screen.getByRole("button", { name: "Dark" }));
     unmount();
 
     render(<ThemeHarness />);
-    expect(screen.getByTestId("active-theme")).toHaveTextContent("glass");
-    expect(screen.getByRole("button", { name: "Glass" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("active-theme")).toHaveTextContent("ivory");
+    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
   });
 });

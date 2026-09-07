@@ -13,7 +13,8 @@ import ObservationDetails from "./components/ObservationDetails";
 import WeatherIconOverview from "./components/WeatherIconOverview";
 import WarningBanner from "./components/WarningBanner";
 import NearbyStationCountControl from "./components/NearbyStationCountControl";
-import DisplayMenu from "./components/DisplayMenu";
+import ThemeToggle from "./components/ThemeToggle";
+import SettingsMenu from "./components/SettingsMenu";
 import LocationPanel from "./components/LocationPanel";
 import Footer from "./components/Footer";
 import MapView from "./components/MapView";
@@ -200,9 +201,8 @@ export default function App() {
         </div>
 
         <div className="header-actions">
-          <DisplayMenu
-            theme={theme}
-            onThemeChange={setTheme}
+          <ThemeToggle theme={theme} onThemeChange={setTheme} />
+          <SettingsMenu
             unit={unit}
             onUnitChange={setUnit}
             highLowVisible={highLowVisible}

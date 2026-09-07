@@ -45,12 +45,12 @@ describe("Nearby station count preference (User Story 4)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("defaults to 4 and fetches with count 4", async () => {
+  it("defaults to 0 and fetches with count 0 (037-header-controls-and-chart-fixes, US5)", async () => {
     render(<Harness location={stockholm} />);
 
-    expect(screen.getByRole("combobox")).toHaveValue("4");
+    expect(screen.getByRole("combobox")).toHaveValue("0");
     await waitFor(() =>
-      expect(getNearbyStationSeries).toHaveBeenCalledWith(stockholm, "last-24-hours", 4)
+      expect(getNearbyStationSeries).toHaveBeenCalledWith(stockholm, "last-24-hours", 0)
     );
   });
 

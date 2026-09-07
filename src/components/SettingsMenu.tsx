@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { HighLowVisibility, Theme, UnitSystem } from "../models/types";
-import ThemePicker from "./ThemePicker";
+import type { HighLowVisibility, UnitSystem } from "../models/types";
 import UnitToggle from "./UnitToggle";
 import HighLowToggle from "./HighLowToggle";
 
-interface DisplayMenuProps {
-  theme: Theme;
-  onThemeChange: (theme: Theme) => void;
+interface SettingsMenuProps {
   unit: UnitSystem;
   onUnitChange: (unit: UnitSystem) => void;
   highLowVisible: HighLowVisibility;
@@ -14,18 +11,17 @@ interface DisplayMenuProps {
 }
 
 /**
- * Consolidates Theme/Unit/High-Low behind a single "Display" control instead of three
- * always-visible header buttons (018-dashboard-visual-redesign, FR-003) — same dropdown-panel
- * pattern already established by LocationPanel (013).
+ * Holds the display options that aren't theme (now its own header button, ThemeToggle) —
+ * units and the high/low toggle — behind a single "Settings" control
+ * (037-header-controls-and-chart-fixes, US2). Same dropdown-panel pattern the old DisplayMenu
+ * used (018-dashboard-visual-redesign, FR-003), minus the theme picker.
  */
-export default function DisplayMenu({
-  theme,
-  onThemeChange,
+export default function SettingsMenu({
   unit,
   onUnitChange,
   highLowVisible,
   onHighLowChange,
-}: DisplayMenuProps) {
+}: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -53,19 +49,18 @@ export default function DisplayMenu({
   }, [open]);
 
   return (
-    <div className="display-menu" ref={panelRef}>
+    <div className="settings-menu" ref={panelRef}>
       <button
         type="button"
         aria-expanded={open}
-        aria-controls="display-menu-content"
+        aria-controls="settings-menu-content"
         onClick={() => setOpen((prev) => !prev)}
       >
-        Display
+        Settings
       </button>
 
       {open && (
-        <div id="display-menu-content" className="display-menu-content">
-          <ThemePicker theme={theme} onChange={onThemeChange} />
+        <div id="settings-menu-content" className="settings-menu-content">
           <UnitToggle unit={unit} onChange={onUnitChange} />
           <HighLowToggle visible={highLowVisible} onChange={onHighLowChange} />
         </div>

@@ -119,8 +119,9 @@ export interface NearbyStationSeries {
   series: ObservationSeries;
 }
 
-/** The user's selected app-wide visual theme (User Story 5). */
-export type Theme = "midnight" | "ivory" | "glass";
+/** The user's selected app-wide visual theme — "Dark"/"Light" in the UI (User Story 5). A
+ *  third "glass" option existed until 037-header-controls-and-chart-fixes removed it. */
+export type Theme = "midnight" | "ivory";
 
 export const DEFAULT_THEME: Theme = "midnight";
 
@@ -132,12 +133,12 @@ export const DEFAULT_METRIC: WeatherMetric = "temperature";
 /** How many nearby comparison stations to show, 0-4 (User Story 4). */
 export type NearbyStationCount = 0 | 1 | 2 | 3 | 4;
 
-export const DEFAULT_NEARBY_STATION_COUNT: NearbyStationCount = 4;
+export const DEFAULT_NEARBY_STATION_COUNT: NearbyStationCount = 0;
 
 /** Whether the temperature/wind 7-day/30-day charts show high/low lines alongside the average. */
 export type HighLowVisibility = boolean;
 
-export const DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = true;
+export const DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = false;
 
 /** An official weather warning covering the viewed location, reduced from SMHI's Impact-Based
  *  Weather Warnings feed to just what the UI needs (028-severe-weather-warnings,
