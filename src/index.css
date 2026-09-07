@@ -140,20 +140,6 @@ body {
   font-weight: 600;
 }
 
-.current-temperature {
-  font-size: 1.75rem;
-  font-weight: 700;
-}
-
-.current-condition-label {
-  color: var(--text-muted);
-}
-
-.current-feels-like {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
 /* Settings menu (037-header-controls-and-chart-fixes, US2): consolidates Unit/High-Low behind
    one dropdown (theme now lives in its own .theme-toggle button above), same anchored-panel
    treatment as .location-panel below. Was .display-menu (018-dashboard-visual-redesign, US1)

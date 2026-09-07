@@ -15,6 +15,13 @@ interface TodaySummaryCardProps {
    *  disagreeing with the header's own current-conditions reading right above it (027 follow-up).
    *  Falls back to the whole-day average when there's no current reading (e.g. still loading). */
   currentCondition?: WeatherCondition | null;
+  /** The latest actual reading's raw temperature — shown as "Now" alongside High/Low, moved down
+   *  from the header's own former "current conditions" display (037-header-controls-and-chart-
+   *  fixes follow-up: that display crowded the header and caused it to wrap with a long location
+   *  name). `null`/`undefined` when there's no current reading yet (e.g. still loading). */
+  currentTemperature?: number | null;
+  /** Feels-like companion to `currentTemperature`, same "Now" line. */
+  currentFeelsLike?: number | null;
   /** Precipitation summed over today's local calendar day (midnight to midnight) — used for the
    *  rain figure instead of `today.totalPrecipitation`'s own rolling next-24h window, which can
    *  include part of tomorrow (033-todays-rain-total). `null` renders the same "—" gap treatment
@@ -31,6 +38,8 @@ export default function TodaySummaryCard({
   unit,
   location,
   currentCondition,
+  currentTemperature,
+  currentFeelsLike,
   todaysRainTotalMm,
 }: TodaySummaryCardProps) {
   if (today === null) return null;
@@ -57,6 +66,13 @@ export default function TodaySummaryCard({
         {iconInfo ? <iconInfo.Icon aria-hidden="true" size={40} /> : null}
       </div>
       <div className="today-summary-highlow">
+        {currentTemperature != null && (
+          <span className="today-summary-now">
+            Now {formatValue(convertTemperature(currentTemperature, unit), 0)}°
+            {currentFeelsLike != null &&
+              ` (feels like ${formatValue(convertTemperature(currentFeelsLike, unit), 0)}°)`}
+          </span>
+        )}
         <span className="today-summary-high">High {formatValue(convertTemperature(today.high, unit), 0)}°</span>
         <span className="today-summary-low">Low {formatValue(convertTemperature(today.low, unit), 0)}°</span>
       </div>

@@ -19,12 +19,7 @@ import LocationPanel from "./components/LocationPanel";
 import Footer from "./components/Footer";
 import MapView from "./components/MapView";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
-import { deriveWeatherCondition } from "./services/weatherCondition";
 import type { MultiSourceForecastEntry } from "./services/weatherApi";
-import { WEATHER_ICONS } from "./components/weatherIcons";
-import { deriveFeelsLike } from "./services/feelsLike";
-import { convertTemperature } from "./services/units";
-import { formatValue } from "./services/format";
 
 type View = "graph" | "details" | "overview" | "map";
 
@@ -68,30 +63,6 @@ export default function App() {
     nearbyStationCount,
     hasOpenedDetails
   );
-
-  // Last non-forecast observation in the current series — the header's inline "current
-  // conditions" reading (018-dashboard-visual-redesign, contracts/header-redesign.md).
-  const observedPoints = series?.observations.filter((o) => !o.isForecast) ?? [];
-  const currentConditions = observedPoints.length > 0 ? observedPoints[observedPoints.length - 1] : null;
-  const currentFeelsLike =
-    currentConditions !== null
-      ? deriveFeelsLike({
-          temperature: currentConditions.temperature,
-          windSpeed: currentConditions.windSpeed,
-          relativeHumidity: currentConditions.relativeHumidity ?? null,
-        })
-      : null;
-  const currentCondition =
-    currentConditions !== null
-      ? deriveWeatherCondition({
-          temperature: currentConditions.temperature,
-          precipitation: currentConditions.precipitation,
-          windSpeed: currentConditions.windSpeed,
-          cloudCoverPercent: currentConditions.cloudCoverPercent,
-          timestamp: currentConditions.timestamp,
-        })
-      : null;
-  const currentConditionLabel = currentCondition !== null ? WEATHER_ICONS[currentCondition].label : null;
 
   useEffect(() => {
     requestLocation();
@@ -182,21 +153,6 @@ export default function App() {
           />
           {selected !== null && (
             <span className="current-location-name">{selected.displayName}</span>
-          )}
-          {currentConditions !== null && (
-            <>
-              <span className="current-temperature">
-                {formatValue(convertTemperature(currentConditions.temperature, unit), 0)}°
-              </span>
-              {currentConditionLabel !== null && (
-                <span className="current-condition-label">{currentConditionLabel}</span>
-              )}
-              {currentFeelsLike !== null && (
-                <span className="current-feels-like">
-                  Feels like {formatValue(convertTemperature(currentFeelsLike, unit), 0)}°
-                </span>
-              )}
-            </>
           )}
         </div>
 

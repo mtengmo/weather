@@ -19,15 +19,19 @@ const THEME_LABEL: Record<Theme, string> = {
  * A single always-visible header button that flips the whole app's look between Dark and
  * Light in one tap — no dropdown step (037-header-controls-and-chart-fixes, US1). Replaces
  * the old three-option "Display" menu's theme picker; "Glass" has been removed entirely.
+ *
+ * Labeled with the theme you'll switch *to*, not the current one — e.g. while the app looks
+ * dark, the button reads "Light" (037 follow-up: "the Light/Dark switch should be opposite").
  */
 export default function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) {
+  const nextTheme = OTHER_THEME[theme];
   return (
     <button
       type="button"
       className="theme-toggle"
-      onClick={() => onThemeChange(OTHER_THEME[theme])}
+      onClick={() => onThemeChange(nextTheme)}
     >
-      {THEME_LABEL[theme]}
+      {THEME_LABEL[nextTheme]}
     </button>
   );
 }

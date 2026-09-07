@@ -2402,4 +2402,32 @@ describe("Temperature line colored by band (037-header-controls-and-chart-fixes,
     expect(line).not.toBeNull();
     expect(line!.style.stroke).toContain("url(#weather-timeline-temperature-line-gradient)");
   });
+
+  it("also colors the area fill by the same per-value scale, fading toward the baseline (037 follow-up)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(2), temperature: 2, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursAgo(1), temperature: 18, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".weather-timeline-temp-scale")).not.toBeNull());
+
+    const fillGradient = container.querySelector("#weather-timeline-temperature-gradient");
+    expect(fillGradient).not.toBeNull();
+    const stops = Array.from(fillGradient!.querySelectorAll("stop"));
+    expect(stops.length).toBeGreaterThanOrEqual(8);
+    // Not every stop is the same color any more (it used to be one flat --row-temperature).
+    const colors = new Set(stops.map((s) => s.getAttribute("stop-color")));
+    expect(colors.size).toBeGreaterThan(1);
+    // Still fades out toward the baseline like before.
+    expect(Number(stops[0].getAttribute("stop-opacity"))).toBeGreaterThan(
+      Number(stops[stops.length - 1].getAttribute("stop-opacity"))
+    );
+  });
 });

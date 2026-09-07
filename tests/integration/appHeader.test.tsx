@@ -535,15 +535,19 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     vi.unstubAllGlobals();
   });
 
-  it("shows the current temperature, condition, and feels-like reading inline in the header", async () => {
+  it("no longer shows a current-conditions reading inline in the header — it moved to the Today card's 'Now' line (037-header-controls-and-chart-fixes follow-up: header wrapped with a long location name)", async () => {
     addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
     localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
 
     render(<App />);
 
+    const todayCard = await screen.findByRole("region", { name: "Today" });
+    await waitFor(() => expect(todayCard).toHaveTextContent("Now 12°"));
+    expect(todayCard).toHaveTextContent(/feels like/);
+
     const header = screen.getByRole("banner");
-    await waitFor(() => expect(header).toHaveTextContent("12°"));
-    expect(header).toHaveTextContent(/Feels like/);
+    expect(header).not.toHaveTextContent("Now 12°");
+    expect(header).not.toHaveTextContent(/feels like/i);
   });
 
   it("no longer offers a Display menu (037-header-controls-and-chart-fixes, US1/US2)", () => {
@@ -552,18 +556,18 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     expect(screen.queryByRole("button", { name: "Display" })).not.toBeInTheDocument();
   });
 
-  it("shows a single Dark/Light button in the header that switches the theme in one click (US1)", async () => {
+  it("shows a single Dark/Light button in the header that switches the theme in one click, labeled with the destination (US1, later flipped to destination-labeled)", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    const themeButton = screen.getByRole("button", { name: "Dark" });
+    const themeButton = screen.getByRole("button", { name: "Light" });
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
 
     await user.click(themeButton);
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
-    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Dark" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Light" })).not.toBeInTheDocument();
   });
 
   it("opens the Settings menu to reveal only unit and high/low controls, and toggles the unit (US2)", async () => {

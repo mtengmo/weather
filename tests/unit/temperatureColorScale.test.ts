@@ -3,6 +3,7 @@ import {
   TEMPERATURE_BANDS,
   bandForTemperature,
   buildGradientStops,
+  buildFillGradientStops,
 } from "../../src/services/temperatureColorScale";
 
 describe("TEMPERATURE_BANDS (037-header-controls-and-chart-fixes, US6)", () => {
@@ -75,5 +76,28 @@ describe("buildGradientStops", () => {
     for (const stop of stops) {
       expect(stop.color).toBe(bandForTemperature(10).color);
     }
+  });
+});
+
+describe("buildFillGradientStops", () => {
+  it("uses the same colors/offsets as buildGradientStops", () => {
+    const lineStops = buildGradientStops(2, 18);
+    const fillStops = buildFillGradientStops(2, 18);
+    expect(fillStops.map((s) => ({ offset: s.offset, color: s.color }))).toEqual(lineStops);
+  });
+
+  it("fades opacity from the top (default 0.35) to the bottom (default 0)", () => {
+    const stops = buildFillGradientStops(2, 18);
+    expect(stops[0].opacity).toBeCloseTo(0.35);
+    expect(stops[stops.length - 1].opacity).toBeCloseTo(0);
+    for (let i = 1; i < stops.length; i++) {
+      expect(stops[i].opacity!).toBeLessThanOrEqual(stops[i - 1].opacity!);
+    }
+  });
+
+  it("accepts custom top/bottom opacities", () => {
+    const stops = buildFillGradientStops(2, 18, 0.6, 0.1);
+    expect(stops[0].opacity).toBeCloseTo(0.6);
+    expect(stops[stops.length - 1].opacity).toBeCloseTo(0.1);
   });
 });

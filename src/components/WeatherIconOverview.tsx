@@ -14,12 +14,13 @@ import {
 } from "./timelineData";
 import { WEATHER_ICONS } from "./weatherIcons";
 import { deriveWeatherCondition } from "../services/weatherCondition";
+import { deriveFeelsLike } from "../services/feelsLike";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
 import { dataSourceNote, formatValue } from "../services/format";
 import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
 import TodaySummaryCard from "./TodaySummaryCard";
 import WeeklyForecastStrip from "./WeeklyForecastStrip";
-import { buildGradientStops } from "../services/temperatureColorScale";
+import { buildGradientStops, buildFillGradientStops } from "../services/temperatureColorScale";
 
 interface WeatherIconOverviewProps {
   location: Location;
@@ -281,34 +282,43 @@ function LineRow({
       <div className="weather-timeline-row-grid-cells">
         <div className="weather-timeline-line-area">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="weather-timeline-svg" aria-hidden="true">
-            {isTemperature && (
+            {isTemperature && scale !== null && (
+              // userSpaceOnUse (not the default objectBoundingBox) on both gradients, pinned to
+              // the same 0-100 viewBox Y coordinates `scale.yFor` already maps every value to: a
+              // row can render several separate <polyline>/<polygon> segments (split by data
+              // gaps), and objectBoundingBox scopes to each *referencing element's own* bounding
+              // box — which would color each segment relative to its own local min/max instead
+              // of the row's actual range. userSpaceOnUse with explicit y1/y2 makes every
+              // segment share one coordinate system, so a given Y position (temperature) always
+              // gets the same color regardless of which segment it's in.
               <defs>
-                <linearGradient id="weather-timeline-temperature-gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--row-temperature)" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="var(--row-temperature)" stopOpacity="0" />
+                <linearGradient
+                  id="weather-timeline-temperature-line-gradient"
+                  gradientUnits="userSpaceOnUse"
+                  x1="0"
+                  y1={scale.yFor(scale.max)}
+                  x2="0"
+                  y2={scale.yFor(scale.min)}
+                >
+                  {buildGradientStops(scale.min, scale.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
+                  ))}
                 </linearGradient>
-                {scale !== null && (
-                  // userSpaceOnUse (not the default objectBoundingBox), pinned to the same
-                  // 0-100 viewBox Y coordinates `scale.yFor` already maps every value to: a row
-                  // can render several separate <polyline> segments (split by data gaps), and
-                  // objectBoundingBox scopes to each *referencing element's own* bounding box —
-                  // which would color each segment relative to its own local min/max instead of
-                  // the row's actual range. userSpaceOnUse with explicit y1/y2 makes every
-                  // segment share one coordinate system, so a given Y position (temperature)
-                  // always gets the same color regardless of which segment it's in.
-                  <linearGradient
-                    id="weather-timeline-temperature-line-gradient"
-                    gradientUnits="userSpaceOnUse"
-                    x1="0"
-                    y1={scale.yFor(scale.max)}
-                    x2="0"
-                    y2={scale.yFor(scale.min)}
-                  >
-                    {buildGradientStops(scale.min, scale.max).map((stop, i) => (
-                      <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} />
-                    ))}
-                  </linearGradient>
-                )}
+                {/* Same per-value band coloring as the line above, fading to transparent toward
+                    the baseline — replaces the old single-flat-color fill
+                    (037-header-controls-and-chart-fixes follow-up). */}
+                <linearGradient
+                  id="weather-timeline-temperature-gradient"
+                  gradientUnits="userSpaceOnUse"
+                  x1="0"
+                  y1={scale.yFor(scale.max)}
+                  x2="0"
+                  y2={AREA_BASELINE_Y}
+                >
+                  {buildFillGradientStops(scale.min, scale.max).map((stop, i) => (
+                    <stop key={i} offset={`${stop.offset}%`} stopColor={stop.color} stopOpacity={stop.opacity} />
+                  ))}
+                </linearGradient>
               </defs>
             )}
             {isTemperature &&
@@ -766,6 +776,19 @@ export default function WeatherIconOverview({
           timestamp: nearestObservation.timestamp,
         })
       : null;
+  // The header used to show its own separate "current conditions" reading (temperature, feels
+  // like) right above this card — moved down onto the Today card itself, labeled "Now", so it's
+  // no longer competing for space in the header alongside a long location name
+  // (037-header-controls-and-chart-fixes follow-up: reported header line-wrap with "Abisko").
+  const currentTemperature = nearestObservation?.temperature ?? null;
+  const currentFeelsLike =
+    nearestObservation != null
+      ? deriveFeelsLike({
+          temperature: nearestObservation.temperature,
+          windSpeed: nearestObservation.windSpeed,
+          relativeHumidity: nearestObservation.relativeHumidity ?? null,
+        })
+      : null;
 
   useEffect(() => {
     // Center the "now" column in the visible area on a fresh render whenever the timeline
@@ -797,6 +820,8 @@ export default function WeatherIconOverview({
         unit={unit}
         location={location}
         currentCondition={currentCondition}
+        currentTemperature={currentTemperature}
+        currentFeelsLike={currentFeelsLike}
         todaysRainTotalMm={todaysRainTotalMm}
       />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap

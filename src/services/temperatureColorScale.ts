@@ -39,6 +39,9 @@ export interface GradientStop {
   /** Percent, 0-100. */
   offset: number;
   color: string;
+  /** 0-1; only present on fill-gradient stops (buildFillGradientStops) — a line-gradient stop
+   *  (buildGradientStops) is always fully opaque and omits this. */
+  opacity?: number;
 }
 
 /**
@@ -75,4 +78,25 @@ export function buildGradientStops(min: number, max: number): GradientStop[] {
   stops.push({ offset: 100, color: bandForTemperature(min).color });
 
   return stops;
+}
+
+/**
+ * Same per-value band coloring as `buildGradientStops`, plus a fading opacity from
+ * `topOpacity` (offset 0%, the hottest/topmost point) down to `bottomOpacity` (offset 100%,
+ * the coldest/bottommost point, which for the timeline row's area fill lands exactly on its
+ * baseline) — for a chart's area/fill under the line, so it reads as a colorful wash that still
+ * fades out toward the baseline the way the old flat-color fill already did
+ * (037-header-controls-and-chart-fixes follow-up: "is it also possible to do a nice gradient
+ * color on the fill color?").
+ */
+export function buildFillGradientStops(
+  min: number,
+  max: number,
+  topOpacity = 0.35,
+  bottomOpacity = 0
+): GradientStop[] {
+  return buildGradientStops(min, max).map((stop) => ({
+    ...stop,
+    opacity: topOpacity + ((bottomOpacity - topOpacity) * stop.offset) / 100,
+  }));
 }
