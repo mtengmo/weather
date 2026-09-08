@@ -6,6 +6,7 @@ import {
   CloudLightning,
   CloudRain,
   CloudSnow,
+  CloudSun,
   Moon,
   Snowflake,
   Sun,
@@ -23,10 +24,14 @@ interface WeatherIconInfo {
  * thunderstorm/foggy/sleet added 022-met-forecast-source, US3; light/heavy rain+snow replace
  * the previous flat rainy/snowy entries, 032-dashboard-polish-round-seven, US5, research.md §7 —
  * `heavy-rain`/`heavy-snow` keep the icons `rainy`/`snowy` used before, so the more commonly-seen
- * case looks unchanged; `sleet` moves to `CloudHail` since `CloudDrizzle` is now `light-rain`'s). */
+ * case looks unchanged; `sleet` moves to `CloudHail` since `CloudDrizzle` is now `light-rain`'s;
+ * `partly-cloudy` splits off the lighter half of the previous single "cloudy" entry,
+ * 038-granular-weather-icons-and-graph-header, US1 — no day/night variant, matching `cloudy`'s
+ * own existing day/night-agnostic pattern). */
 export const WEATHER_ICONS: Record<WeatherCondition, WeatherIconInfo> = {
   "clear-day": { Icon: Sun, label: "Clear" },
   "clear-night": { Icon: Moon, label: "Clear" },
+  "partly-cloudy": { Icon: CloudSun, label: "Partly cloudy" },
   cloudy: { Icon: Cloud, label: "Cloudy" },
   "light-rain": { Icon: CloudDrizzle, label: "Light rain" },
   "heavy-rain": { Icon: CloudRain, label: "Rain" },

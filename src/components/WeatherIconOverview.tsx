@@ -774,6 +774,7 @@ export default function WeatherIconOverview({
           windSpeed: nearestObservation.windSpeed,
           cloudCoverPercent: nearestObservation.cloudCoverPercent,
           timestamp: nearestObservation.timestamp,
+          chanceOfRain: nearestObservation.chanceOfRain,
         })
       : null;
   // The header used to show its own separate "current conditions" reading (temperature, feels

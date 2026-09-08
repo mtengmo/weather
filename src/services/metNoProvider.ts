@@ -68,7 +68,13 @@ export function classifyMetNoSymbol(code: string): WeatherCondition | null {
   if (code.includes("snow")) return code.includes("light") ? "light-snow" : "heavy-snow";
   if (code.includes("rain")) return code.includes("light") ? "light-rain" : "heavy-rain";
   if (code.includes("clearsky")) return code.includes("night") ? "clear-night" : "clear-day";
-  if (code.includes("cloud") || code.includes("fair")) return "cloudy";
+  // "fair"/"partlycloudy" are MET Norway's own lighter cloud tier, distinct from its plain
+  // "cloudy" (fully overcast) — used to both fold into this app's single "cloudy" value; split
+  // into partly-cloudy/cloudy (038-granular-weather-icons-and-graph-header, US1, research.md)
+  // since MET Norway already distinguishes them for free. Checked before the generic "cloud"
+  // substring so "partlycloudy" doesn't fall through to the plain-cloudy branch.
+  if (code.includes("fair") || code.includes("partlycloudy")) return "partly-cloudy";
+  if (code.includes("cloud")) return "cloudy";
   return null;
 }
 

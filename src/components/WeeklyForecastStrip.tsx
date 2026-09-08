@@ -24,6 +24,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
           precipitation: day.totalPrecipitation,
           windSpeed: day.windAverage,
           cloudCoverPercent: day.cloudAverage,
+          chanceOfRain: day.chanceOfRainMax,
         });
         const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
         return (

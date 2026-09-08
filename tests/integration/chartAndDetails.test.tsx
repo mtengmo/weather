@@ -129,6 +129,18 @@ describe("US1: ObservationChart + ObservationDetails", () => {
     expect(screen.getByRole("button", { name: "Last 7 days" })).toBeInTheDocument();
   });
 
+  it("shows the location title inline with the window-toggle row, not visually hidden (038-granular-weather-icons-and-graph-header, US2)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series("last-24-hours", [], "ready"));
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    await screen.findByRole("button", { name: "View details" });
+
+    const title = screen.getByRole("heading", { name: stockholm.displayName });
+    expect(title).not.toHaveClass("visually-hidden");
+    expect(title.closest(".observation-window-header")).not.toBeNull();
+    expect(title.closest(".observation-window-header")?.querySelector(".window-toggle")).not.toBeNull();
+  });
+
   it("re-fetches when the window is switched to the weekly view", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => series(w));
 

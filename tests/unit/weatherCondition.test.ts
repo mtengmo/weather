@@ -52,9 +52,12 @@ describe("deriveWeatherCondition (007-weather-icon-overview)", () => {
     expect(deriveWeatherCondition(base({ windSpeed: 7.9, precipitation: 0 }))).not.toBe("windy");
   });
 
-  it("returns cloudy when cloud cover meets the threshold and nothing higher-priority applies", () => {
-    expect(deriveWeatherCondition(base({ cloudCoverPercent: 50, windSpeed: 0 }))).toBe("cloudy");
-    expect(deriveWeatherCondition(base({ cloudCoverPercent: 49.9, windSpeed: 0 }))).not.toBe("cloudy");
+  it("returns partly-cloudy at the light-cloud threshold, cloudy at the heavy/overcast threshold (038-granular-weather-icons-and-graph-header, US1)", () => {
+    expect(deriveWeatherCondition(base({ cloudCoverPercent: 49.9, windSpeed: 0 }))).not.toBe("partly-cloudy");
+    expect(deriveWeatherCondition(base({ cloudCoverPercent: 50, windSpeed: 0 }))).toBe("partly-cloudy");
+    expect(deriveWeatherCondition(base({ cloudCoverPercent: 79.9, windSpeed: 0 }))).toBe("partly-cloudy");
+    expect(deriveWeatherCondition(base({ cloudCoverPercent: 80, windSpeed: 0 }))).toBe("cloudy");
+    expect(deriveWeatherCondition(base({ cloudCoverPercent: 100, windSpeed: 0 }))).toBe("cloudy");
   });
 
   it("returns clear-day for a clear daytime period", () => {
@@ -153,5 +156,55 @@ describe("deriveWeatherCondition precipitation intensity (032-dashboard-polish-r
   it("mm-threshold fallback: exactly at the heavy boundary counts as heavy (inclusive)", () => {
     expect(deriveWeatherCondition(base({ precipitation: 2.5, temperature: 10 }))).toBe("heavy-rain");
     expect(deriveWeatherCondition(base({ precipitation: 2.4999, temperature: 10 }))).toBe("light-rain");
+  });
+});
+
+describe("deriveWeatherCondition low-confidence rain/snow guard (038-granular-weather-icons-and-graph-header, US1)", () => {
+  it("does not classify as rain when chanceOfRain is present and low, despite a small amount", () => {
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10, chanceOfRain: 7 }))
+    ).not.toBe("light-rain");
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10, chanceOfRain: 7 }))
+    ).not.toBe("heavy-rain");
+  });
+
+  it("does not classify as snow when chanceOfRain is present and low, despite a small amount", () => {
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: -2, chanceOfRain: 7 }))
+    ).not.toBe("light-snow");
+  });
+
+  it("falls back to a sensible non-precipitation icon when the low-confidence guard suppresses rain", () => {
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10, chanceOfRain: 7, cloudCoverPercent: 10 }))
+    ).toBe("clear-day");
+  });
+
+  it("still classifies as rain when chanceOfRain is present and high", () => {
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10, chanceOfRain: 60 }))
+    ).toBe("light-rain");
+  });
+
+  it("still classifies as rain from amount alone when chanceOfRain is absent (observed/historical data, FR-003)", () => {
+    expect(deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10 }))).toBe("light-rain");
+    expect(
+      deriveWeatherCondition(base({ precipitation: 0.2, temperature: 10, chanceOfRain: null }))
+    ).toBe("light-rain");
+  });
+
+  it("a large amount still classifies as rain even with a low chanceOfRain (amount takes precedence)", () => {
+    expect(
+      deriveWeatherCondition(base({ precipitation: 5, temperature: 10, chanceOfRain: 7 }))
+    ).toBe("heavy-rain");
+  });
+
+  it("does not affect symbol-code-based rain classification", () => {
+    expect(
+      deriveWeatherCondition(
+        base({ symbolCondition: "light-rain", precipitation: 0.2, chanceOfRain: 7, windSpeed: 0 })
+      )
+    ).toBe("light-rain");
   });
 });

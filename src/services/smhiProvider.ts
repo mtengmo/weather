@@ -90,12 +90,15 @@ interface SmhiForecastData {
 // Codes 8/18 are SMHI's own "light" rain tier; 9/19 ("moderate") and 10/20 ("heavy") both fold
 // into this app's single "heavy" tier, since only a light/heavy distinction is needed
 // (032-dashboard-polish-round-seven, US5, research.md §6) — likewise 15/25 "light" snow vs.
-// 16/17/26/27 moderate+heavy.
+// 16/17/26/27 moderate+heavy. Codes 3/4 ("Variable cloudiness"/"Halfclear sky") and 5/6
+// ("Cloudy sky"/"Overcast") used to all fold into one "cloudy" value too — split into
+// partly-cloudy/cloudy (038-granular-weather-icons-and-graph-header, US1, research.md) since
+// SMHI already distinguishes them for free.
 const SMHI_SYMBOL_CONDITIONS: Record<number, WeatherCondition | "clear"> = {
   1: "clear",
   2: "clear",
-  3: "cloudy",
-  4: "cloudy",
+  3: "partly-cloudy",
+  4: "partly-cloudy",
   5: "cloudy",
   6: "cloudy",
   7: "foggy",

@@ -1169,6 +1169,50 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     expect(container.querySelector(".weather-condition-light-rain")).toBeInTheDocument();
     expect(container.querySelector(".weather-condition-light-snow")).toBeInTheDocument();
   });
+
+  it("does not show a rain icon for a small forecast amount with a low chance of rain (038-granular-weather-icons-and-graph-header, US1 — reported live: 'chance is 7% ... in reality its not a rain forecast')", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursFromNow(1),
+          temperature: 15,
+          precipitation: 0.2,
+          windSpeed: 1,
+          cloudCoverPercent: 10,
+          chanceOfRain: 7,
+          isForecast: true,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(container.querySelector(".weather-condition-light-rain")).not.toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-heavy-rain")).not.toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-clear-day")).toBeInTheDocument();
+  });
+
+  it("distinguishes partly-cloudy (lighter cover) from cloudy (heavier/overcast cover)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 60 },
+        { timestamp: hoursAgo(0), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 95 },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(container.querySelector(".weather-condition-partly-cloudy")).toBeInTheDocument();
+    expect(container.querySelector(".weather-condition-cloudy")).toBeInTheDocument();
+  });
 });
 
 describe("US2: chart rows colored and shaded like the mockup (010-timeline-visual-styling)", () => {

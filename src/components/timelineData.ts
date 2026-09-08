@@ -302,6 +302,7 @@ export function buildHourlyTimelineData(
         windSpeed: obs.windSpeed,
         cloudCoverPercent: obs.cloudCoverPercent,
         timestamp: obs.timestamp,
+        chanceOfRain: obs.chanceOfRain,
       }),
       uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
     };
@@ -369,6 +370,7 @@ function daysToTimelineData(
         precipitation: day.totalPrecipitation,
         windSpeed: day.windAverage,
         cloudCoverPercent: day.cloudAverage,
+        chanceOfRain: day.chanceOfRainMax,
       }),
       uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
     };

@@ -357,6 +357,45 @@ h2[tabindex="-1"]:focus {
   margin: 0.5rem 0;
 }
 
+/* Graph view title + window-toggle share one row (038-granular-weather-icons-and-graph-header,
+   US2) instead of the title being a separate visually-hidden element and the toggle its own
+   full-width row — reduces the fixed top area's total height, especially on mobile. */
+.observation-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.observation-window-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  /* Buttons wrapping onto a second/third line (rather than staying in one scrollable row) was
+     the main contributor to the graph view's fixed top area "bloating the screen" on mobile —
+     same horizontal-scroll-instead-of-wrap treatment the Overview timeline already uses
+     (.weather-timeline-wrap) for the same reason. Scoped to the graph view's own window-toggle
+     (nested inside .observation-window-header) — .window-toggle is also reused, unscoped, by
+     the Overview's own window toggle, which is explicitly out of scope for this change
+     (038-granular-weather-icons-and-graph-header, spec.md Assumptions). */
+  .observation-window-header .window-toggle,
+  .metric-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+
+  .observation-window-header .window-toggle button,
+  .metric-tabs button {
+    flex: 0 0 auto;
+  }
+}
+
 button {
   background: var(--surface);
   color: var(--text);

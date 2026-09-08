@@ -49,6 +49,7 @@ export default function TodaySummaryCard({
     precipitation: today.totalPrecipitation,
     windSpeed: today.windAverage,
     cloudCoverPercent: today.cloudAverage,
+    chanceOfRain: today.chanceOfRainMax,
   });
   const condition = currentCondition ?? dayCondition;
   const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;

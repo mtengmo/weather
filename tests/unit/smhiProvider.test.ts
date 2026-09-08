@@ -284,6 +284,27 @@ describe("smhiProvider", () => {
         expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe("sleet");
       });
 
+      it("maps symbol_code 3/4 (variable/halfclear) to symbolCondition partly-cloudy, and 5/6 (cloudy/overcast) to cloudy (038-granular-weather-icons-and-graph-header, US1)", async () => {
+        for (const [symbolCode, expected] of [
+          [3, "partly-cloudy"],
+          [4, "partly-cloudy"],
+          [5, "cloudy"],
+          [6, "cloudy"],
+        ] as const) {
+          mockFetchRouter({
+            ...baseStations,
+            "/category/snow1g/version/1/geotype/point": forecastBody([
+              { time: isoHourFromNow(1), data: { air_temperature: 10, symbol_code: symbolCode } },
+            ]),
+          });
+
+          const { getObservations } = await freshProvider();
+          const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+          expect(result.observations.find((o) => o.isForecast)?.symbolCondition).toBe(expected);
+        }
+      });
+
       it("resolves symbol_code 1 (clear) to clear-day or clear-night via the observation's own timestamp", async () => {
         mockFetchRouter({
           ...baseStations,

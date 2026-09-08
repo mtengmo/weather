@@ -92,6 +92,7 @@ export default function ObservationDetails({
                   windSpeed: obs.windSpeed,
                   cloudCoverPercent: obs.cloudCoverPercent,
                   timestamp: obs.timestamp,
+                  chanceOfRain: obs.chanceOfRain,
                 });
                 const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
                 return (

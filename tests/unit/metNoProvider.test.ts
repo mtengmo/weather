@@ -66,9 +66,10 @@ describe("metNoProvider", () => {
       expect(classifyMetNoSymbol("clearsky_day")).toBe("clear-day");
     });
 
-    it("matches cloud/fair as cloudy", () => {
-      expect(classifyMetNoSymbol("partlycloudy_day")).toBe("cloudy");
-      expect(classifyMetNoSymbol("fair_day")).toBe("cloudy");
+    it("matches fair/partlycloudy as partly-cloudy, and a plain cloudy code as cloudy (038-granular-weather-icons-and-graph-header, US1)", () => {
+      expect(classifyMetNoSymbol("fair_day")).toBe("partly-cloudy");
+      expect(classifyMetNoSymbol("partlycloudy_day")).toBe("partly-cloudy");
+      expect(classifyMetNoSymbol("cloudy")).toBe("cloudy");
     });
 
     it("returns null for an unrecognized code", () => {

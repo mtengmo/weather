@@ -250,24 +250,28 @@ export default function ObservationChart({
 
   return (
     <section aria-label={`Observed weather for ${location.displayName}`}>
-      {/* Visually redundant with the app-level header's own location display
-          (020-dashboard-polish-round-five, US4 — matches WeatherIconOverview's existing
-          pattern) but kept for the focus-on-view-change a11y convention every view follows. */}
-      <h2 ref={headingRef} tabIndex={-1} className="visually-hidden">
-        {location.displayName}
-      </h2>
+      {/* Now shown inline (038-granular-weather-icons-and-graph-header, US2) rather than
+          visually-hidden — reused as the one visible title instead of adding a second copy of
+          the location name, so it still serves the existing focus-on-view-change a11y
+          convention (headingRef) every view follows, while also giving the mobile-width
+          window-toggle row somewhere to put the title instead of a separate row. */}
+      <div className="observation-window-header">
+        <h2 ref={headingRef} tabIndex={-1} className="observation-window-title">
+          {location.displayName}
+        </h2>
 
-      <div className="window-toggle" role="group" aria-label="Observation window">
-        {WINDOWS.map((w) => (
-          <button
-            key={w.value}
-            type="button"
-            aria-pressed={window === w.value}
-            onClick={() => onWindowChange(w.value)}
-          >
-            {w.label}
-          </button>
-        ))}
+        <div className="window-toggle" role="group" aria-label="Observation window">
+          {WINDOWS.map((w) => (
+            <button
+              key={w.value}
+              type="button"
+              aria-pressed={window === w.value}
+              onClick={() => onWindowChange(w.value)}
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <MetricTabs metric={metric} onChange={onMetricChange} />
