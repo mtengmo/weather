@@ -65,42 +65,16 @@ async function fetchRadarTileUrl(): Promise<string | null> {
 
 type MapOverlay = "rain" | "temperature" | "wind" | "none";
 
-/** Builds the Windy.com embed iframe URL centered on the given coordinate, showing the animated
- *  wind layer. Free, key-free public embed product — confirmed live (no X-Frame-Options/CSP
- *  frame-ancestors restriction, 200 response) since the natural alternative (leaflet-velocity fed
- *  by NOAA's own GFS wind data) turned out to be CORS-blocked for direct browser access, which
- *  would require a backend proxy (040-map-temp-wind-overlays, US2, research.md §2). */
-function windyEmbedUrl([lat, lon]: [number, number]): string {
-  const params = new URLSearchParams({
-    lat: String(lat),
-    lon: String(lon),
-    detailLat: String(lat),
-    detailLon: String(lon),
-    zoom: "5",
-    level: "surface",
-    overlay: "wind",
-    menu: "",
-    message: "true",
-    marker: "",
-    calendar: "now",
-    pressure: "",
-    type: "map",
-    location: "coordinates",
-    detail: "",
-    metricWind: "default",
-    metricTemp: "default",
-    radarRange: "-1",
-  });
-  return `https://embed.windy.com/embed2.html?${params.toString()}`;
-}
-
 /**
  * A minimal v1 map screen (016-dashboard-polish-round-two, US10): pins for the user's
  * favorited and most-recently-viewed locations only — not open-ended "nearby" discovery, plus a
  * real radar imagery layer (032-dashboard-polish-round-seven, US1, replacing
  * 031-map-precipitation-overlay's forecast-circle approximation), and a picker for Rain/
- * Temperature/Wind/None overlays (040-map-temp-wind-overlays). Selecting a pin reuses the same
- * `onSelectLocation` (App.tsx's `selectLocation`) every other selection path already uses.
+ * Temperature/Wind/None overlays (040-map-temp-wind-overlays; Wind switched from an animated
+ * embedded Windy.com iframe to a static OpenWeatherMap tile merged into this app's own map after
+ * a follow-up — the embed felt disconnected from the app even though it was animated). Selecting
+ * a pin reuses the same `onSelectLocation` (App.tsx's `selectLocation`) every other selection path
+ * already uses.
  */
 export default function MapView({ favorites, cachedLocation, onSelectLocation }: MapViewProps) {
   const pins: Location[] = [
@@ -158,8 +132,12 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
 
   const overlays: { value: MapOverlay; label: string }[] = [
     { value: "rain", label: "Rain" },
-    ...(openWeatherMapApiKey ? [{ value: "temperature" as const, label: "Temperature" }] : []),
-    { value: "wind", label: "Wind" },
+    ...(openWeatherMapApiKey
+      ? [
+          { value: "temperature" as const, label: "Temperature" },
+          { value: "wind" as const, label: "Wind" },
+        ]
+      : []),
     { value: "none", label: "None" },
   ];
 
@@ -178,53 +156,54 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
         ))}
       </div>
 
-      {overlay === "wind" ? (
-        // A separate embedded map rather than a layer on MapContainer — Windy's animated wind
-        // visualization has no equivalent Leaflet TileLayer form (research.md §3). Windy's own
-        // embed UI already carries its required attribution/branding, so no extra credit line is
-        // added here (unlike Rain/Temperature, which use bare TileLayers with no UI of their own).
-        <iframe
-          title="Wind map"
-          src={windyEmbedUrl(center)}
-          style={{ height: 480, width: "100%", border: "none" }}
+      <MapContainer center={center} zoom={5} style={{ height: 480 }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-      ) : (
-        <MapContainer center={center} zoom={5} style={{ height: 480 }}>
+        {overlay === "rain" && radarTileUrl && (
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            className="map-radar-layer"
+            attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
+            url={radarTileUrl}
+            opacity={0.5}
+            zIndex={10}
           />
-          {overlay === "rain" && radarTileUrl && (
-            <TileLayer
-              className="map-radar-layer"
-              attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
-              url={radarTileUrl}
-              opacity={0.5}
-              zIndex={10}
-            />
-          )}
-          {overlay === "temperature" && openWeatherMapApiKey && (
-            <TileLayer
-              className="map-temperature-layer"
-              attribution='Temperature &copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>'
-              url={`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherMapApiKey}`}
-              opacity={0.5}
-              zIndex={10}
-            />
-          )}
-          {pins.map((pin) => (
-            <Marker key={pinKey(pin)} position={[pin.latitude, pin.longitude]}>
-              <Popup>
-                {pin.displayName}
-                <br />
-                <button type="button" onClick={() => onSelectLocation(pin)}>
-                  View
-                </button>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      )}
+        )}
+        {overlay === "temperature" && openWeatherMapApiKey && (
+          <TileLayer
+            className="map-temperature-layer"
+            attribution='Temperature &copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>'
+            url={`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherMapApiKey}`}
+            opacity={0.5}
+            zIndex={10}
+          />
+        )}
+        {overlay === "wind" && openWeatherMapApiKey && (
+          // A static color-coded wind-strength layer merged into the app's own map, rather than
+          // an embedded third-party site (the earlier Windy.com iframe approach) — the user found
+          // a separate embedded map jarring even though it was animated (040-map-temp-wind-
+          // overlays follow-up). Same OpenWeatherMap tile product/key as Temperature.
+          <TileLayer
+            className="map-wind-layer"
+            attribution='Wind &copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>'
+            url={`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${openWeatherMapApiKey}`}
+            opacity={0.5}
+            zIndex={10}
+          />
+        )}
+        {pins.map((pin) => (
+          <Marker key={pinKey(pin)} position={[pin.latitude, pin.longitude]}>
+            <Popup>
+              {pin.displayName}
+              <br />
+              <button type="button" onClick={() => onSelectLocation(pin)}>
+                View
+              </button>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </section>
   );
 }

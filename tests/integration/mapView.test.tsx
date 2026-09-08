@@ -185,44 +185,38 @@ describe("Temperature overlay (040-map-temp-wind-overlays, US1)", () => {
   });
 });
 
-describe("Wind overlay (040-map-temp-wind-overlays, US2)", () => {
+describe("Wind overlay (040-map-temp-wind-overlays, US2; switched from an embedded Windy.com iframe to a static OpenWeatherMap layer on the app's own map per user follow-up)", () => {
   beforeEach(() => {
     mockRainviewer({ host: "https://tilecache.rainviewer.com", radar: { past: [] } });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
-  it("renders the Windy embed iframe, centered on the map's own coordinate, once selected", async () => {
+  it("renders a wind TileLayer on the app's own map once selected, and removes it when a different overlay is selected", async () => {
+    vi.stubEnv("VITE_OPENWEATHERMAP_API_KEY", "test-key");
     const user = userEvent.setup();
     const { container } = render(
       <MapView favorites={[stockholm]} cachedLocation={null} onSelectLocation={vi.fn()} />
     );
 
     await user.click(screen.getByRole("button", { name: "Wind" }));
-
-    const iframe = container.querySelector('iframe[title="Wind map"]');
-    expect(iframe).not.toBeNull();
-    const src = iframe!.getAttribute("src") ?? "";
-    expect(src).toContain("embed.windy.com");
-    expect(src).toContain("overlay=wind");
-    expect(src).toContain(`lat=${stockholm.latitude}`);
-    expect(src).toContain(`lon=${stockholm.longitude}`);
-  });
-
-  it("removes the Windy embed and restores the pin map when switching back to Rain", async () => {
-    const user = userEvent.setup();
-    const { container } = render(
-      <MapView favorites={[stockholm]} cachedLocation={null} onSelectLocation={vi.fn()} />
-    );
-
-    await user.click(screen.getByRole("button", { name: "Wind" }));
-    expect(container.querySelector('iframe[title="Wind map"]')).not.toBeNull();
+    expect(container.querySelector(".map-wind-layer")).not.toBeNull();
+    expect(container.querySelector('iframe[title="Wind map"]')).toBeNull();
+    // Still the app's own pin map underneath, not a separate embedded page.
+    expect(container.querySelectorAll(".leaflet-marker-icon")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: "Rain" }));
-    expect(container.querySelector('iframe[title="Wind map"]')).toBeNull();
-    expect(container.querySelectorAll(".leaflet-marker-icon")).toHaveLength(1);
+    expect(container.querySelector(".map-wind-layer")).toBeNull();
+  });
+
+  it("does not offer a Wind option when no OpenWeatherMap API key is configured", () => {
+    vi.stubEnv("VITE_OPENWEATHERMAP_API_KEY", "");
+    render(<MapView favorites={[stockholm]} cachedLocation={null} onSelectLocation={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "Wind" })).not.toBeInTheDocument();
   });
 });
 
@@ -237,6 +231,7 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
   });
 
   it("shows Rain as the default overlay on first render", () => {
+    vi.stubEnv("VITE_OPENWEATHERMAP_API_KEY", "test-key");
     render(<MapView favorites={[stockholm]} cachedLocation={null} onSelectLocation={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: "Rain" })).toHaveAttribute("aria-pressed", "true");
@@ -254,7 +249,7 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
     await user.click(screen.getByRole("button", { name: "Temperature" }));
     await user.click(screen.getByRole("button", { name: "None" }));
 
-    expect(container.querySelector('iframe[title="Wind map"]')).toBeNull();
+    expect(container.querySelector(".map-wind-layer")).toBeNull();
     expect(container.querySelector(".map-temperature-layer")).toBeNull();
     expect(container.querySelector(".map-radar-layer")).toBeNull();
     expect(screen.getByRole("button", { name: "None" })).toHaveAttribute("aria-pressed", "true");
@@ -295,7 +290,7 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
     );
   });
 
-  it("renders no temperature layer, and every pin still renders, when no API key is configured", async () => {
+  it("renders no temperature/wind layer, and every pin still renders, when no API key is configured", async () => {
     vi.stubEnv("VITE_OPENWEATHERMAP_API_KEY", "");
     const { container } = render(
       <MapView favorites={[stockholm]} cachedLocation={paris} onSelectLocation={vi.fn()} />
@@ -303,5 +298,6 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
 
     expect(container.querySelectorAll(".leaflet-marker-icon")).toHaveLength(2);
     expect(container.querySelector(".map-temperature-layer")).toBeNull();
+    expect(container.querySelector(".map-wind-layer")).toBeNull();
   });
 });

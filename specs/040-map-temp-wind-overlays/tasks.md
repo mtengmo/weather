@@ -172,6 +172,25 @@ Task: "T010 Add Wind-overlay iframe rendering test (US2)"
 
 ## Notes
 
-- No new npm dependency: the Temperature overlay reuses `react-leaflet`'s existing `TileLayer`; the Wind overlay is a plain `iframe`.
+- No new npm dependency: the Temperature overlay reuses `react-leaflet`'s existing `TileLayer`; the Wind overlay was originally a plain `iframe`, since replaced (see Follow-up below).
 - Per `research.md` §2a, a `leaflet-velocity` + NOAA-data approach was already ruled out during planning (confirmed via a live CORS test) — it is not part of this task list.
 - The OpenWeatherMap API key is a manual, local setup step for whoever runs this app (T002); it is never committed to the repo.
+
+## Follow-up: Wind switched from a Windy embed to a static OpenWeatherMap layer
+
+After T001-T021 shipped, the user tried the Wind overlay and rejected the Windy.com iframe
+approach: "the windy map wasn't so nice, as it's embedd[ing] another site." Implemented directly
+(small, well-understood change — not re-run through `/speckit-tasks`):
+
+- [X] Replaced the `<iframe>`/`windyEmbedUrl` code in `src/components/MapView.tsx` with a
+  `TileLayer` (`className="map-wind-layer"`) using OpenWeatherMap's `wind_new` tiles, gated on the
+  same `VITE_OPENWEATHERMAP_API_KEY` as Temperature (both now hidden together when unset).
+- [X] Updated `tests/integration/mapView.test.tsx`: replaced the two Windy-iframe tests with
+  equivalent `TileLayer`-based ones; fixed the two US3 guardrail tests that referenced the
+  previously-always-available "Wind" button (now key-gated) by stubbing the env var.
+- [X] `npm test` — 568/568 pass. `npm run lint` — clean. `npm run build` — succeeds.
+- [X] Bumped `package.json` `0.5.0` → `0.5.1` for this follow-up fix.
+- [X] Updated `spec.md`, `research.md` (§5, new), `data-model.md`, `contracts/map-overlays.md`,
+  and `quickstart.md` to describe the shipped static-layer approach instead of the embed.
+- [X] Saved a `feedback` memory (`feedback_no_embedded_third_party_maps`) recording the user's
+  preference against embedded third-party map widgets for future features.

@@ -95,7 +95,7 @@ acceptance scenario 2's acknowledgment that Wind won't be merged into the existi
 map (both visible at once) — rejected as more complex and not clearly better; it would also
 violate FR-002's "exactly one overlay visible" framing by showing two maps simultaneously.
 
-## 4. Testing approach
+## 4. Testing approach (as originally planned, §2b-era)
 
 **Decision**: Use Vitest + Testing Library for the overlay-selection logic (which `TileLayer`/
 iframe renders for a given selection, that pins still render/select correctly, that a failed
@@ -104,4 +104,29 @@ Temperature tile fetch doesn't break the map) — same conventions as the existi
 OpenWeatherMap, Windy) are not covered by automated tests, consistent with how the existing Rain
 overlay's own tests mock `fetch` rather than hitting the real RainViewer API.
 
-**Rationale**: Matches existing project convention; no new test tooling needed.
+**Rationale**: Matches existing project convention; no new test tooling needed. (Superseded in
+spirit by §5 below — the iframe is gone, but the same testing conventions still apply to the
+replacement `TileLayer`.)
+
+## 5. Follow-up: replacing the Windy embed with a static on-map layer
+
+**Decision**: After shipping §2b's Windy.com embed, the user tried it and rejected it: "the windy
+map wasn't so nice, as it's embedd[ing] another site." Replaced with a static OpenWeatherMap
+`wind_new` `TileLayer` (`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid={key}`)
+merged into the app's own `MapContainer`, using the same API key already required for Temperature
+— i.e. §2a/§2b's "Alternatives considered" fallback (a static OWM tile layer) is now the shipped
+approach, not animation.
+
+**Rationale**: This is a values trade-off the user made explicitly, not a new technical
+constraint — consistency with the rest of the map (same pins, same map instance, same visual
+language as Rain/Temperature) mattered more than the animated visual. The `leaflet-velocity` +
+NOAA path from §2a remains ruled out for the reason already documented (no CORS support, would
+need a backend); this follow-up doesn't reopen that path, it just deprioritizes animation
+entirely in favor of staying merged into the app's own map.
+
+**Consequence**: FR-005/FR-006 and User Story 2 in `spec.md` were updated to describe a static,
+on-map wind-strength layer instead of an animated embed; the "Nordic-only coverage" contingency
+(originally scoped for a from-scratch animated build) is moot, since OpenWeatherMap's tiles are
+globally covered like Temperature's. §3's "reconciling the embed with one-overlay-at-a-time"
+concern is also moot — Wind is now a plain `TileLayer` alongside Rain/Temperature, no special
+full-map-replacement structure needed.
