@@ -874,18 +874,16 @@ a {
   text-align: right;
 }
 
-/* Sticky row-label column (018-dashboard-visual-redesign, US3): a fixed title column beside the
-   scrolling data grid, rather than the title stacked above it (016 and earlier), so a row's
-   label/unit stay visible while its data scrolls horizontally (FR-009). */
+/* Row-label column (originally a sticky/pinned column in 018-dashboard-visual-redesign, US3;
+   un-pinned in 039-rain-percent-sticky-fix, US2 — staying fixed in place while a row's data
+   scrolled horizontally on mobile ate into the chart area and wasn't needed, per live feedback).
+   The title now scrolls away with its row like any other column instead of staying in view. */
 .weather-timeline-row-label-wrap {
   display: flex;
   align-items: flex-start;
 }
 
 .weather-timeline-row-title {
-  position: sticky;
-  left: 0;
-  z-index: 2;
   flex: 0 0 7rem;
   width: 7rem;
   background: var(--surface);

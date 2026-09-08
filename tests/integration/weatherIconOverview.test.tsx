@@ -1194,6 +1194,10 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     expect(container.querySelector(".weather-condition-light-rain")).not.toBeInTheDocument();
     expect(container.querySelector(".weather-condition-heavy-rain")).not.toBeInTheDocument();
     expect(container.querySelector(".weather-condition-clear-day")).toBeInTheDocument();
+    // The icon-suppression guard above and the Rain row's own chance-of-rain percentage are
+    // independent (039-rain-percent-sticky-fix, US1/FR-001/FR-002): a low-confidence period still
+    // shows its percentage even though it no longer shows a rain icon.
+    expect(container.querySelector(".weather-timeline-bar-chance")?.textContent).toBe(" · 7%");
   });
 
   it("distinguishes partly-cloudy (lighter cover) from cloudy (heavier/overcast cover)", async () => {
@@ -1545,7 +1549,7 @@ describe("Sticky row-label column (018-dashboard-visual-redesign, US3)", () => {
     ).toHaveTextContent("Weather");
   });
 
-  it("gives every timeline row a sticky title-column element", async () => {
+  it("gives every timeline row a title-column element (no longer pinned in place, 039-rain-percent-sticky-fix, US2)", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",

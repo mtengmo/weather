@@ -60,3 +60,23 @@ describe("New condition colors: thunderstorm, foggy, sleet (022-met-forecast-sou
     expect(css).toMatch(/\.weather-condition-sleet svg\s*\{\s*color:\s*var\(--wx-sleet\);?\s*\}/);
   });
 });
+
+describe("Timeline row title no longer pins in place during horizontal scroll (039-rain-percent-sticky-fix, US2)", () => {
+  it("does not give .weather-timeline-row-title a sticky/fixed position", () => {
+    const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+    // Two separate rules share this selector (a base text-style rule and the flex/width layout
+    // rule) — check every block naming the selector, not just the first match.
+    const ruleMatches = [...css.matchAll(/\.weather-timeline-row-title\s*\{[^}]*\}/g)];
+
+    expect(ruleMatches.length).toBeGreaterThanOrEqual(2);
+    // jsdom doesn't load external stylesheets, so a real scroll test can't observe this — the
+    // rules themselves are asserted instead, same pattern as the other index.css checks in this
+    // file.
+    for (const match of ruleMatches) {
+      expect(match[0]).not.toMatch(/position:\s*(sticky|fixed)/);
+    }
+    // The column's width must stay intact so every row's scrolling data still starts at the same
+    // x-offset (008 research.md §1) — only the pinning behavior was meant to go away.
+    expect(ruleMatches.some((match) => match[0].includes("width: 7rem"))).toBe(true);
+  });
+});
