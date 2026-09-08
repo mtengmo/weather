@@ -35,6 +35,107 @@ function series(): ObservationSeries {
   };
 }
 
+const PARIS: Location = {
+  latitude: 48.85,
+  longitude: 2.35,
+  displayName: "Paris",
+  source: "favorite",
+};
+
+/** A promise that never resolves on its own — used to hold a fetch "in flight" so a test can
+ *  inspect the hook's state mid-fetch, then resolve it explicitly when ready. */
+function pendingPromise<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+describe("useObservationData preserves data across a window-only change (042-preserve-scroll-on-window-change, US1)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getWarningsForLocation).mockReset();
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
+  });
+
+  it("keeps the previous series/weeklySeries (never null) while a window-only refetch is pending", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series());
+
+    const { result, rerender } = renderHook(
+      ({ window }: { window: "last-24-hours" | "last-7-days" }) =>
+        useObservationData(STOCKHOLM, window, 0, false),
+      { initialProps: { window: "last-24-hours" as "last-24-hours" | "last-7-days" } }
+    );
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    const initialSeries = result.current.series;
+    const initialWeeklySeries = result.current.weeklySeries;
+
+    const pending = pendingPromise<ObservationSeries>();
+    vi.mocked(getObservations).mockReturnValue(pending.promise);
+
+    rerender({ window: "last-7-days" });
+
+    // The new fetch is now in flight (getObservations returns a still-pending promise) — the
+    // hook must still be showing the previous window's data, not null, and must report
+    // isRefreshing.
+    expect(result.current.series).toBe(initialSeries);
+    expect(result.current.weeklySeries).toBe(initialWeeklySeries);
+    expect(result.current.isRefreshing).toBe(true);
+
+    pending.resolve(series());
+
+    await waitFor(() => expect(result.current.isRefreshing).toBe(false));
+    expect(result.current.series).not.toBeNull();
+  });
+
+  it("resets series/weeklySeries to null while the new fetch is pending when the location changes", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series());
+
+    const { result, rerender } = renderHook(
+      ({ location }: { location: Location }) => useObservationData(location, "last-24-hours", 0, false),
+      { initialProps: { location: STOCKHOLM } }
+    );
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+
+    const pending = pendingPromise<ObservationSeries>();
+    vi.mocked(getObservations).mockReturnValue(pending.promise);
+
+    rerender({ location: PARIS });
+
+    // A genuine location change is a fresh start — showing Stockholm's stale data while Paris's
+    // is loading would be actively wrong, so this must still reset to null (unlike the
+    // window-only case above).
+    expect(result.current.series).toBeNull();
+    expect(result.current.isRefreshing).toBe(false);
+
+    pending.resolve(series());
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+  });
+
+  it("never sets isRefreshing during the very first load for a location", async () => {
+    const pending = pendingPromise<ObservationSeries>();
+    vi.mocked(getObservations).mockReturnValue(pending.promise);
+
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+    expect(result.current.series).toBeNull();
+    expect(result.current.isRefreshing).toBe(false);
+
+    pending.resolve(series());
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    expect(result.current.isRefreshing).toBe(false);
+  });
+});
+
 describe("useObservationData nearby-station lazy fetch (025-reduce-api-requests, US1)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();

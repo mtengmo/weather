@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Location,
   NearbyStationCount,
@@ -34,6 +34,13 @@ export interface UseObservationDataResult {
    *  empty outside SMHI coverage, while loading, on a failed fetch, or genuinely no active
    *  warning (028-severe-weather-warnings). */
   warnings: WeatherWarning[];
+  /** True while a window-only refetch is in flight for a location that already has data — i.e.
+   *  `series`/`weeklySeries` are intentionally stale (the *previous* window's data), not `null`,
+   *  during this period (042-preserve-scroll-on-window-change). Always `false` during the
+   *  initial/location-change load, which already has its own `series === null` loading state.
+   *  Consumers may use this for an optional in-place "refreshing" indicator; nothing requires
+   *  it. */
+  isRefreshing: boolean;
 }
 
 export function useObservationData(
@@ -52,14 +59,41 @@ export function useObservationData(
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [uvRiskHours, setUvRiskHours] = useState<Set<number>>(new Set());
   const [warnings, setWarnings] = useState<WeatherWarning[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Tracks the location most recently (re)fetched for, so a window-only change (same location)
+  // can be told apart from a genuine location change — only the latter should reset `series`/
+  // `weeklySeries` to `null` (042-preserve-scroll-on-window-change, research.md §3). A window-only
+  // change instead keeps showing the previous window's data until the new fetch resolves, so none
+  // of this hook's consumers ever collapse to their "Loading…" state mid-switch.
+  const previousLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setSeries(null);
-    setMultiSourceForecast([]);
-    if (window !== "last-7-days") setWeeklySeries(null);
 
-    if (location === null) return;
+    if (location === null) {
+      previousLocationRef.current = null;
+      setSeries(null);
+      setMultiSourceForecast([]);
+      setWeeklySeries(null);
+      setIsRefreshing(false);
+      return;
+    }
+
+    const isSameLocationAsBefore =
+      previousLocationRef.current !== null &&
+      previousLocationRef.current.latitude === location.latitude &&
+      previousLocationRef.current.longitude === location.longitude;
+    previousLocationRef.current = { latitude: location.latitude, longitude: location.longitude };
+
+    if (isSameLocationAsBefore) {
+      setIsRefreshing(true);
+    } else {
+      // A genuine new-location start — stale data from a different place would be actively
+      // wrong to show, so reset exactly as before this feature.
+      setSeries(null);
+      setMultiSourceForecast([]);
+      if (window !== "last-7-days") setWeeklySeries(null);
+    }
 
     Promise.all([
       getObservations(location, window),
@@ -76,6 +110,7 @@ export function useObservationData(
       setMultiSourceForecast(multiSource);
       setWeeklySeries(window === "last-7-days" ? primary : weekly);
       setLastUpdated(new Date().toISOString());
+      setIsRefreshing(false);
     });
 
     return () => {
@@ -148,5 +183,14 @@ export function useObservationData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location?.latitude, location?.longitude]);
 
-  return { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated, uvRiskHours, warnings };
+  return {
+    series,
+    nearbyStations,
+    multiSourceForecast,
+    weeklySeries,
+    lastUpdated,
+    uvRiskHours,
+    warnings,
+    isRefreshing,
+  };
 }
