@@ -451,15 +451,6 @@ a {
   box-sizing: border-box;
 }
 
-.weather-timeline-sun-moon {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0.75rem 0;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
 /* Scrolls horizontally on a narrow screen rather than shrinking columns illegibly
    (008 FR-008, research.md §6) — same pattern as the existing .observation-table-wrap. */
 .weather-timeline-wrap {

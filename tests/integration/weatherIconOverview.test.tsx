@@ -796,14 +796,14 @@ describe("High/Low regression across all display modes (015-overview-3day-resolu
   });
 });
 
-describe("US3: sun/moon and enrichment rows", () => {
+describe("US3: enrichment rows (Sun & Moon summary removed above the timeline, 041-move-moon-to-today-card)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
     vi.mocked(getNearbyStationSeries).mockReset();
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("renders a Sun & Moon summary with sunrise/sunset/phase text", async () => {
+  it("does not render a Sun & Moon summary above the timeline (moved into the Today card)", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -815,10 +815,13 @@ describe("US3: sun/moon and enrichment rows", () => {
 
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temp/);
 
-    expect(await screen.findByText(/Sunrise:/)).toBeInTheDocument();
-    expect(screen.getByText(/Sunset:/)).toBeInTheDocument();
-    expect(screen.getByText(/Moon:/)).toBeInTheDocument();
+    // The old above-timeline block used "Sunrise:"/"Sunset:" (with a colon); the Today card's own
+    // existing Sunrise/Sunset spans (no colon) are unaffected and covered by other tests.
+    expect(screen.queryByText(/Sunrise:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Sunset:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Moon:/)).not.toBeInTheDocument();
   });
 
   it("renders the snow row when the underlying data is classified snowy", async () => {
@@ -1427,14 +1430,14 @@ describe("responsive layout", () => {
   });
 });
 
-describe("data source note (013-overview-default-and-layout, US4)", () => {
+describe("data source note removed from the Overview (013-overview-default-and-layout, US4; removed 041-move-moon-to-today-card, US1)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
     vi.mocked(getNearbyStationSeries).mockReset();
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("shows the data-source note on the Overview", async () => {
+  it("does not show a data-source note on the Overview", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -1445,9 +1448,11 @@ describe("data source note (013-overview-default-and-layout, US4)", () => {
       ],
     });
 
-    render(<OverviewHarness location={stockholm} />);
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await screen.findByText(/Temp/);
 
-    expect(await screen.findByText("Data: Open-Meteo")).toBeInTheDocument();
+    expect(screen.queryByText("Data: Open-Meteo")).not.toBeInTheDocument();
+    expect(container.querySelector(".data-source-note")).not.toBeInTheDocument();
   });
 });
 
@@ -1576,7 +1581,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("shows icon/high-low/description/rain/wind-with-compass/sunrise-sunset for today", async () => {
+  it("shows icon/high-low/description/rain/wind-with-compass/sunrise-sunset/moon for today (moon added 041-move-moon-to-today-card, US2)", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -1600,6 +1605,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     expect(card).toHaveTextContent(/Wind.*E/);
     expect(card).toHaveTextContent(/Sunrise/);
     expect(card).toHaveTextContent(/Sunset/);
+    expect(card).toHaveTextContent(/Moon/);
   });
 
   it("colors the icon by its condition, matching the color used elsewhere for the same condition (029-colorful-brief-icons)", async () => {

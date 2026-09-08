@@ -15,8 +15,7 @@ import {
 import { WEATHER_ICONS } from "./weatherIcons";
 import { deriveWeatherCondition } from "../services/weatherCondition";
 import { deriveFeelsLike } from "../services/feelsLike";
-import { getMoonPhase, getSunTimes } from "../services/sunMoon";
-import { dataSourceNote, formatValue } from "../services/format";
+import { formatValue } from "../services/format";
 import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
 import TodaySummaryCard from "./TodaySummaryCard";
 import WeeklyForecastStrip from "./WeeklyForecastStrip";
@@ -616,24 +615,6 @@ function useTimelineWheelScroll<T extends HTMLElement>() {
   return ref;
 }
 
-function SunMoonSummary({ location, date }: { location: Location; date: Date }) {
-  const { sunrise, sunset } = getSunTimes(location, date);
-  const moonPhase = getMoonPhase(date);
-  const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
-
-  return (
-    <div className="weather-timeline-sun-moon">
-      <span>
-        Sunrise: {sunrise ? new Date(sunrise).toLocaleTimeString([], timeFormat) : "—"}
-      </span>
-      <span>
-        Sunset: {sunset ? new Date(sunset).toLocaleTimeString([], timeFormat) : "—"}
-      </span>
-      <span>Moon: {moonPhase.replace("-", " ")}</span>
-    </div>
-  );
-}
-
 export default function WeatherIconOverview({
   location,
   window,
@@ -843,10 +824,6 @@ export default function WeatherIconOverview({
         ))}
       </div>
 
-      {series !== null && dataSourceNote(series) && (
-        <p className="data-source-note">{dataSourceNote(series)}</p>
-      )}
-
       {series === null && <p role="status">Loading weather overview…</p>}
 
       {series !== null && series.status === "unavailable" && (
@@ -857,7 +834,6 @@ export default function WeatherIconOverview({
 
       {timeline !== null && (
         <>
-          <SunMoonSummary location={location} date={new Date()} />
           <div className="weather-timeline-wrap" ref={timelineWrapRef}>
             <div className="weather-timeline">
               {/* left is a percentage of the DATA columns' own width, but this element's

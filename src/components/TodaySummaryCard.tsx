@@ -2,7 +2,7 @@ import { deriveWeatherCondition, type WeatherCondition } from "../services/weath
 import { WEATHER_ICONS } from "./weatherIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
-import { getSunTimes } from "../services/sunMoon";
+import { getMoonPhase, getSunTimes } from "../services/sunMoon";
 import type { DailyAggregate, Location, UnitSystem } from "../models/types";
 
 interface TodaySummaryCardProps {
@@ -30,8 +30,10 @@ interface TodaySummaryCardProps {
 }
 
 /**
- * Persistent "Today" summary — high/low, description, rain, wind+compass, sunrise/sunset —
- * shown on all three overview tabs, not just the daily one (018-dashboard-visual-redesign, US4).
+ * Persistent "Today" summary — high/low, description, rain, wind+compass, sunrise/sunset, moon
+ * phase — shown on all three overview tabs, not just the daily one (018-dashboard-visual-
+ * redesign, US4). Moon phase moved here from its own row above the timeline
+ * (041-move-moon-to-today-card), alongside Sunrise/Sunset which already lived here.
  */
 export default function TodaySummaryCard({
   today,
@@ -55,6 +57,7 @@ export default function TodaySummaryCard({
   const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
   const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
   const { sunrise, sunset } = getSunTimes(location, new Date());
+  const moonPhase = getMoonPhase(new Date());
   const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
   return (
@@ -92,6 +95,7 @@ export default function TodaySummaryCard({
       <div className="today-summary-detail">
         <span>Sunrise {sunrise ? new Date(sunrise).toLocaleTimeString([], timeFormat) : "—"}</span>
         <span>Sunset {sunset ? new Date(sunset).toLocaleTimeString([], timeFormat) : "—"}</span>
+        <span>Moon {moonPhase.replace("-", " ")}</span>
       </div>
     </section>
   );
