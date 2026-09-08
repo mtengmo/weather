@@ -63,12 +63,44 @@ async function fetchRadarTileUrl(): Promise<string | null> {
   }
 }
 
+type MapOverlay = "rain" | "temperature" | "wind" | "none";
+
+/** Builds the Windy.com embed iframe URL centered on the given coordinate, showing the animated
+ *  wind layer. Free, key-free public embed product — confirmed live (no X-Frame-Options/CSP
+ *  frame-ancestors restriction, 200 response) since the natural alternative (leaflet-velocity fed
+ *  by NOAA's own GFS wind data) turned out to be CORS-blocked for direct browser access, which
+ *  would require a backend proxy (040-map-temp-wind-overlays, US2, research.md §2). */
+function windyEmbedUrl([lat, lon]: [number, number]): string {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    detailLat: String(lat),
+    detailLon: String(lon),
+    zoom: "5",
+    level: "surface",
+    overlay: "wind",
+    menu: "",
+    message: "true",
+    marker: "",
+    calendar: "now",
+    pressure: "",
+    type: "map",
+    location: "coordinates",
+    detail: "",
+    metricWind: "default",
+    metricTemp: "default",
+    radarRange: "-1",
+  });
+  return `https://embed.windy.com/embed2.html?${params.toString()}`;
+}
+
 /**
  * A minimal v1 map screen (016-dashboard-polish-round-two, US10): pins for the user's
  * favorited and most-recently-viewed locations only — not open-ended "nearby" discovery, plus a
  * real radar imagery layer (032-dashboard-polish-round-seven, US1, replacing
- * 031-map-precipitation-overlay's forecast-circle approximation). Selecting a pin reuses the
- * same `onSelectLocation` (App.tsx's `selectLocation`) every other selection path already uses.
+ * 031-map-precipitation-overlay's forecast-circle approximation), and a picker for Rain/
+ * Temperature/Wind/None overlays (040-map-temp-wind-overlays). Selecting a pin reuses the same
+ * `onSelectLocation` (App.tsx's `selectLocation`) every other selection path already uses.
  */
 export default function MapView({ favorites, cachedLocation, onSelectLocation }: MapViewProps) {
   const pins: Location[] = [
@@ -82,6 +114,9 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
   ];
 
   const [radarTileUrl, setRadarTileUrl] = useState<string | null>(null);
+  // Defaults to "rain", matching the map's existing behavior before this overlay picker existed
+  // (FR-003).
+  const [overlay, setOverlay] = useState<MapOverlay>("rain");
 
   // Fetched once per mount, independent of pin rendering — a slow/failed fetch never delays or
   // affects pins/navigation above (FR-004, research.md §2).
@@ -115,35 +150,81 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
   }
 
   const center: [number, number] = [pins[0].latitude, pins[0].longitude];
+  // A free OpenWeatherMap account/key is required for the Temperature tiles (no key-free
+  // equivalent exists — research.md §1); read at render time (not module scope) so tests can
+  // stub it per-case. Omit the Temperature option entirely rather than offering a button that
+  // would only ever render broken (401) tiles (FR-008, data-model.md Configuration).
+  const openWeatherMapApiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY as string | undefined;
+
+  const overlays: { value: MapOverlay; label: string }[] = [
+    { value: "rain", label: "Rain" },
+    ...(openWeatherMapApiKey ? [{ value: "temperature" as const, label: "Temperature" }] : []),
+    { value: "wind", label: "Wind" },
+    { value: "none", label: "None" },
+  ];
 
   return (
     <section aria-label="Map">
-      <MapContainer center={center} zoom={5} style={{ height: 480 }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {radarTileUrl && (
-          <TileLayer
-            className="map-radar-layer"
-            attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
-            url={radarTileUrl}
-            opacity={0.5}
-            zIndex={10}
-          />
-        )}
-        {pins.map((pin) => (
-          <Marker key={pinKey(pin)} position={[pin.latitude, pin.longitude]}>
-            <Popup>
-              {pin.displayName}
-              <br />
-              <button type="button" onClick={() => onSelectLocation(pin)}>
-                View
-              </button>
-            </Popup>
-          </Marker>
+      <div className="window-toggle" role="group" aria-label="Map overlay">
+        {overlays.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={overlay === o.value}
+            onClick={() => setOverlay(o.value)}
+          >
+            {o.label}
+          </button>
         ))}
-      </MapContainer>
+      </div>
+
+      {overlay === "wind" ? (
+        // A separate embedded map rather than a layer on MapContainer — Windy's animated wind
+        // visualization has no equivalent Leaflet TileLayer form (research.md §3). Windy's own
+        // embed UI already carries its required attribution/branding, so no extra credit line is
+        // added here (unlike Rain/Temperature, which use bare TileLayers with no UI of their own).
+        <iframe
+          title="Wind map"
+          src={windyEmbedUrl(center)}
+          style={{ height: 480, width: "100%", border: "none" }}
+        />
+      ) : (
+        <MapContainer center={center} zoom={5} style={{ height: 480 }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {overlay === "rain" && radarTileUrl && (
+            <TileLayer
+              className="map-radar-layer"
+              attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
+              url={radarTileUrl}
+              opacity={0.5}
+              zIndex={10}
+            />
+          )}
+          {overlay === "temperature" && openWeatherMapApiKey && (
+            <TileLayer
+              className="map-temperature-layer"
+              attribution='Temperature &copy; <a href="https://openweathermap.org/">OpenWeatherMap</a>'
+              url={`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${openWeatherMapApiKey}`}
+              opacity={0.5}
+              zIndex={10}
+            />
+          )}
+          {pins.map((pin) => (
+            <Marker key={pinKey(pin)} position={[pin.latitude, pin.longitude]}>
+              <Popup>
+                {pin.displayName}
+                <br />
+                <button type="button" onClick={() => onSelectLocation(pin)}>
+                  View
+                </button>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      )}
     </section>
   );
 }
