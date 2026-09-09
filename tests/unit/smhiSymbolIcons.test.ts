@@ -59,7 +59,7 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (043-smhi-27-
     expect(seen.size).toBe(27);
   });
 
-  it("falls back to the existing derived condition when smhiSymbolCode is absent (US2)", () => {
+  it("falls back to the best-fit SMHI icon (not the lucide set) when smhiSymbolCode is absent (US2, extended for observations)", () => {
     const icon = resolveConditionIcon({
       temperature: 10,
       precipitation: 0,
@@ -68,15 +68,28 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (043-smhi-27-
       timestamp: "2026-06-01T12:00:00Z",
     });
 
-    expect(icon?.kind).toBe("condition");
+    expect(icon?.kind).toBe("smhi-symbol");
     expect(icon?.label).toBe("Clear");
+    if (icon?.kind === "smhi-symbol") {
+      expect(icon.src).toBe(SMHI_SYMBOL_ICONS[1].src);
+    }
   });
 
-  it("falls back to the existing derived condition when smhiSymbolCode is null", () => {
+  it("falls back to the best-fit SMHI icon when smhiSymbolCode is null", () => {
     const icon = resolveConditionIconFromCondition(null, "cloudy");
 
-    expect(icon?.kind).toBe("condition");
+    expect(icon?.kind).toBe("smhi-symbol");
     expect(icon?.label).toBe("Cloudy");
+    if (icon?.kind === "smhi-symbol") {
+      expect(icon.src).toBe(SMHI_SYMBOL_ICONS[5].src);
+    }
+  });
+
+  it("still uses the lucide fallback for 'windy', which has no SMHI artwork equivalent", () => {
+    const icon = resolveConditionIconFromCondition(null, "windy");
+
+    expect(icon?.kind).toBe("condition");
+    expect(icon?.label).toBe("Windy");
   });
 
   it("returns null when there isn't enough data to classify and no smhiSymbolCode is present (unchanged from today)", () => {
@@ -94,10 +107,10 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (043-smhi-27-
     expect(resolveConditionIconFromCondition(undefined, null)).toBeNull();
   });
 
-  it("ignores an out-of-range smhiSymbolCode and falls back to the derived condition", () => {
+  it("ignores an out-of-range smhiSymbolCode and falls back to the best-fit SMHI icon", () => {
     const icon = resolveConditionIconFromCondition(999, "cloudy");
 
-    expect(icon?.kind).toBe("condition");
+    expect(icon?.kind).toBe("smhi-symbol");
     expect(icon?.label).toBe("Cloudy");
   });
 });

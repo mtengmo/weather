@@ -240,7 +240,6 @@ body {
 
 .forecast-row {
   color: var(--text-muted);
-  background: rgba(127, 127, 127, 0.08);
 }
 
 .error-banner {

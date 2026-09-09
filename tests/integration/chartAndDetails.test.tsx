@@ -224,7 +224,7 @@ describe("Condition column on the Details table (020-dashboard-polish-round-five
     await userEvent.setup().click(viewDetails);
 
     const table = await screen.findByRole("table");
-    expect(within(table).getByLabelText("Clear")).toBeInTheDocument();
+    expect(within(table).getByAltText("Clear")).toBeInTheDocument();
   });
 
   it("shows the existing gap indicator, not a fabricated icon, for a row without enough data", async () => {

@@ -1150,7 +1150,11 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("gives each condition present in the series its own distinct class", async () => {
+  it("gives 'clear-night' (the one other condition with no SMHI artwork match) its own distinct class", async () => {
+    // cloudy/light-rain/light-snow now resolve to real SMHI artwork (047/050) instead of a
+    // CSS-tinted lucide icon, so they no longer carry a `weather-condition-*` class — only
+    // conditions still on the lucide fallback path (windy, and clear-night for its sun/moon
+    // day-night distinction) do.
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -1168,9 +1172,9 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     await screen.findByText("Clear");
 
     expect(container.querySelector(".weather-condition-clear-night")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-cloudy")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-light-rain")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-light-snow")).toBeInTheDocument();
+    expect(container.querySelector('img[src*="05-cloudy"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src*="18-light-rain"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src*="25-light-snowfall"]')).toBeInTheDocument();
   });
 
   it("renders distinct icons for SMHI codes 9 and 10, which today's WeatherCondition collapses into the same heavy-rain bucket (043-smhi-27-symbol-icons, US1)", async () => {

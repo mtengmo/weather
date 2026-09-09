@@ -76,11 +76,32 @@ export type ResolvedConditionIcon =
   | { kind: "smhi-symbol"; src: string; label: string }
   | { kind: "condition"; Icon: (typeof WEATHER_ICONS)[keyof typeof WEATHER_ICONS]["Icon"]; label: string };
 
+/** Best-fit SMHI icon for a period that has no SMHI `symbol_code` of its own — real station
+ *  observations never carry one (SMHI's own observation API has no such field; it's forecast-only),
+ *  so this lets those periods still show the same ver6 artwork instead of the older lucide set.
+ *  Two conditions keep the lucide fallback below instead: `windy` has no counterpart among the 27
+ *  (none of the artwork depicts wind), and `clear-night` has no night variant among the 27 either —
+ *  mapping it to the same sun art as `clear-day` would lose the existing sun/moon day-night
+ *  distinction for a case where (unlike an SMHI-code period) the information to keep it is right
+ *  there. Every other condition maps to the SMHI code that best matches it visually. */
+const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
+  "clear-day": 1, // Clear sky
+  "partly-cloudy": 3, // Variable cloudiness
+  cloudy: 5, // Cloudy sky
+  "light-rain": 18, // Light rain
+  "heavy-rain": 20, // Heavy rain
+  "light-snow": 25, // Light snowfall
+  "heavy-snow": 26, // Moderate snowfall
+  thunderstorm: 11, // Thunderstorm
+  foggy: 7, // Fog
+  sleet: 23, // Moderate sleet
+};
+
 /** Shared second step of both resolvers below: SMHI's own `symbol_code` wins when present and
- *  recognized (one of 27 distinct icons); otherwise falls back to the given (already-derived or
- *  freshly-derived) `WeatherCondition`, via the existing `WEATHER_ICONS` lookup — unchanged from
- *  today for every non-SMHI-forecast period (043-smhi-27-symbol-icons, US1/US2,
- *  contracts/smhi-symbol-icons.md). */
+ *  recognized (one of 27 distinct icons); otherwise falls back to `CONDITION_SMHI_FALLBACK`'s
+ *  best-fit SMHI icon for the given (already-derived or freshly-derived) `WeatherCondition`, or
+ *  the existing `WEATHER_ICONS` lucide icon when no such fallback exists (`windy`) or the
+ *  condition itself couldn't be classified. */
 function resolveFromParts(
   smhiSymbolCode: number | null | undefined,
   condition: WeatherCondition | null
@@ -93,7 +114,14 @@ function resolveFromParts(
   }
 
   if (condition === null) return null;
-  const { Icon, label } = WEATHER_ICONS[condition];
+
+  const { label } = WEATHER_ICONS[condition];
+  const fallbackCode = CONDITION_SMHI_FALLBACK[condition];
+  if (fallbackCode !== undefined) {
+    return { kind: "smhi-symbol", src: SMHI_SYMBOL_ICONS[fallbackCode].src, label };
+  }
+
+  const { Icon } = WEATHER_ICONS[condition];
   return { kind: "condition", Icon, label };
 }
 
