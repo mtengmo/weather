@@ -116,10 +116,17 @@ const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
 
 /** Shared second step of both resolvers below: SMHI's own `symbol_code` wins when present and
  *  recognized (one of 27 distinct icons, or its night counterpart for codes 1-4 when `isNightNow`
- *  — 054-night-time-moon); otherwise falls back to `CONDITION_SMHI_FALLBACK`'s best-fit SMHI icon
- *  (subject to the same night-variant swap) for the given (already-derived or freshly-derived)
- *  `WeatherCondition`, or the existing `WEATHER_ICONS` lucide icon when no such fallback exists
- *  (`windy`) or the condition itself couldn't be classified. */
+ *  — 054-night-time-moon; only ever reached by genuine hourly periods, since a `symbol_code` is
+ *  never set on a whole-day/aggregate one); otherwise falls back to `CONDITION_SMHI_FALLBACK`'s
+ *  best-fit SMHI icon for the given (already-derived or freshly-derived) `WeatherCondition`, or
+ *  the existing `WEATHER_ICONS` lucide icon when no such fallback exists (`windy`) or the
+ *  condition itself couldn't be classified. The fallback branch picks its own night variant from
+ *  `condition === "clear-night"` directly rather than `isNightNow` — unlike a real hourly
+ *  timestamp, `isNightNow` reflects whatever moment the page happened to load, which is
+ *  meaningless for a whole-day column (its `condition` is always `"clear-day"`, never
+ *  `"clear-night"`, by the existing no-timestamp-passed rule in `timelineData.ts`) — using it
+ *  here previously showed the moon on whole-day columns whenever the app was open at night,
+ *  regardless of that day's actual weather (056-fix-night-moon). */
 function resolveFromParts(
   smhiSymbolCode: number | null | undefined,
   condition: WeatherCondition | null,
@@ -137,7 +144,8 @@ function resolveFromParts(
   const { label } = WEATHER_ICONS[condition];
   const fallbackCode = CONDITION_SMHI_FALLBACK[condition];
   if (fallbackCode !== undefined) {
-    const entry = (isNightNow ? NIGHT_VARIANT_ICONS[fallbackCode] : undefined) ?? SMHI_SYMBOL_ICONS[fallbackCode];
+    const useNightVariant = condition === "clear-night";
+    const entry = (useNightVariant ? NIGHT_VARIANT_ICONS[fallbackCode] : undefined) ?? SMHI_SYMBOL_ICONS[fallbackCode];
     return { kind: "smhi-symbol", src: entry.src, label };
   }
 

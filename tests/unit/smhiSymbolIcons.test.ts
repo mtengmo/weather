@@ -177,3 +177,30 @@ describe("Night-time moon variants for codes 1-4 (054-night-time-moon)", () => {
     }
   });
 });
+
+describe("Fallback path ignores isNightNow, uses condition itself (056-fix-night-moon)", () => {
+  it("never resolves a whole-day-style clear-day condition to the night icon, even if isNightNow is spuriously true", () => {
+    // Simulates a whole-day (7-day view) column: condition is always "clear-day" (never
+    // "clear-night", by timelineData.ts's own no-timestamp-passed rule), but isNightNow could be
+    // true simply because the page happened to load at night — that must not matter here.
+    const day = resolveConditionIconFromCondition(null, "clear-day", false);
+    const spuriousNight = resolveConditionIconFromCondition(null, "clear-day", true);
+
+    expect(spuriousNight).toEqual(day);
+  });
+
+  it("still resolves a genuinely clear-night condition to the night icon regardless of isNightNow", () => {
+    const withFlagTrue = resolveConditionIconFromCondition(null, "clear-night", true);
+    const withFlagFalse = resolveConditionIconFromCondition(null, "clear-night", false);
+
+    expect(withFlagTrue).toEqual(withFlagFalse);
+    expect(withFlagTrue?.kind).toBe("smhi-symbol");
+    if (withFlagTrue?.kind === "smhi-symbol") {
+      const day = resolveConditionIconFromCondition(null, "clear-day", false);
+      expect(day?.kind).toBe("smhi-symbol");
+      if (day?.kind === "smhi-symbol") {
+        expect(withFlagTrue.src).not.toBe(day.src);
+      }
+    }
+  });
+});
