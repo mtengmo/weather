@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { WEATHER_ICONS } from "./weatherIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
@@ -62,7 +63,18 @@ export default function TodaySummaryCard({
   informationalWarnings,
   currentHumidity,
 }: TodaySummaryCardProps) {
+  const [expandedNoticeIds, setExpandedNoticeIds] = useState<Set<string>>(new Set());
+
   if (today === null) return null;
+
+  function toggleNoticeExpanded(id: string) {
+    setExpandedNoticeIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const dayCondition = deriveWeatherCondition({
     temperature: today.average,
@@ -118,11 +130,22 @@ export default function TodaySummaryCard({
       </div>
       {informationalWarnings && informationalWarnings.length > 0 && (
         <div className="today-summary-notices">
-          {informationalWarnings.map((warning) => (
-            <p key={warning.id} className="today-summary-notice">
-              <strong>{warning.title}:</strong> {warning.description}
-            </p>
-          ))}
+          {informationalWarnings.map((warning) => {
+            const expanded = expandedNoticeIds.has(warning.id);
+            return (
+              <div key={warning.id} className="today-summary-notice">
+                <button
+                  type="button"
+                  className="today-summary-notice-toggle"
+                  aria-expanded={expanded}
+                  onClick={() => toggleNoticeExpanded(warning.id)}
+                >
+                  {warning.title}
+                </button>
+                {expanded && <p className="today-summary-notice-detail">{warning.description}</p>}
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

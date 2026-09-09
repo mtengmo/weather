@@ -981,11 +981,24 @@ a {
 .today-summary-notice {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
-.today-summary-notice strong {
+.today-summary-notice-toggle {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
   color: var(--text);
+  cursor: pointer;
+}
+
+.today-summary-notice-detail {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
 }
 
 /* 7-day forecast strip (018-dashboard-visual-redesign, US5) — persistent across all three
