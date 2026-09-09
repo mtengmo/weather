@@ -492,10 +492,22 @@ describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () =
     expect(result).toEqual([]);
   });
 
-  it("excludes a warning whose approximateStart is in the future", async () => {
+  it("includes a warning starting within 48h as upcoming (isActive: false)", async () => {
     vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
     vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
       rawWarning({ approximateStart: new Date(Date.now() + 3600_000).toISOString() }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].isActive).toBe(false);
+  });
+
+  it("excludes a warning starting more than 48h from now", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ approximateStart: new Date(Date.now() + 72 * 3600_000).toISOString() }),
     ]);
 
     const result = await getWarningsForLocation(location);
@@ -529,6 +541,7 @@ describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () =
       severityLabel: "Class 1",
       title: "Storm",
       areaName: "Stockholm County",
+      isActive: true,
     });
   });
 
@@ -555,6 +568,43 @@ describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () =
     const result = await getWarningsForLocation(location);
 
     expect(result.map((w) => w.severityCode)).toEqual(["MESSAGE", "SOMETHING_NEW"]);
+  });
+
+  it("sorts active warnings before upcoming ones regardless of severity", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({
+        id: 1,
+        code: "CLASS_3",
+        approximateStart: new Date(Date.now() + 3600_000).toISOString(),
+      }),
+      rawWarning({ id: 2, code: "MESSAGE" }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result.map((w) => w.isActive)).toEqual([true, false]);
+    expect(result[0].severityCode).toBe("MESSAGE");
+  });
+
+  it("sorts multiple upcoming warnings most-to-least severe among themselves", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({
+        id: 1,
+        code: "MESSAGE",
+        approximateStart: new Date(Date.now() + 3600_000).toISOString(),
+      }),
+      rawWarning({
+        id: 2,
+        code: "CLASS_3",
+        approximateStart: new Date(Date.now() + 7200_000).toISOString(),
+      }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result.map((w) => w.severityCode)).toEqual(["CLASS_3", "MESSAGE"]);
   });
 });
 

@@ -147,8 +147,9 @@ export const DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = false;
 
 /** An official weather warning covering the viewed location, reduced from SMHI's Impact-Based
  *  Weather Warnings feed to just what the UI needs (028-severe-weather-warnings,
- *  data-model.md) — already filtered to currently-valid and sorted most-to-least severe by the
- *  time it reaches a component. */
+ *  data-model.md) — filtered to currently-valid or starting within the next 48h, and sorted
+ *  active-first then most-to-least severe, by the time it reaches a component
+ *  (045-show-upcoming-smhi). */
 export interface WeatherWarning {
   id: string;
   /** SMHI's own warning-level code (e.g. "MESSAGE"), used for severity ordering and as a CSS hook. */
@@ -160,4 +161,7 @@ export interface WeatherWarning {
   validFrom: string; // ISO 8601 timestamp
   /** null means "no stated end — still active per the feed's own presence" (research.md §2). */
   validUntil: string | null;
+  /** true when already in effect (validFrom <= now); false when published but not yet started —
+   *  starts within the next 48h (045-show-upcoming-smhi, data-model.md). */
+  isActive: boolean;
 }

@@ -91,10 +91,15 @@ function severityRank(code: string): number {
   return SEVERITY_ORDER[code] ?? -1;
 }
 
+/** How far ahead a published-but-not-yet-started warning is still surfaced as "upcoming" before
+ *  being hidden until it enters this window (045-show-upcoming-smhi, research.md §1). */
+const UPCOMING_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 /**
- * The location's currently-active warnings, most-to-least severe — empty for a location outside
- * SMHI coverage, a fetch failure, or genuinely no active warning (all three are indistinguishable
- * by design, 028-severe-weather-warnings, data-model.md).
+ * The location's currently-active and near-term upcoming warnings, active-first then
+ * most-to-least severe within each group — empty for a location outside SMHI coverage, a fetch
+ * failure, or genuinely no active/upcoming warning (all three are indistinguishable by design,
+ * 028-severe-weather-warnings, data-model.md; window widened in 045-show-upcoming-smhi).
  */
 export async function getWarningsForLocation(
   location: Pick<Location, "latitude" | "longitude">
@@ -111,7 +116,7 @@ export async function getWarningsForLocation(
     for (const area of warning.warningAreas) {
       const validFrom = Date.parse(area.approximateStart);
       const validUntil = area.approximateEnd ? Date.parse(area.approximateEnd) : null;
-      if (validFrom > now) continue;
+      if (validFrom > now + UPCOMING_WINDOW_MS) continue;
       if (validUntil !== null && validUntil <= now) continue;
       if (!pointInPolygon(location, area.area.geometry)) continue;
 
@@ -126,11 +131,15 @@ export async function getWarningsForLocation(
           .join("\n\n"),
         validFrom: area.approximateStart,
         validUntil: area.approximateEnd ?? null,
+        isActive: validFrom <= now,
       });
     }
   }
 
-  return warnings.sort((a, b) => severityRank(b.severityCode) - severityRank(a.severityCode));
+  return warnings.sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+    return severityRank(b.severityCode) - severityRank(a.severityCode);
+  });
 }
 
 export async function getNearbyStationSeries(

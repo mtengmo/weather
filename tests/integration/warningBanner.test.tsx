@@ -36,6 +36,7 @@ function warning(overrides: Partial<WeatherWarning> = {}): WeatherWarning {
     description: "Strong winds expected.",
     validFrom: new Date(Date.now() - 3600_000).toISOString(),
     validUntil: null,
+    isActive: true,
     ...overrides,
   };
 }
@@ -173,5 +174,55 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     const stillShowing = await screen.findByRole("region", { name: "Weather warnings" });
     expect(stillShowing).toHaveTextContent("Water shortage");
     expect(stillShowing).not.toHaveTextContent("Extreme storm");
+  });
+
+  it("shows an upcoming warning labeled with when it starts (045-show-upcoming-smhi)", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({
+        title: "Cloudburst",
+        isActive: false,
+        validFrom: new Date(Date.now() + 3 * 3600_000).toISOString(),
+      }),
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    expect(banner).toHaveTextContent("Cloudburst");
+    expect(banner).toHaveTextContent(/starts in 3h/i);
+
+    await user.click(within(banner).getByRole("button", { expanded: false }));
+    expect(banner).toHaveTextContent(/starts in 3h/i);
+  });
+
+  it("lists an active warning ahead of an upcoming one regardless of severity, each clearly labeled", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({ id: "1-100", title: "Water shortage", severityCode: "MESSAGE", severityLabel: "Message", isActive: true }),
+      warning({
+        id: "2-200",
+        title: "Cloudburst",
+        severityCode: "CLASS_3",
+        severityLabel: "Class 3",
+        isActive: false,
+        validFrom: new Date(Date.now() + 20 * 3600_000).toISOString(),
+      }),
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    expect(banner).toHaveTextContent("Water shortage");
+
+    await user.click(within(banner).getByRole("button", { expanded: false }));
+
+    const items = within(banner).getAllByRole("heading", { level: 3 });
+    expect(items[0]).toHaveTextContent("Water shortage");
+    expect(items[1]).toHaveTextContent("Cloudburst");
+    expect(items[1]).toHaveTextContent(/starts in 20h/i);
+    expect(items[0]).not.toHaveTextContent(/starts in/i);
   });
 });

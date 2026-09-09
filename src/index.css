@@ -1151,6 +1151,23 @@ a {
   border-left-color: #dc2626;
 }
 
+.warning-banner-summary.warning-upcoming {
+  border-left-style: dashed;
+  opacity: 0.85;
+}
+
+.warning-banner-item.warning-upcoming {
+  border-left-style: dashed;
+  opacity: 0.85;
+}
+
+.warning-banner-upcoming-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-style: italic;
+  opacity: 0.85;
+}
+
 .map-precipitation-legend {
   font-size: 0.8rem;
   color: var(--text-muted);
