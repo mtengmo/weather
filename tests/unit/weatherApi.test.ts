@@ -573,6 +573,19 @@ describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () =
     expect(result.map((w) => w.severityCode)).toEqual(["CLASS_3", "CLASS_1", "MESSAGE"]);
   });
 
+  it("sorts real SMHI color-coded warnings (YELLOW/ORANGE/RED) most-to-least severe (051-fix-warning-banner)", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ id: 1, code: "YELLOW" }),
+      rawWarning({ id: 2, code: "RED" }),
+      rawWarning({ id: 3, code: "ORANGE" }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    expect(result.map((w) => w.severityCode)).toEqual(["RED", "ORANGE", "YELLOW"]);
+  });
+
   it("sorts an unrecognized severity code below every recognized one", async () => {
     vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
     vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([

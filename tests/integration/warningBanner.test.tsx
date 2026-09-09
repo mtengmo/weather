@@ -91,6 +91,19 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
   });
 
+  it("renders a real SMHI-coded (YELLOW) warning with the matching level class, not a red default (051-fix-warning-banner)", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({ severityCode: "YELLOW", severityLabel: "Yellow", title: "Rain" }),
+    ]);
+
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    const summary = banner.querySelector(".warning-banner-summary");
+    expect(summary).toHaveClass("warning-level-yellow");
+  });
+
   it("never shows an informational (Message-level) warning in the banner (048-split-informational-smhi)", async () => {
     vi.mocked(getWarningsForLocation).mockResolvedValue([
       warning({ severityCode: "MESSAGE", severityLabel: "Message", title: "Risk for water shortage", isInformational: true }),

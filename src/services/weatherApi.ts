@@ -80,8 +80,14 @@ export async function getUvRisk(
 // SMHI's own published warning-level scale, from an informational message up through its
 // highest-impact class (028-severe-weather-warnings, research.md §4) — an unrecognized/future
 // code sorts below every recognized one (defensive default, never crashes or wrongly promotes).
+// YELLOW/ORANGE/RED are SMHI's real, currently-used color-coded severity names (confirmed live,
+// 051-fix-warning-banner); CLASS_1/2/3 are kept as defensive aliases for any older/cached data
+// still using that naming.
 const SEVERITY_ORDER: Record<string, number> = {
   MESSAGE: 0,
+  YELLOW: 1,
+  ORANGE: 2,
+  RED: 3,
   CLASS_1: 1,
   CLASS_2: 2,
   CLASS_3: 3,

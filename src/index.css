@@ -1052,8 +1052,11 @@ a {
   margin: 0.75rem 0;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid var(--error-border);
-  background: var(--error-bg);
+  /* Neutral by default — a real severity level (or MESSAGE) overrides background/border/text
+     below; an unrecognized code deliberately stays neutral rather than reading as the most
+     severe (051-fix-warning-banner, FR-003). */
+  border: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .warning-banner-summary {
@@ -1063,7 +1066,7 @@ a {
   width: 100%;
   padding: 0.6rem 1rem;
   border-left: 4px solid var(--text-muted);
-  color: var(--error-text);
+  color: var(--text);
 }
 
 .warning-banner-summary-toggle {
@@ -1155,19 +1158,32 @@ a {
   border-left-color: #6b7280;
 }
 
+/* Yellow/Orange/Red are SMHI's real, currently-used severity codes; class_1/2/3 are kept as
+   defensive aliases for older/cached data using that naming (051-fix-warning-banner). Each gets
+   its own soft background tint, not just a border accent, so severity reads at a glance rather
+   than the whole card always looking the same regardless of level. */
+.warning-level-yellow.warning-banner-summary,
+.warning-level-yellow.warning-banner-item,
 .warning-level-class_1.warning-banner-summary,
 .warning-level-class_1.warning-banner-item {
   border-left-color: #eab308;
+  background: rgba(234, 179, 8, 0.12);
 }
 
+.warning-level-orange.warning-banner-summary,
+.warning-level-orange.warning-banner-item,
 .warning-level-class_2.warning-banner-summary,
 .warning-level-class_2.warning-banner-item {
   border-left-color: #f97316;
+  background: rgba(249, 115, 22, 0.12);
 }
 
+.warning-level-red.warning-banner-summary,
+.warning-level-red.warning-banner-item,
 .warning-level-class_3.warning-banner-summary,
 .warning-level-class_3.warning-banner-item {
   border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.14);
 }
 
 .warning-banner-summary.warning-upcoming {
