@@ -597,7 +597,6 @@ function ConditionRow({
                 <span className="weather-timeline-condition-label">
                   {iconInfo ? iconInfo.label : "No data"}
                 </span>
-                {period.isForecast && <span className="weather-timeline-cell-forecast">Forecast</span>}
               </div>
             );
           }}

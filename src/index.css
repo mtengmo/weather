@@ -583,12 +583,6 @@ a {
   background: var(--wx-sun);
 }
 
-.weather-timeline-cell-forecast {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
 .weather-timeline-row-label-wrap {
   border-bottom: 1px solid var(--border);
   padding: 0.35rem 0;
@@ -833,6 +827,14 @@ a {
   text-transform: uppercase;
   color: var(--text-muted);
   padding-left: 7rem; /* matches the sticky title column's width, so sections align with data columns */
+  /* Stays visible while scrolling down through the timeline's other rows (condition, graph,
+     rain, wind), since it's now the only place Observed/Forecast is labeled — the per-column
+     repeat it used to accompany was removed as redundant (053-make-timeline-observed). No
+     app-level fixed header exists to offset against, so top:0 is enough. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
 }
 
 .weather-timeline-sections-bands {

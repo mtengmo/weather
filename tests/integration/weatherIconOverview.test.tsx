@@ -1523,6 +1523,27 @@ describe("Observed/Forecast section labels (018-dashboard-visual-redesign, US2)"
     expect(container.querySelector(".weather-timeline-section-forecast")).toHaveTextContent("Forecast");
   });
 
+  it("does not repeat a 'Forecast' tag under each forecast column's icon (053-make-timeline-observed)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+        { timestamp: hoursFromNow(1), temperature: 8, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5, isForecast: true },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText(/Temp/);
+
+    const conditionRow = container.querySelector(".weather-timeline-row-condition");
+    expect(conditionRow).not.toHaveTextContent("Forecast");
+    // The band above the columns is still the one place this is labeled.
+    expect(container.querySelector(".weather-timeline-section-forecast")).toHaveTextContent("Forecast");
+  });
+
   it("shows only 'Observed' when there is no forecast data", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
@@ -2302,7 +2323,7 @@ describe("7-day cap and dated labels (019-dashboard-polish-round-four, US7)", ()
     await screen.findByText(/Temp/);
 
     const columns = container.querySelectorAll(".weather-timeline-row-time .weather-timeline-cell");
-    const forecastColumns = container.querySelectorAll(".weather-timeline-cell-forecast");
+    const forecastColumns = container.querySelectorAll(".weather-timeline-row-condition .forecast-row");
     // 7 observed (empty, no data supplied) + at most 7 forecast, never the full 10-day reach.
     expect(columns).toHaveLength(14);
     expect(forecastColumns.length).toBeLessThanOrEqual(7);
