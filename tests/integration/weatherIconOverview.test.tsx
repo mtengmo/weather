@@ -1173,6 +1173,40 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     expect(container.querySelector(".weather-condition-light-snow")).toBeInTheDocument();
   });
 
+  it("renders distinct icons for SMHI codes 9 and 10, which today's WeatherCondition collapses into the same heavy-rain bucket (043-smhi-27-symbol-icons, US1)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        {
+          timestamp: hoursAgo(2),
+          temperature: 10,
+          precipitation: 3,
+          windSpeed: 1,
+          cloudCoverPercent: 90,
+          smhiSymbolCode: 9,
+        },
+        {
+          timestamp: hoursAgo(1),
+          temperature: 10,
+          precipitation: 5,
+          windSpeed: 1,
+          cloudCoverPercent: 90,
+          smhiSymbolCode: 10,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Temp");
+
+    const conditionImages = container.querySelectorAll(".weather-timeline-row-condition img");
+    expect(conditionImages).toHaveLength(2);
+    expect(conditionImages[0].getAttribute("src")).not.toBe(conditionImages[1].getAttribute("src"));
+  });
+
   it("does not show a rain icon for a small forecast amount with a low chance of rain (038-granular-weather-icons-and-graph-header, US1 — reported live: 'chance is 7% ... in reality its not a rain forecast')", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,

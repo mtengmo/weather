@@ -12,7 +12,7 @@ import {
   type TimelinePeriod,
   type TimelineRow,
 } from "./timelineData";
-import { WEATHER_ICONS } from "./weatherIcons";
+import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { deriveWeatherCondition } from "../services/weatherCondition";
 import { deriveFeelsLike } from "../services/feelsLike";
 import { formatValue } from "../services/format";
@@ -551,13 +551,18 @@ function ConditionRow({
       <div className="weather-timeline-row-grid-cells">
         <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid">
           {(period, i) => {
-            const iconInfo = period.condition !== null ? WEATHER_ICONS[period.condition] : null;
+            const iconInfo = resolveConditionIconFromCondition(period.smhiSymbolCode, period.condition);
             return (
               <div
                 className={[
                   "weather-timeline-condition",
                   period.isForecast ? "forecast-row" : null,
-                  period.condition !== null ? `weather-condition-${period.condition}` : null,
+                  // The SMHI-code path renders its own full-color artwork; the CSS color classes
+                  // below only apply to the fallback lucide-icon path, matching how it already
+                  // looked before this feature (043-smhi-27-symbol-icons, research.md §6).
+                  iconInfo?.kind === "condition" && period.condition !== null
+                    ? `weather-condition-${period.condition}`
+                    : null,
                   isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
                 ]
                   .filter(Boolean)
@@ -565,7 +570,11 @@ function ConditionRow({
                 aria-label={`${period.label}: ${iconInfo ? iconInfo.label : "No data"}${period.isForecast ? " (forecast)" : ""}${period.uvRisk ? " · High UV" : ""}`}
               >
                 {iconInfo ? (
-                  <iconInfo.Icon aria-hidden="true" size={28} />
+                  iconInfo.kind === "smhi-symbol" ? (
+                    <img src={iconInfo.src} alt="" aria-hidden="true" width={28} height={28} />
+                  ) : (
+                    <iconInfo.Icon aria-hidden="true" size={28} />
+                  )
                 ) : (
                   <span className="weather-timeline-gap" aria-hidden="true">—</span>
                 )}

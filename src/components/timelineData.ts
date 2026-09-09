@@ -77,6 +77,12 @@ export interface TimelinePeriod {
    *  period, a location outside SMHI coverage, or a failed fetch), never `null`/`undefined`
    *  (027-uv-index-alert, data-model.md). */
   uvRisk: boolean;
+  /** SMHI's raw `symbol_code` (1-27) for this hour, when available — lets icon selection show one
+   *  of 27 distinct icons instead of `condition`'s collapsed bucket (043-smhi-27-symbol-icons,
+   *  research.md §5). Only ever set by `buildHourlyTimelineData`; daily/weekly periods
+   *  (`daysToTimelineData`) never carry this, since a symbol code is an hourly-forecast property
+   *  with no daily equivalent. */
+  smhiSymbolCode?: number | null;
 }
 
 /** One column's value for a single metric row. `value === null` renders as a gap (FR-006). */
@@ -305,6 +311,7 @@ export function buildHourlyTimelineData(
         chanceOfRain: obs.chanceOfRain,
       }),
       uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
+      smhiSymbolCode: obs.smhiSymbolCode,
     };
   });
 

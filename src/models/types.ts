@@ -41,6 +41,11 @@ export interface WeatherObservation {
    * code at fetch time (022-met-forecast-source, research.md §3). Absent when the source/period
    * had no symbol code (e.g. Open-Meteo, which has none). */
   symbolCondition?: WeatherCondition | null;
+  /** SMHI's own raw `symbol_code` (1-27), preserved alongside `symbolCondition` so icon selection
+   * can distinguish situations SMHI itself distinguishes but `WeatherCondition` collapses together
+   * (e.g. moderate vs. heavy rain) — 043-smhi-27-symbol-icons, research.md §1. Only ever populated
+   * by SMHI's own forecast; absent for every other source and for observed/historical data. */
+  smhiSymbolCode?: number | null;
 }
 
 export type ObservationWindow = "last-24-hours" | "last-7-days" | "last-30-days";

@@ -328,6 +328,7 @@ function forecastObservationForHour(
     windDirection: data?.wind_from_direction ?? null,
     windGust: data?.wind_speed_of_gust ?? null,
     symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
+    smhiSymbolCode: data?.symbol_code ?? null,
     chanceOfRain: data?.probability_of_precipitation ?? null,
     isForecast: true,
   };

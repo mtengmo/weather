@@ -9,8 +9,7 @@ import type {
 import { toDailyAggregates } from "../services/dailyAggregation";
 import { convertPrecipitation, convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
-import { deriveWeatherCondition } from "../services/weatherCondition";
-import { WEATHER_ICONS } from "./weatherIcons";
+import { resolveConditionIcon } from "./smhiSymbolIcons";
 
 interface ObservationDetailsProps {
   location: Location;
@@ -83,18 +82,18 @@ export default function ObservationDetails({
             <tbody>
               {series.observations.map((obs) => {
                 const isGap = obs.temperature === null && obs.precipitation === null;
-                // Same deriveWeatherCondition/WEATHER_ICONS pairing the Overview's ConditionRow
-                // uses, at the same 28px size, for visual consistency between the two
-                // (020-dashboard-polish-round-five, US7).
-                const condition = deriveWeatherCondition({
+                // Same resolveConditionIcon pairing the Overview's ConditionRow uses, at the same
+                // 28px size, for visual consistency between the two (020-dashboard-polish-round-
+                // five, US7; SMHI symbol_code path added 043-smhi-27-symbol-icons).
+                const iconInfo = resolveConditionIcon({
                   temperature: obs.temperature,
                   precipitation: obs.precipitation,
                   windSpeed: obs.windSpeed,
                   cloudCoverPercent: obs.cloudCoverPercent,
                   timestamp: obs.timestamp,
                   chanceOfRain: obs.chanceOfRain,
+                  smhiSymbolCode: obs.smhiSymbolCode,
                 });
-                const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
                 return (
                   <tr
                     key={obs.timestamp}
@@ -106,7 +105,11 @@ export default function ObservationDetails({
                     <td>{obs.isForecast ? "Forecast" : "Observed"}</td>
                     <td>
                       {iconInfo ? (
-                        <iconInfo.Icon aria-label={iconInfo.label} size={28} />
+                        iconInfo.kind === "smhi-symbol" ? (
+                          <img src={iconInfo.src} alt={iconInfo.label} width={28} height={28} />
+                        ) : (
+                          <iconInfo.Icon aria-label={iconInfo.label} size={28} />
+                        )
                       ) : (
                         <span aria-label="No data">—</span>
                       )}

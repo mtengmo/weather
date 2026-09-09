@@ -522,3 +522,35 @@ describe("uvRisk threading (027-uv-index-alert)", () => {
     expect(data.periods[0].uvRisk).toBe(false);
   });
 });
+
+describe("smhiSymbolCode threading (043-smhi-27-symbol-icons, US2 guard)", () => {
+  it("buildHourlyTimelineData carries smhiSymbolCode through onto each period", () => {
+    const data = buildHourlyTimelineData(
+      series([obs({ timestamp: hoursFromNow(-1), temperature: 10, smhiSymbolCode: 9 })]),
+      "metric"
+    );
+
+    expect(data.periods[0].smhiSymbolCode).toBe(9);
+  });
+
+  it("buildHourlyTimelineData leaves smhiSymbolCode null/undefined when the observation has none", () => {
+    const data = buildHourlyTimelineData(
+      series([obs({ timestamp: hoursFromNow(-1), temperature: 10 })]),
+      "metric"
+    );
+
+    expect(data.periods[0].smhiSymbolCode).toBeFalsy();
+  });
+
+  it("buildDailyTimelineData never sets smhiSymbolCode on a daily period, even when the underlying hours have one (research.md §5)", () => {
+    const data = buildDailyTimelineData(
+      series([
+        obs({ timestamp: hoursFromNow(-30), temperature: 10, smhiSymbolCode: 9 }),
+        obs({ timestamp: hoursFromNow(-2), temperature: 10, smhiSymbolCode: 10 }),
+      ]),
+      "metric"
+    );
+
+    expect(data.periods.every((p) => p.smhiSymbolCode == null)).toBe(true);
+  });
+});
