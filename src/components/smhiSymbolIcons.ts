@@ -36,9 +36,10 @@ export interface SmhiSymbolIconEntry {
 
 /** One entry per SMHI `symbol_code` (1-27), matching SMHI's own documented meanings
  *  (043-smhi-27-symbol-icons, research.md §2). Artwork sourced from the user-supplied
- *  `docs/logos/smhi_symbols_ver2.png` reference sheet, cropped to bare icons (no number/caption)
- *  this session — expected to be replaced with revised artwork later; only the file each entry
- *  points at needs to change then, not this table's structure (FR-005). */
+ *  `docs/logos/symbols_logos_ver6.png` reference sheet (047-update-27-smhi), cropped to bare
+ *  icons (no number/checkerboard) via `docs/logos/split_symbols_ver6.py` — expected to be
+ *  replaced with revised artwork again later; only the file each entry points at needs to change
+ *  then, not this table's structure (FR-005). */
 export const SMHI_SYMBOL_ICONS: Record<number, SmhiSymbolIconEntry> = {
   1: { src: clear, label: "Clear sky" },
   2: { src: nearlyClear, label: "Nearly clear sky" },
