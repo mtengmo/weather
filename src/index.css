@@ -1102,29 +1102,6 @@ a {
   cursor: pointer;
 }
 
-.warning-banner-dismiss {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.7;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.15rem 0.4rem;
-  cursor: pointer;
-}
-
-.warning-banner-dismiss:hover {
-  opacity: 1;
-}
-
-.warning-banner-item-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
 .warning-banner-severity {
   font-weight: 700;
   text-transform: uppercase;
