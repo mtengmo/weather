@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FavoritePlace, Location } from "../models/types";
 import type { PlaceCandidate } from "../services/geocodingApi";
 import type { GeolocationStatus } from "../hooks/useGeolocation";
+import { placeNameOnly } from "../services/locationName";
 import LocationSwitcher from "./LocationSwitcher";
 import PlaceSearch from "./PlaceSearch";
 import FavoritesList from "./FavoritesList";
@@ -23,7 +24,10 @@ function candidateToLocation(place: PlaceCandidate): Location {
   return {
     latitude: place.latitude,
     longitude: place.longitude,
-    displayName: place.displayName,
+    // Search results keep the full "place, region, country" name for disambiguation
+    // (PlaceSearch.tsx), but once viewed as a selected location, only the place itself is shown
+    // (049-show-only-place).
+    displayName: placeNameOnly(place.displayName),
     source: "favorite",
   };
 }

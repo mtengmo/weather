@@ -56,4 +56,9 @@ describe("locationCache", () => {
     });
     expect(() => setCachedLocation(stockholm)).not.toThrow();
   });
+
+  it("shortens a full 'place, region, country' name on read, even one cached before this normalization existed (049-show-only-place)", () => {
+    setCachedLocation({ ...stockholm, displayName: "Uppsala, Uppsala County, Sweden" });
+    expect(getCachedLocation()?.displayName).toBe("Uppsala");
+  });
 });

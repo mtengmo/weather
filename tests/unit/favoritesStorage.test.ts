@@ -52,4 +52,9 @@ describe("favoritesStorage", () => {
     expect(() => removeFavorite("does-not-exist")).not.toThrow();
     expect(listFavorites()).toHaveLength(1);
   });
+
+  it("shortens a full 'place, region, country' name on read, even one saved before this normalization existed (049-show-only-place)", () => {
+    addFavorite({ latitude: 59.33, longitude: 18.06, displayName: "Uppsala, Uppsala County, Sweden" });
+    expect(listFavorites()[0].displayName).toBe("Uppsala");
+  });
 });

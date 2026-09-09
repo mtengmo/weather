@@ -1,4 +1,5 @@
 import { FAVORITES_LIMIT, type FavoritePlace } from "../models/types";
+import { placeNameOnly } from "./locationName";
 
 const STORAGE_KEY = "weather-app:favorites:v1";
 const COORD_PRECISION = 4;
@@ -48,7 +49,9 @@ function writeAll(favorites: FavoritePlace[]): void {
 }
 
 export function listFavorites(): FavoritePlace[] {
-  return readAll();
+  // Normalized on every read, not just at save time, so a favorite saved before
+  // 049-show-only-place shows shortened immediately, with no migration or re-adding.
+  return readAll().map((f) => ({ ...f, displayName: placeNameOnly(f.displayName) }));
 }
 
 export function addFavorite(

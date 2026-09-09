@@ -1,4 +1,5 @@
 import type { Location } from "../models/types";
+import { placeNameOnly } from "./locationName";
 
 const STORAGE_KEY = "weather-app:last-location:v1";
 
@@ -13,7 +14,9 @@ export function getCachedLocation(): Location | null {
       typeof parsed?.displayName === "string" &&
       (parsed?.source === "current-position" || parsed?.source === "favorite")
     ) {
-      return parsed as Location;
+      // Normalized on every read, not just at save time, so a location cached before
+      // 049-show-only-place shows shortened immediately, with no migration needed.
+      return { ...(parsed as Location), displayName: placeNameOnly(parsed.displayName) };
     }
     return null;
   } catch {

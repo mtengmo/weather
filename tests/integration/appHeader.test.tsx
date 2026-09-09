@@ -149,7 +149,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     await user.type(screen.getByLabelText("Search for a place"), "Paris");
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
-    expect(await screen.findByText("Paris, France")).toBeInTheDocument();
+    expect(await screen.findByText("Paris")).toBeInTheDocument();
     expect(screen.getByLabelText("Search for a place")).toBeInTheDocument();
   });
 
@@ -365,6 +365,28 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     expect(favoritesList).not.toHaveTextContent("Paris, France");
   });
 
+  it("shows only the place name in the header after selecting a search result, not the full region/country string (049-show-only-place)", async () => {
+    const { searchPlaces } = await import("../../src/services/geocodingApi");
+    vi.mocked(searchPlaces).mockResolvedValue([
+      { latitude: 59.86, longitude: 17.64, displayName: "Uppsala, Uppsala County, Sweden" },
+    ]);
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Change location" }));
+    // The search-results dropdown itself keeps the full disambiguating name (FR-002).
+    await user.type(screen.getByLabelText("Search for a place"), "Uppsala");
+    expect(await screen.findByText("Uppsala, Uppsala County, Sweden")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View" }));
+
+    const header = document.querySelector(".current-location-name");
+    expect(header).toHaveTextContent("Uppsala");
+    expect(header).not.toHaveTextContent("Uppsala County");
+    expect(header).not.toHaveTextContent("Sweden");
+  });
+
   it("still supports adding a search result to favorites as a separate action", async () => {
     const { searchPlaces } = await import("../../src/services/geocodingApi");
     vi.mocked(searchPlaces).mockResolvedValue([
@@ -378,7 +400,9 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     await user.type(screen.getByLabelText("Search for a place"), "Paris");
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
-    expect(await screen.findByText("Paris, France")).toBeInTheDocument();
+    // The favorites list shows just the place name (049-show-only-place) — the search dropdown
+    // itself has already cleared by this point (PlaceSearch resets its query/results on add).
+    expect(await screen.findByText("Paris")).toBeInTheDocument();
   });
 });
 

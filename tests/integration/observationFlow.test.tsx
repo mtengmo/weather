@@ -110,12 +110,14 @@ describe("US2: Favorites — search, add, persist, duplicate/limit, remove", () 
     await user.type(screen.getByLabelText("Search for a place"), "Stockholm");
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
-    expect(await screen.findByText("Stockholm, Sweden")).toBeInTheDocument();
+    // The favorites list shows just the place name (049-show-only-place); the search dropdown
+    // itself keeps the full "place, country" form, but has already cleared by this point.
+    expect(await screen.findByText("Stockholm")).toBeInTheDocument();
 
     unmount(); // simulate closing the app
     render(<FavoritesHarness />);
 
-    expect(screen.getByText("Stockholm, Sweden")).toBeInTheDocument();
+    expect(screen.getByText("Stockholm")).toBeInTheDocument();
   });
 
   it("rejects adding a duplicate place and shows an inline message", async () => {
@@ -131,7 +133,7 @@ describe("US2: Favorites — search, add, persist, duplicate/limit, remove", () 
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/already saved/i);
-    expect(screen.getAllByText("Stockholm, Sweden")).toHaveLength(1);
+    expect(screen.getAllByText("Stockholm")).toHaveLength(1);
   });
 
   it("blocks adding beyond the favorites limit and explains why", async () => {
