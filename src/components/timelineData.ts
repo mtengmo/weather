@@ -261,26 +261,28 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
 }
 
 /**
- * Fills the single "now" boundary column's value via a midpoint average of its immediate
- * neighbors when it has no direct reading of its own, rather than leaving a blank gap
- * (009-timeline-polish-and-header, FR-012/FR-013, research.md §3). Only ever touches that one
- * column; every other gap in the row is left untouched. No-op when either neighbor is missing.
+ * Fills any isolated single-point gap's value via a midpoint average of its immediate neighbors
+ * when it has no direct reading of its own, rather than leaving a blank gap
+ * (009-timeline-polish-and-header, FR-012/FR-013; generalized beyond just the observed/forecast
+ * "now" boundary column by 058-interpolate-isolated-single, research.md §1 — tracing the
+ * original code showed the now-boundary column is itself just one instance of this same shape of
+ * gap, a single missing value with a real reading immediately before and after it, so one general
+ * rule covers both without an `isForecast` check: a normally-forecast hour always has its own real
+ * value already, so it's never touched regardless). A run of 2+ consecutive missing points, or a
+ * gap with no neighbor on one side (start/end of the series), is always left untouched.
  */
-function interpolateNowBoundary(row: TimelineRow, nowBoundaryIndex: number | null): TimelineRow {
-  if (nowBoundaryIndex === null) return row;
-  const nowIndex = nowBoundaryIndex + 1;
-  const nowPoint = row.points[nowIndex];
-  if (!nowPoint || nowPoint.value !== null) return row;
+function interpolateIsolatedGaps(row: TimelineRow): TimelineRow {
+  let points: TimelineRowPoint[] | null = null;
+  for (let i = 1; i < row.points.length - 1; i++) {
+    const point = row.points[i];
+    const before = row.points[i - 1];
+    const after = row.points[i + 1];
+    if (point.value !== null || before.value === null || after.value === null) continue;
 
-  const observedNeighbor = row.points[nowBoundaryIndex];
-  const forecastNeighbor = row.points[nowIndex + 1];
-  if (!observedNeighbor || observedNeighbor.value === null) return row;
-  if (!forecastNeighbor || forecastNeighbor.value === null) return row;
-
-  const interpolatedValue = (observedNeighbor.value + forecastNeighbor.value) / 2;
-  const points = row.points.slice();
-  points[nowIndex] = { ...nowPoint, value: interpolatedValue, interpolated: true };
-  return { ...row, points };
+    if (points === null) points = row.points.slice();
+    points[i] = { ...point, value: (before.value + after.value) / 2, interpolated: true };
+  }
+  return points === null ? row : { ...row, points };
 }
 
 /** Builds the synchronized hourly timeline (24h view) from an already-loaded series.
@@ -341,10 +343,10 @@ export function buildHourlyTimelineData(
   return {
     periods,
     nowBoundaryIndex,
-    temperature: interpolateNowBoundary(rows.temperature, nowBoundaryIndex),
-    precipitation: interpolateNowBoundary(rows.precipitation, nowBoundaryIndex),
-    wind: interpolateNowBoundary(rows.wind, nowBoundaryIndex),
-    snow: interpolateNowBoundary(rows.snow, nowBoundaryIndex),
+    temperature: interpolateIsolatedGaps(rows.temperature),
+    precipitation: interpolateIsolatedGaps(rows.precipitation),
+    wind: interpolateIsolatedGaps(rows.wind),
+    snow: interpolateIsolatedGaps(rows.snow),
   };
 }
 
@@ -453,7 +455,7 @@ export function build3DayTimelineData(
  * (019-dashboard-polish-round-four, FR-011 — replaces 016's side-by-side per-source display,
  * which cluttered the timeline; "write it out" is now satisfied by the point's own "(avg)"
  * rendering, contracts/timeline-and-display-fixes.md). Mutates `temperatureRow.points` in place,
- * the same pattern `interpolateNowBoundary` already uses. A period's span is (previous period's
+ * the same pattern `interpolateIsolatedGaps` already uses. A period's span is (previous period's
  * end, this period's own end] — the same contiguous-bucket convention every builder above already
  * produces, so this works unchanged across the hourly, 3-day, and 7-day timelines.
  */

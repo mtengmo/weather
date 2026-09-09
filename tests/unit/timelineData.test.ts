@@ -183,7 +183,7 @@ describe("buildHourlyTimelineData", () => {
     });
   });
 
-  describe("now-boundary interpolation (009-timeline-polish-and-header, FR-012/FR-013)", () => {
+  describe("isolated single-point interpolation (009-timeline-polish-and-header, FR-012/FR-013; generalized by 058-interpolate-isolated-single)", () => {
     it("interpolates the boundary column's value as the midpoint of its neighbors when both are present", () => {
       const data = buildHourlyTimelineData(
         series([
@@ -246,6 +246,47 @@ describe("buildHourlyTimelineData", () => {
         "metric"
       );
       expect(data.temperature.points.every((p) => !p.interpolated)).toBe(true);
+    });
+
+    it("interpolates an isolated mid-series observed gap, not just the now-boundary column (058-interpolate-isolated-single)", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-3), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-2), temperature: null, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-1), temperature: 14, isForecast: false }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[1].value).toBe(12);
+      expect(data.temperature.points[1].interpolated).toBe(true);
+    });
+
+    it("leaves a run of two consecutive missing hours untouched", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-4), temperature: 10, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-3), temperature: null, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-2), temperature: null, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-1), temperature: 20, isForecast: false }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[1].value).toBeNull();
+      expect(data.temperature.points[1].interpolated).toBeFalsy();
+      expect(data.temperature.points[2].value).toBeNull();
+      expect(data.temperature.points[2].interpolated).toBeFalsy();
+    });
+
+    it("leaves a missing hour at the very start of the series untouched (no left neighbor)", () => {
+      const data = buildHourlyTimelineData(
+        series([
+          obs({ timestamp: hoursFromNow(-2), temperature: null, isForecast: false }),
+          obs({ timestamp: hoursFromNow(-1), temperature: 10, isForecast: false }),
+        ]),
+        "metric"
+      );
+      expect(data.temperature.points[0].value).toBeNull();
+      expect(data.temperature.points[0].interpolated).toBeFalsy();
     });
   });
 });
