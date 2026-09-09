@@ -114,3 +114,66 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (043-smhi-27-
     expect(icon?.label).toBe("Cloudy");
   });
 });
+
+describe("Night-time moon variants for codes 1-4 (054-night-time-moon)", () => {
+  it.each([1, 2, 3, 4])("resolves code %i to a distinct night icon when isNightNow is true", (code) => {
+    const day = resolveConditionIconFromCondition(code, null, false);
+    const night = resolveConditionIconFromCondition(code, null, true);
+
+    expect(day?.kind).toBe("smhi-symbol");
+    expect(night?.kind).toBe("smhi-symbol");
+    if (day?.kind === "smhi-symbol" && night?.kind === "smhi-symbol") {
+      expect(night.src).not.toBe(day.src);
+    }
+  });
+
+  it("defaults to the day icon when isNightNow is omitted", () => {
+    const omitted = resolveConditionIconFromCondition(1, null);
+    const explicitDay = resolveConditionIconFromCondition(1, null, false);
+
+    expect(omitted).toEqual(explicitDay);
+  });
+
+  it("leaves codes outside 1-4 unaffected by isNightNow (FR-003)", () => {
+    const day = resolveConditionIconFromCondition(6, null, false);
+    const night = resolveConditionIconFromCondition(6, null, true);
+
+    expect(day).toEqual(night);
+  });
+
+  it("resolves the fallback (no smhiSymbolCode) clear-night condition to the night moon icon, not the day sun", () => {
+    const dayFallback = resolveConditionIconFromCondition(null, "clear-day", false);
+    const nightFallback = resolveConditionIconFromCondition(null, "clear-night", true);
+
+    expect(dayFallback?.kind).toBe("smhi-symbol");
+    expect(nightFallback?.kind).toBe("smhi-symbol");
+    if (dayFallback?.kind === "smhi-symbol" && nightFallback?.kind === "smhi-symbol") {
+      expect(nightFallback.src).not.toBe(dayFallback.src);
+    }
+  });
+
+  it("resolveConditionIcon picks the night variant from a nighttime timestamp", () => {
+    const night = resolveConditionIcon({
+      temperature: 5,
+      precipitation: 0,
+      windSpeed: 1,
+      cloudCoverPercent: 0,
+      timestamp: "2026-06-01T23:00:00",
+      smhiSymbolCode: 1,
+    });
+    const day = resolveConditionIcon({
+      temperature: 5,
+      precipitation: 0,
+      windSpeed: 1,
+      cloudCoverPercent: 0,
+      timestamp: "2026-06-01T12:00:00",
+      smhiSymbolCode: 1,
+    });
+
+    expect(night?.kind).toBe("smhi-symbol");
+    expect(day?.kind).toBe("smhi-symbol");
+    if (night?.kind === "smhi-symbol" && day?.kind === "smhi-symbol") {
+      expect(night.src).not.toBe(day.src);
+    }
+  });
+});

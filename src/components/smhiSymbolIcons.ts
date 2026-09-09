@@ -1,4 +1,4 @@
-import { deriveWeatherCondition, type WeatherCondition, type WeatherConditionInput } from "../services/weatherCondition";
+import { deriveWeatherCondition, isNight, type WeatherCondition, type WeatherConditionInput } from "../services/weatherCondition";
 import { WEATHER_ICONS } from "./weatherIcons";
 
 import clear from "../assets/weather-icons/01-clear.png";
@@ -28,6 +28,11 @@ import heavySleet from "../assets/weather-icons/24-heavy-sleet.png";
 import lightSnowfall from "../assets/weather-icons/25-light-snowfall.png";
 import moderateSnowfall from "../assets/weather-icons/26-moderate-snowfall.png";
 import heavySnowfall from "../assets/weather-icons/27-heavy-snowfall.png";
+
+import clearNight from "../assets/weather-icons/01-clear-night.png";
+import nearlyClearNight from "../assets/weather-icons/02-nearly-clear-night.png";
+import variableCloudinessNight from "../assets/weather-icons/03-variable-cloudiness-night.png";
+import halfclearNight from "../assets/weather-icons/04-halfclear-night.png";
 
 export interface SmhiSymbolIconEntry {
   src: string;
@@ -70,6 +75,17 @@ export const SMHI_SYMBOL_ICONS: Record<number, SmhiSymbolIconEntry> = {
   27: { src: heavySnowfall, label: "Heavy snowfall" },
 };
 
+/** Night counterparts for the four SMHI codes whose day artwork depicts a sun (Clear sky, Nearly
+ *  clear sky, Variable cloudiness, Halfclear sky) — a sun looks wrong at 2am. Codes 5-27 never
+ *  depicted a sun, so they have no entry here and are unaffected (054-night-time-moon). Same
+ *  `label` text as the corresponding day entry — only the artwork differs. */
+const NIGHT_VARIANT_ICONS: Partial<Record<number, SmhiSymbolIconEntry>> = {
+  1: { src: clearNight, label: "Clear sky" },
+  2: { src: nearlyClearNight, label: "Nearly clear sky" },
+  3: { src: variableCloudinessNight, label: "Variable cloudiness" },
+  4: { src: halfclearNight, label: "Halfclear sky" },
+};
+
 /** A resolved icon, either an SMHI-code image or a fallback lucide icon component — exactly one
  *  of `src`/`Icon` is set, never both (043-smhi-27-symbol-icons, contracts/smhi-symbol-icons.md). */
 export type ResolvedConditionIcon =
@@ -79,13 +95,14 @@ export type ResolvedConditionIcon =
 /** Best-fit SMHI icon for a period that has no SMHI `symbol_code` of its own — real station
  *  observations never carry one (SMHI's own observation API has no such field; it's forecast-only),
  *  so this lets those periods still show the same ver6 artwork instead of the older lucide set.
- *  Two conditions keep the lucide fallback below instead: `windy` has no counterpart among the 27
- *  (none of the artwork depicts wind), and `clear-night` has no night variant among the 27 either —
- *  mapping it to the same sun art as `clear-day` would lose the existing sun/moon day-night
- *  distinction for a case where (unlike an SMHI-code period) the information to keep it is right
- *  there. Every other condition maps to the SMHI code that best matches it visually. */
+ *  `clear-night` maps to the same code as `clear-day` (1) — `resolveFromParts` picks
+ *  `NIGHT_VARIANT_ICONS[1]` over `SMHI_SYMBOL_ICONS[1]` whenever the period is actually at night,
+ *  so this one mapping serves both (054-night-time-moon closed the gap this comment used to
+ *  describe). `windy` alone keeps the lucide fallback below — no artwork here depicts wind.
+ *  Every other condition maps to the SMHI code that best matches it visually. */
 const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
   "clear-day": 1, // Clear sky
+  "clear-night": 1, // Clear sky (night variant selected by resolveFromParts when it's actually night)
   "partly-cloudy": 3, // Variable cloudiness
   cloudy: 5, // Cloudy sky
   "light-rain": 18, // Light rain
@@ -98,16 +115,18 @@ const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
 };
 
 /** Shared second step of both resolvers below: SMHI's own `symbol_code` wins when present and
- *  recognized (one of 27 distinct icons); otherwise falls back to `CONDITION_SMHI_FALLBACK`'s
- *  best-fit SMHI icon for the given (already-derived or freshly-derived) `WeatherCondition`, or
- *  the existing `WEATHER_ICONS` lucide icon when no such fallback exists (`windy`) or the
- *  condition itself couldn't be classified. */
+ *  recognized (one of 27 distinct icons, or its night counterpart for codes 1-4 when `isNightNow`
+ *  — 054-night-time-moon); otherwise falls back to `CONDITION_SMHI_FALLBACK`'s best-fit SMHI icon
+ *  (subject to the same night-variant swap) for the given (already-derived or freshly-derived)
+ *  `WeatherCondition`, or the existing `WEATHER_ICONS` lucide icon when no such fallback exists
+ *  (`windy`) or the condition itself couldn't be classified. */
 function resolveFromParts(
   smhiSymbolCode: number | null | undefined,
-  condition: WeatherCondition | null
+  condition: WeatherCondition | null,
+  isNightNow: boolean
 ): ResolvedConditionIcon | null {
   if (smhiSymbolCode != null) {
-    const entry = SMHI_SYMBOL_ICONS[smhiSymbolCode];
+    const entry = (isNightNow ? NIGHT_VARIANT_ICONS[smhiSymbolCode] : undefined) ?? SMHI_SYMBOL_ICONS[smhiSymbolCode];
     if (entry) {
       return { kind: "smhi-symbol", src: entry.src, label: entry.label };
     }
@@ -118,7 +137,8 @@ function resolveFromParts(
   const { label } = WEATHER_ICONS[condition];
   const fallbackCode = CONDITION_SMHI_FALLBACK[condition];
   if (fallbackCode !== undefined) {
-    return { kind: "smhi-symbol", src: SMHI_SYMBOL_ICONS[fallbackCode].src, label };
+    const entry = (isNightNow ? NIGHT_VARIANT_ICONS[fallbackCode] : undefined) ?? SMHI_SYMBOL_ICONS[fallbackCode];
+    return { kind: "smhi-symbol", src: entry.src, label };
   }
 
   const { Icon } = WEATHER_ICONS[condition];
@@ -134,15 +154,18 @@ export function resolveConditionIcon(
   input: WeatherConditionInput & { smhiSymbolCode?: number | null }
 ): ResolvedConditionIcon | null {
   const { smhiSymbolCode, ...conditionInput } = input;
-  return resolveFromParts(smhiSymbolCode, deriveWeatherCondition(conditionInput));
+  const isNightNow = input.timestamp !== undefined && isNight(input.timestamp);
+  return resolveFromParts(smhiSymbolCode, deriveWeatherCondition(conditionInput), isNightNow);
 }
 
 /** Resolves a period's icon when a `WeatherCondition` has already been derived upstream (e.g.
  *  `TimelinePeriod.condition`, computed once in `timelineData.ts`) — avoids recomputing
- *  `deriveWeatherCondition` a second time at render. */
+ *  `deriveWeatherCondition` a second time at render. `isNightNow` selects a code 1-4 night variant
+ *  when true (054-night-time-moon); defaults to `false` for any caller with no timestamp handy. */
 export function resolveConditionIconFromCondition(
   smhiSymbolCode: number | null | undefined,
-  condition: WeatherCondition | null
+  condition: WeatherCondition | null,
+  isNightNow: boolean = false
 ): ResolvedConditionIcon | null {
-  return resolveFromParts(smhiSymbolCode, condition);
+  return resolveFromParts(smhiSymbolCode, condition, isNightNow);
 }

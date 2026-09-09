@@ -20,7 +20,7 @@ import {
   type TimelineRow,
 } from "./timelineData";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
-import { deriveWeatherCondition } from "../services/weatherCondition";
+import { deriveWeatherCondition, isNight } from "../services/weatherCondition";
 import { deriveFeelsLike } from "../services/feelsLike";
 import { formatValue } from "../services/format";
 import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
@@ -562,7 +562,11 @@ function ConditionRow({
       <div className="weather-timeline-row-grid-cells">
         <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid">
           {(period, i) => {
-            const iconInfo = resolveConditionIconFromCondition(period.smhiSymbolCode, period.condition);
+            const iconInfo = resolveConditionIconFromCondition(
+              period.smhiSymbolCode,
+              period.condition,
+              isNight(period.key)
+            );
             return (
               <div
                 className={[

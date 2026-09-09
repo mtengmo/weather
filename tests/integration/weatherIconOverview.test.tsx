@@ -147,7 +147,7 @@ describe("US1: synchronized 24h timeline", () => {
     expect(container.querySelectorAll(".weather-timeline-gap").length).toBeGreaterThan(0);
   });
 
-  it("shows a moon icon (not sun) for a clear night hour", async () => {
+  it("shows the night-moon icon (not the day sun) for a clear night hour (054-night-time-moon)", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -166,20 +166,18 @@ describe("US1: synchronized 24h timeline", () => {
     // Query the icon itself (not the hour label's text) — toLocaleTimeString's hour
     // format is locale-dependent (e.g. "23" on this machine, "11 PM" on CI's Linux
     // runner), so asserting on that text broke the build in CI even though it passed
-    // locally. The lucide icon's class name is stable regardless of locale.
-    const { container } = render(<OverviewHarness location={stockholm} />);
-    await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("Clear");
-
-    // lucide-react's per-icon class suffix has changed across versions (e.g. "lucide-moon"
-    // vs. "lucide-moon-icon") — match by prefix so this doesn't break on a dependency bump.
+    // locally.
     // Scoped to the hourly condition cell: the persistent Today card
     // (018-dashboard-visual-redesign) derives its own day-level condition (no timestamp, so
     // a clear day always renders as clear-day/sun per research.md §3) and legitimately shows
     // its own sun icon elsewhere on the page for this same clear series.
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Clear");
+
     const conditionCell = container.querySelector(".weather-timeline-condition");
-    expect(conditionCell?.querySelector('svg[class*="lucide-moon"]')).toBeInTheDocument();
-    expect(conditionCell?.querySelector('svg[class*="lucide-sun"]')).not.toBeInTheDocument();
+    expect(conditionCell?.querySelector('img[src*="01-clear-night"]')).toBeInTheDocument();
+    expect(conditionCell?.querySelector('img[src*="01-clear.png"]')).not.toBeInTheDocument();
   });
 
   it("shows the unavailable message rather than the timeline when the series status is unavailable", async () => {
@@ -1153,11 +1151,10 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
   });
 
-  it("gives 'clear-night' (the one other condition with no SMHI artwork match) its own distinct class", async () => {
-    // cloudy/light-rain/light-snow now resolve to real SMHI artwork (047/050) instead of a
-    // CSS-tinted lucide icon, so they no longer carry a `weather-condition-*` class — only
-    // conditions still on the lucide fallback path (windy, and clear-night for its sun/moon
-    // day-night distinction) do.
+  it("resolves cloudy/light-rain/light-snow/clear-night to their own distinct SMHI artwork (047/050/054)", async () => {
+    // clear-night now also resolves to real SMHI artwork (the night-moon variant, 054) instead
+    // of a CSS-tinted lucide icon, joining cloudy/light-rain/light-snow (047/050) — only `windy`
+    // still has no SMHI-artwork match and stays on the lucide fallback path.
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -1174,7 +1171,7 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await screen.findByText("Clear");
 
-    expect(container.querySelector(".weather-condition-clear-night")).toBeInTheDocument();
+    expect(container.querySelector('img[src*="01-clear-night"]')).toBeInTheDocument();
     expect(container.querySelector('img[src*="05-cloudy"]')).toBeInTheDocument();
     expect(container.querySelector('img[src*="18-light-rain"]')).toBeInTheDocument();
     expect(container.querySelector('img[src*="25-light-snowfall"]')).toBeInTheDocument();
@@ -1212,6 +1209,43 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     const conditionImages = container.querySelectorAll(".weather-timeline-row-condition img");
     expect(conditionImages).toHaveLength(2);
     expect(conditionImages[0].getAttribute("src")).not.toBe(conditionImages[1].getAttribute("src"));
+  });
+
+  it("shows the night-moon variant for SMHI code 1 at night, and the day-sun variant at day (054-night-time-moon)", async () => {
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [
+        // Fixed local-time (no "Z") timestamps in ascending order, not hoursAgo(), so night/day
+        // don't depend on when the test actually runs and the rendered column order is known.
+        {
+          timestamp: "2026-08-31T12:00:00",
+          temperature: 15,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 0,
+          smhiSymbolCode: 1,
+        },
+        {
+          timestamp: "2026-08-31T23:00:00",
+          temperature: 5,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 0,
+          smhiSymbolCode: 1,
+        },
+      ],
+    });
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Temp");
+
+    const conditionImages = container.querySelectorAll(".weather-timeline-row-condition img");
+    expect(conditionImages).toHaveLength(2);
+    expect(conditionImages[0].getAttribute("src")).toContain("01-clear.png");
+    expect(conditionImages[1].getAttribute("src")).toContain("01-clear-night");
   });
 
   it("does not show a rain icon for a small forecast amount with a low chance of rain (038-granular-weather-icons-and-graph-header, US1 — reported live: 'chance is 7% ... in reality its not a rain forecast')", async () => {

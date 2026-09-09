@@ -66,7 +66,7 @@ const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
 const NIGHT_START_HOUR = 20;
 const NIGHT_END_HOUR = 6;
 
-function isNight(timestamp: string): boolean {
+export function isNight(timestamp: string): boolean {
   const hour = new Date(timestamp).getHours();
   return hour < NIGHT_END_HOUR || hour >= NIGHT_START_HOUR;
 }
