@@ -784,6 +784,7 @@ export default function WeatherIconOverview({
   // no longer competing for space in the header alongside a long location name
   // (037-header-controls-and-chart-fixes follow-up: reported header line-wrap with "Abisko").
   const currentTemperature = nearestObservation?.temperature ?? null;
+  const currentHumidity = nearestObservation?.relativeHumidity ?? null;
   const currentFeelsLike =
     nearestObservation != null
       ? deriveFeelsLike({
@@ -827,6 +828,7 @@ export default function WeatherIconOverview({
         currentFeelsLike={currentFeelsLike}
         todaysRainTotalMm={todaysRainTotalMm}
         informationalWarnings={informationalWarnings}
+        currentHumidity={currentHumidity}
       />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast

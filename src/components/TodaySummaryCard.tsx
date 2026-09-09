@@ -32,6 +32,17 @@ interface TodaySummaryCardProps {
    *  rather than in the standalone alert banner, and isn't individually dismissible
    *  (048-split-informational-smhi). */
   informationalWarnings?: WeatherWarning[];
+  /** The same "current reading" used for `currentTemperature`/`currentCondition`'s relative
+   *  humidity, classified into a plain-language level rather than shown as a raw percentage
+   *  (050-show-humidity-level). `null`/`undefined` when there's no current reading with a
+   *  humidity value — renders nothing, same as the other optional "Now"-derived fields. */
+  currentHumidity?: number | null;
+}
+
+function humidityLevel(percent: number): "Dry" | "Normal" | "High" {
+  if (percent < 30) return "Dry";
+  if (percent <= 70) return "Normal";
+  return "High";
 }
 
 /**
@@ -49,6 +60,7 @@ export default function TodaySummaryCard({
   currentFeelsLike,
   todaysRainTotalMm,
   informationalWarnings,
+  currentHumidity,
 }: TodaySummaryCardProps) {
   if (today === null) return null;
 
@@ -102,6 +114,7 @@ export default function TodaySummaryCard({
         <span>Sunrise {sunrise ? new Date(sunrise).toLocaleTimeString([], timeFormat) : "—"}</span>
         <span>Sunset {sunset ? new Date(sunset).toLocaleTimeString([], timeFormat) : "—"}</span>
         <span>Moon {moonPhase.replace("-", " ")}</span>
+        {currentHumidity != null && <span>Humidity {humidityLevel(currentHumidity)}</span>}
       </div>
       {informationalWarnings && informationalWarnings.length > 0 && (
         <div className="today-summary-notices">

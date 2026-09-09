@@ -119,6 +119,32 @@ describe("smhiProvider", () => {
     expect(present).toBeDefined();
   });
 
+  it("getObservations maps a parameter-6 station reading onto relativeHumidity (050-show-humidity-level)", async () => {
+    const presentHour = isoHourStart(1);
+
+    mockFetchRouter({
+      "/parameter/1.json": stationListBody([
+        { key: "t1", name: "Temp", latitude: 59.331, longitude: 18.061, active: true },
+      ]),
+      "/parameter/7.json": stationListBody([]),
+      "/parameter/6.json": stationListBody([
+        { key: "h1", name: "Humidity", latitude: 59.331, longitude: 18.061, active: true },
+      ]),
+      "/parameter/1/station/t1/period/latest-day/data.json": {
+        value: [{ date: presentHour, value: "12.5", quality: "G" }],
+      },
+      "/parameter/6/station/h1/period/latest-day/data.json": {
+        value: [{ date: presentHour, value: "56", quality: "G" }],
+      },
+    });
+
+    const { getObservations } = await freshProvider();
+    const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+    const present = result.observations.find((o) => o.temperature === 12.5);
+    expect(present?.relativeHumidity).toBe(56);
+  });
+
   it("getNearestStations falls back to 'Unnamed station' when the source name is blank", async () => {
     mockFetchRouter({
       "/parameter/1.json": stationListBody([
@@ -195,6 +221,22 @@ describe("smhiProvider", () => {
       expect(forecastPoints[0].temperature).toBe(10);
       // Octas (0-8) converted to percent (0-100): 4 octas -> 50%.
       expect(forecastPoints[0].cloudCoverPercent).toBe(50);
+    });
+
+    it("maps relative_humidity onto relativeHumidity (050-show-humidity-level)", async () => {
+      mockFetchRouter({
+        ...baseStations,
+        "/parameter/6.json": stationListBody([]),
+        "/category/snow1g/version/1/geotype/point": forecastBody([
+          { time: isoHourFromNow(1), data: { air_temperature: 10, relative_humidity: 56 } },
+        ]),
+      });
+
+      const { getObservations } = await freshProvider();
+      const result = await getObservations(STOCKHOLM, "last-24-hours");
+
+      const forecastPoints = result.observations.filter((o) => o.isForecast);
+      expect(forecastPoints[0].relativeHumidity).toBe(56);
     });
 
     it("appends up to 168 forecast hours for last-7-days", async () => {

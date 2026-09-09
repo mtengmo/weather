@@ -11,6 +11,8 @@ const CLOUD_PARAM = 16; // "procent" per SMHI's own parameter metadata — alrea
 // (008-timeline-dashboard-redesign, contracts/provider-fields.md).
 const WIND_DIRECTION_PARAM = 3;
 const WIND_GUST_PARAM = 21; // "Byvind", max/hour, m/s
+// "Relativ Luftfuktighet", momentanvärde, 1 gång/tim (050-show-humidity-level).
+const HUMIDITY_PARAM = 6;
 const COVERAGE_RADIUS_KM = 50;
 
 // SMHI's Impact-Based Weather Warnings feed — the full national list of currently-published
@@ -81,6 +83,7 @@ interface SmhiForecastData {
   cloud_area_fraction?: number; // octas, 0-8 — NOT the same 0-100 scale as the observation API
   symbol_code?: number; // SMHI's Wsymb2 table, 1-27 (022-met-forecast-source, research.md §3)
   probability_of_precipitation?: number; // percent, 0-100 (024-restore-rain-chance, research.md §1)
+  relative_humidity?: number; // percent, 0-100 (050-show-humidity-level)
 }
 
 // SMHI's own Wsymb2 weather-symbol table (numeric 1-27, SMHI's long-published, stable parameter
@@ -251,7 +254,8 @@ function buildHourlySeries(
   windValues: SmhiValue[],
   cloudValues: SmhiValue[],
   windDirectionValues: SmhiValue[],
-  windGustValues: SmhiValue[]
+  windGustValues: SmhiValue[],
+  humidityValues: SmhiValue[]
 ): WeatherObservation[] {
   const now = Date.now();
   const hoursNeeded = WINDOW_HOURS[window];
@@ -263,6 +267,8 @@ function buildHourlySeries(
   const cloudByHour = byHour(cloudValues);
   const windDirectionByHour = byHour(windDirectionValues);
   const windGustByHour = byHour(windGustValues);
+  // SMHI parameter 6 is already reported in percent — no conversion needed.
+  const humidityByHour = byHour(humidityValues);
 
   const currentHour = Math.floor(now / 3600_000);
   const observations: WeatherObservation[] = [];
@@ -277,6 +283,7 @@ function buildHourlySeries(
       cloudCoverPercent: cloudByHour.has(hourKey) ? cloudByHour.get(hourKey)! : null,
       windDirection: windDirectionByHour.has(hourKey) ? windDirectionByHour.get(hourKey)! : null,
       windGust: windGustByHour.has(hourKey) ? windGustByHour.get(hourKey)! : null,
+      relativeHumidity: humidityByHour.has(hourKey) ? humidityByHour.get(hourKey)! : null,
     });
   }
   return observations;
@@ -330,6 +337,7 @@ function forecastObservationForHour(
     symbolCondition: symbolCodeToCondition(data?.symbol_code, timestamp),
     smhiSymbolCode: data?.symbol_code ?? null,
     chanceOfRain: data?.probability_of_precipitation ?? null,
+    relativeHumidity: data?.relative_humidity ?? null,
     isForecast: true,
   };
 }
@@ -416,6 +424,7 @@ export async function getObservations(
     cloudValues,
     windDirectionValues,
     windGustValues,
+    humidityValues,
   ] = await Promise.all([
     fetchStationValues(TEMPERATURE_PARAM, nearestTemp[0].key, window),
     fetchParameterValues(PRECIPITATION_PARAM, location, window),
@@ -423,6 +432,7 @@ export async function getObservations(
     fetchParameterValues(CLOUD_PARAM, location, window),
     fetchParameterValues(WIND_DIRECTION_PARAM, location, window),
     fetchParameterValues(WIND_GUST_PARAM, location, window),
+    fetchParameterValues(HUMIDITY_PARAM, location, window),
   ]);
 
   const observations = buildHourlySeries(
@@ -432,7 +442,8 @@ export async function getObservations(
     windValues,
     cloudValues,
     windDirectionValues,
-    windGustValues
+    windGustValues,
+    humidityValues
   );
 
   const forecastHoursNeeded = FORECAST_HOURS[window];
