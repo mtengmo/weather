@@ -3,7 +3,7 @@ import { WEATHER_ICONS } from "./weatherIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
-import type { DailyAggregate, Location, UnitSystem } from "../models/types";
+import type { DailyAggregate, Location, UnitSystem, WeatherWarning } from "../models/types";
 
 interface TodaySummaryCardProps {
   today: DailyAggregate | null;
@@ -27,6 +27,11 @@ interface TodaySummaryCardProps {
    *  include part of tomorrow (033-todays-rain-total). `null` renders the same "—" gap treatment
    *  a missing value already gets. */
   todaysRainTotalMm?: number | null;
+  /** Active SMHI Message-level warnings for this location — a background advisory (e.g. "risk of
+   *  water shortage"), not a time-bound weather danger, so it lives here as everyday context
+   *  rather than in the standalone alert banner, and isn't individually dismissible
+   *  (048-split-informational-smhi). */
+  informationalWarnings?: WeatherWarning[];
 }
 
 /**
@@ -43,6 +48,7 @@ export default function TodaySummaryCard({
   currentTemperature,
   currentFeelsLike,
   todaysRainTotalMm,
+  informationalWarnings,
 }: TodaySummaryCardProps) {
   if (today === null) return null;
 
@@ -97,6 +103,15 @@ export default function TodaySummaryCard({
         <span>Sunset {sunset ? new Date(sunset).toLocaleTimeString([], timeFormat) : "—"}</span>
         <span>Moon {moonPhase.replace("-", " ")}</span>
       </div>
+      {informationalWarnings && informationalWarnings.length > 0 && (
+        <div className="today-summary-notices">
+          {informationalWarnings.map((warning) => (
+            <p key={warning.id} className="today-summary-notice">
+              <strong>{warning.title}:</strong> {warning.description}
+            </p>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -37,6 +37,7 @@ function warning(overrides: Partial<WeatherWarning> = {}): WeatherWarning {
     validFrom: new Date(Date.now() - 3600_000).toISOString(),
     validUntil: null,
     isActive: true,
+    isInformational: false,
     ...overrides,
   };
 }
@@ -88,6 +89,37 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
     expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
+  });
+
+  it("never shows an informational (Message-level) warning in the banner (048-split-informational-smhi)", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({ severityCode: "MESSAGE", severityLabel: "Message", title: "Risk for water shortage", isInformational: true }),
+    ]);
+
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    expect(screen.queryByRole("region", { name: "Weather warnings" })).not.toBeInTheDocument();
+  });
+
+  it("shows only the color-coded warning in the banner when an informational one is also active", async () => {
+    vi.mocked(getWarningsForLocation).mockResolvedValue([
+      warning({ id: "1-100", title: "Storm", isInformational: false }),
+      warning({
+        id: "2-200",
+        severityCode: "MESSAGE",
+        severityLabel: "Message",
+        title: "Risk for water shortage",
+        isInformational: true,
+      }),
+    ]);
+
+    render(<App />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalled());
+
+    const banner = await screen.findByRole("region", { name: "Weather warnings" });
+    expect(banner).toHaveTextContent("Storm");
+    expect(banner).not.toHaveTextContent("Risk for water shortage");
   });
 
   it("shows the collapsed summary for one active warning, expandable to the full description", async () => {

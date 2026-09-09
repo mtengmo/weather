@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { DailyAggregate, Location, ObservationSeries, ObservationWindow, UnitSystem } from "../models/types";
+import type {
+  DailyAggregate,
+  Location,
+  ObservationSeries,
+  ObservationWindow,
+  UnitSystem,
+  WeatherWarning,
+} from "../models/types";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import {
   build3DayTimelineData,
@@ -35,6 +42,10 @@ interface WeatherIconOverviewProps {
   /** Hour-bucket keys whose UV Index is at/above the risk threshold — empty outside SMHI
    *  coverage, while loading, or on a failed fetch (027-uv-index-alert). */
   uvRiskHours: Set<number>;
+  /** Active SMHI Message-level (non-color-coded) warnings, routed here instead of the standalone
+   *  banner — they're a background advisory, not a time-bound weather danger
+   *  (048-split-informational-smhi). */
+  informationalWarnings?: WeatherWarning[];
 }
 
 // The overview only supports 24h/3d/7d (007 spec Edge Cases, extended by 015) — 30-day is out
@@ -634,6 +645,7 @@ export default function WeatherIconOverview({
   multiSourceForecast,
   weeklySeries,
   uvRiskHours,
+  informationalWarnings,
 }: WeatherIconOverviewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
@@ -814,6 +826,7 @@ export default function WeatherIconOverview({
         currentTemperature={currentTemperature}
         currentFeelsLike={currentFeelsLike}
         todaysRainTotalMm={todaysRainTotalMm}
+        informationalWarnings={informationalWarnings}
       />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast

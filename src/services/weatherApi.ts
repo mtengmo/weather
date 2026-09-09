@@ -132,6 +132,7 @@ export async function getWarningsForLocation(
         validFrom: area.approximateStart,
         validUntil: area.approximateEnd ?? null,
         isActive: validFrom <= now,
+        isInformational: area.warningLevel.code === "MESSAGE",
       });
     }
   }

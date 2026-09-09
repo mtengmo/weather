@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WeatherIconOverview from "../../src/components/WeatherIconOverview";
 import { useObservationData } from "../../src/hooks/useObservationData";
 import { sumCalendarDayPrecipitation } from "../../src/services/dailyAggregation";
-import type { Location, ObservationWindow } from "../../src/models/types";
+import type { Location, ObservationWindow, WeatherWarning } from "../../src/models/types";
 
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
@@ -47,9 +47,11 @@ function hoursAgo(h: number): string {
 function OverviewHarness({
   location,
   highLowVisible = false,
+  informationalWarnings,
 }: {
   location: Location;
   highLowVisible?: boolean;
+  informationalWarnings?: WeatherWarning[];
 }) {
   const [window, setWindow] = useState<ObservationWindow>("last-24-hours");
   const { series, multiSourceForecast, weeklySeries, uvRiskHours } = useObservationData(
@@ -70,6 +72,7 @@ function OverviewHarness({
       multiSourceForecast={multiSourceForecast}
       weeklySeries={weeklySeries}
       uvRiskHours={uvRiskHours}
+      informationalWarnings={informationalWarnings}
     />
   );
 }
@@ -1644,6 +1647,44 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     expect(card).toHaveTextContent(/Sunrise/);
     expect(card).toHaveTextContent(/Sunset/);
     expect(card).toHaveTextContent(/Moon/);
+  });
+
+  it("shows an informational warning's title/description, with no dismiss control (048-split-informational-smhi)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 }]
+          : [],
+    }));
+
+    render(
+      <OverviewHarness
+        location={stockholm}
+        informationalWarnings={[
+          {
+            id: "1-100",
+            severityCode: "MESSAGE",
+            severityLabel: "Message",
+            title: "Risk for water shortage",
+            areaName: "Stockholm County",
+            description: "Water levels are low.",
+            validFrom: new Date(Date.now() - 3600_000).toISOString(),
+            validUntil: null,
+            isActive: true,
+            isInformational: true,
+          },
+        ]}
+      />
+    );
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent("Risk for water shortage");
+    expect(card).toHaveTextContent("Water levels are low.");
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("colors the icon by its condition, matching the color used elsewhere for the same condition (029-colorful-brief-icons)", async () => {

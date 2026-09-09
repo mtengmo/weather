@@ -164,4 +164,8 @@ export interface WeatherWarning {
   /** true when already in effect (validFrom <= now); false when published but not yet started —
    *  starts within the next 48h (045-show-upcoming-smhi, data-model.md). */
   isActive: boolean;
+  /** true for SMHI's lowest, non-color-coded "Message" severity (a long-running background
+   *  advisory, not a time-bound weather danger); false for Yellow/Orange/Red (Class 1/2/3).
+   *  Routes which UI surface the warning renders in (048-split-informational-smhi). */
+  isInformational: boolean;
 }

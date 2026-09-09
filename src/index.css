@@ -968,6 +968,26 @@ a {
   color: var(--text-muted);
 }
 
+.today-summary-notices {
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.today-summary-notice {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.today-summary-notice strong {
+  color: var(--text);
+}
+
 /* 7-day forecast strip (018-dashboard-visual-redesign, US5) — persistent across all three
    overview tabs. */
 .weekly-forecast-strip {

@@ -529,6 +529,21 @@ describe("weatherApi.getWarningsForLocation (028-severe-weather-warnings)", () =
     expect(result).toEqual([]);
   });
 
+  it("tags a MESSAGE-level warning as informational and a CLASS_1 one as not", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([
+      rawWarning({ id: 1, code: "MESSAGE" }),
+      rawWarning({ id: 2, code: "CLASS_1" }),
+    ]);
+
+    const result = await getWarningsForLocation(location);
+
+    const message = result.find((w) => w.severityCode === "MESSAGE");
+    const class1 = result.find((w) => w.severityCode === "CLASS_1");
+    expect(message?.isInformational).toBe(true);
+    expect(class1?.isInformational).toBe(false);
+  });
+
   it("includes a currently-valid warning covering the location, mapped to the reduced shape", async () => {
     vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
     vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([rawWarning({})]);

@@ -204,7 +204,7 @@ export default function App() {
 
       {selected && (
         <WarningBanner
-          warnings={warnings.filter((w) => !dismissedIds.has(w.id))}
+          warnings={warnings.filter((w) => !w.isInformational && !dismissedIds.has(w.id))}
           onDismiss={dismissWarning}
         />
       )}
@@ -252,6 +252,7 @@ export default function App() {
           multiSourceForecast={multiSourceForecast}
           weeklySeries={weeklySeries}
           uvRiskHours={uvRiskHours}
+          informationalWarnings={warnings.filter((w) => w.isInformational)}
         />
       )}
 
