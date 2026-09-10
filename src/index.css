@@ -988,6 +988,16 @@ a {
 
 .today-summary-icon {
   grid-row: 1 / 3;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Cartoon companion beside the weather icon (061-cartoon-weather-companion, FR-001/FR-006) — capped
+   to the icon's own height so it never grows the card or crowds the surrounding text. */
+.today-summary-character {
+  height: 40px;
+  width: auto;
 }
 
 .today-summary-highlow {

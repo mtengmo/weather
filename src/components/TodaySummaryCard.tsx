@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { WEATHER_ICONS } from "./weatherIcons";
+import { resolveCharacterIcon } from "./weatherCharacterIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
@@ -85,6 +86,11 @@ export default function TodaySummaryCard({
   });
   const condition = currentCondition ?? dayCondition;
   const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
+  // Falls back to today's high/low midpoint when there's no current reading, rather than omitting
+  // the character outright (061-cartoon-weather-companion, US3; research.md §5).
+  const characterTemperature =
+    currentTemperature ?? (today.high != null && today.low != null ? (today.high + today.low) / 2 : null);
+  const characterIcon = resolveCharacterIcon(condition, characterTemperature);
   const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
   const { sunrise, sunset } = getSunTimes(location, new Date());
   const moonPhase = getMoonPhase(new Date());
@@ -98,6 +104,9 @@ export default function TodaySummaryCard({
           .join(" ")}
       >
         {iconInfo ? <iconInfo.Icon aria-hidden="true" size={40} /> : null}
+        {characterIcon ? (
+          <img src={characterIcon} alt="" aria-hidden="true" className="today-summary-character" />
+        ) : null}
       </div>
       <div className="today-summary-highlow">
         {currentTemperature != null && (

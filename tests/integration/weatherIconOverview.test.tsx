@@ -1995,6 +1995,81 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     const card = await screen.findByRole("region", { name: "Today" });
     expect(card).toHaveTextContent("Clear.");
   });
+
+  it("renders a character illustration beside the weather icon, matching current conditions (061-cartoon-weather-companion, US1)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: hoursAgo(1), temperature: 10, precipitation: 5, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    // precipitation=5mm (>= 2.5mm heavy threshold) at 10C -> heavy-rain / mild -> rain/mild asset.
+    // Decorative (aria-hidden), so queried directly rather than via getByRole.
+    const character = card.querySelector(".today-summary-character");
+    expect(character).not.toBeNull();
+    expect(character).toHaveAttribute("src", expect.stringContaining("character_rain_mild"));
+  });
+
+  it("omits the character (leaving the rest of the card intact) when conditions can't be classified (061-cartoon-weather-companion, US3)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: hoursAgo(1), temperature: null, precipitation: null, windSpeed: null, cloudCoverPercent: null },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    expect(card).toHaveTextContent("High —°");
+    expect(card).toHaveTextContent("Low —°");
+    expect(card.querySelector(".today-summary-character")).toBeNull();
+  });
+
+  it("falls back to today's high/low midpoint for the character's temperature band when there's no current reading (061-cartoon-weather-companion, US3)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: hoursAgo(2), temperature: 20, precipitation: 0, windSpeed: 1, cloudCoverPercent: 5 },
+              // Last entry (no isForecast flag on either) is picked as the "nearest observation" —
+              // its null temperature means currentTemperature is null, forcing the high/low
+              // midpoint fallback (research.md §5), while its heavy rainfall still yields a
+              // classifiable condition (temperature isn't required for precipitation-based
+              // classification).
+              { timestamp: hoursAgo(1), temperature: null, precipitation: 5, windSpeed: 1, cloudCoverPercent: 5 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    // high=low=20 (only entry with a temperature) -> midpoint 20 -> warm band; heavy-rain -> rain.
+    const character = card.querySelector(".today-summary-character");
+    expect(character).not.toBeNull();
+    expect(character).toHaveAttribute("src", expect.stringContaining("character_rain_warm"));
+  });
 });
 
 describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
