@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Location, ObservationSeries } from "../../src/models/types";
 
@@ -133,6 +133,60 @@ describe("useObservationData preserves data across a window-only change (042-pre
     pending.resolve(series());
     await waitFor(() => expect(result.current.series).not.toBeNull());
     expect(result.current.isRefreshing).toBe(false);
+  });
+});
+
+describe("useObservationData periodic/visibility auto-refresh (059-periodically-auto-refresh)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue(series());
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getWarningsForLocation).mockReset();
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
+  });
+
+  it("re-fetches after the refresh interval elapses, keeping the previous data visible throughout", async () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+      await vi.waitFor(() => expect(result.current.series).not.toBeNull());
+      const callsBefore = vi.mocked(getObservations).mock.calls.length;
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15 * 60_000);
+      });
+
+      expect(vi.mocked(getObservations).mock.calls.length).toBeGreaterThan(callsBefore);
+      // The previous data must never have gone null during the refresh.
+      expect(result.current.series).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-fetches when the tab becomes visible again, but not while it stays hidden", async () => {
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    const callsBefore = vi.mocked(getObservations).mock.calls.length;
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(vi.mocked(getObservations).mock.calls.length).toBe(callsBefore);
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(vi.mocked(getObservations).mock.calls.length).toBeGreaterThan(callsBefore));
   });
 });
 

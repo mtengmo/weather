@@ -43,6 +43,11 @@ export interface UseObservationDataResult {
   isRefreshing: boolean;
 }
 
+// How often to re-fetch the current location's data while the page stays open and visible, so a
+// source's own updated forecast reaches the viewer without a manual reload
+// (059-periodically-auto-refresh).
+const REFRESH_INTERVAL_MS = 15 * 60_000;
+
 export function useObservationData(
   location: Location | null,
   window: ObservationWindow,
@@ -66,6 +71,23 @@ export function useObservationData(
   // change instead keeps showing the previous window's data until the new fetch resolves, so none
   // of this hook's consumers ever collapse to their "Loading…" state mid-switch.
   const previousLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  // Bumped periodically and whenever the tab regains visibility — included in the main fetch
+  // effect's own dependency array below so a tick re-runs it exactly like a window/location
+  // change would, reusing that effect's existing stale-data-preserved refresh behavior
+  // (059-periodically-auto-refresh) rather than introducing a second fetch path.
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setRefreshTick((t) => t + 1), REFRESH_INTERVAL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") setRefreshTick((t) => t + 1);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +139,7 @@ export function useObservationData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location?.latitude, location?.longitude, window]);
+  }, [location?.latitude, location?.longitude, window, refreshTick]);
 
   // Nearby-station comparison data is fetched independently, only once the Details/graph view has
   // been opened — split into its own effect so flipping `includeNearbyStations` from false to
