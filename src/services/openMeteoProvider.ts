@@ -16,7 +16,7 @@ const FORECAST_HOURS: Record<ObservationWindow, number> = {
   "last-30-days": 0,
 };
 
-interface OpenMeteoHourlyResponse {
+export interface OpenMeteoHourlyResponse {
   hourly?: {
     time: string[];
     temperature_2m: (number | null)[];
@@ -28,6 +28,18 @@ interface OpenMeteoHourlyResponse {
     relative_humidity_2m?: (number | null)[];
     precipitation_probability?: (number | null)[];
   };
+}
+
+// The most recent raw response this provider parsed, exposed via the getter below for the debug
+// panel (060-debug-page-bottom) — captured as a side effect of the fetch every caller already
+// triggers, so displaying it never causes a second network request.
+let lastRawForecastResponse: OpenMeteoHourlyResponse | null = null;
+
+/** The exact raw response `fetchHourlyPoints` most recently parsed (or `null` if it hasn't run
+ *  yet, or its last run failed/returned non-ok) — for the debug panel only
+ *  (060-debug-page-bottom). Never triggers a fetch itself. */
+export function getLastRawForecastResponse(): OpenMeteoHourlyResponse | null {
+  return lastRawForecastResponse;
 }
 
 function pastDaysFor(window: ObservationWindow): number {
@@ -70,17 +82,23 @@ async function fetchHourlyPoints(
   try {
     response = await fetch(`${BASE_URL}?${params.toString()}`);
   } catch {
+    lastRawForecastResponse = null;
     return null;
   }
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    lastRawForecastResponse = null;
+    return null;
+  }
 
   let data: OpenMeteoHourlyResponse;
   try {
     data = (await response.json()) as OpenMeteoHourlyResponse;
   } catch {
+    lastRawForecastResponse = null;
     return null;
   }
+  lastRawForecastResponse = data;
 
   if (!data.hourly) return null;
 

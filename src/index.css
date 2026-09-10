@@ -929,6 +929,49 @@ a {
   color: var(--text-muted);
 }
 
+/* Collapsed-by-default raw-response panel (060-debug-page-bottom) — deliberately muted/plain so
+   it reads as a diagnostic aside, not part of the app's normal content. */
+.debug-panel {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.debug-panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.debug-panel-source {
+  margin-top: 0.75rem;
+}
+
+.debug-panel-source-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+}
+
+.debug-panel-raw {
+  max-height: 300px;
+  overflow: auto;
+  padding: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.debug-panel-no-data {
+  font-style: italic;
+}
+
 /* Today summary card (018-dashboard-visual-redesign, US4) — persistent across all three
    overview tabs. */
 .today-summary-card {

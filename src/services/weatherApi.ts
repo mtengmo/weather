@@ -194,6 +194,11 @@ export interface MultiSourceForecastEntry {
    *  Optional so existing test fixtures/mocks that predate this field keep compiling, matching
    *  this codebase's existing convention for `ObservationSeries.primarySource`. */
   issuedAt?: string | null;
+  /** This source's own raw forecast response, exactly as it returned it — for the debug panel
+   *  only (060-debug-page-bottom). Sourced from each provider's already-fetched response (via its
+   *  `getLastRawForecastResponse()` getter), never a separate fetch. Optional so existing test
+   *  fixtures/mocks that predate this field keep compiling. */
+  rawResponse?: unknown;
 }
 
 /**
@@ -218,15 +223,32 @@ export async function getMultiSourceForecast(
     metNoProvider.getForecastOnly(location, window),
   ]);
 
+  // Read right after the fetches above resolve, from each provider's own already-parsed response
+  // — never a separate fetch (060-debug-page-bottom, debug-panel raw data).
   const entries: MultiSourceForecastEntry[] = [];
   if (smhiResult.status === "fulfilled" && smhiResult.value.observations.length > 0) {
-    entries.push({ source: "smhi", observations: smhiResult.value.observations, issuedAt: smhiResult.value.issuedAt });
+    entries.push({
+      source: "smhi",
+      observations: smhiResult.value.observations,
+      issuedAt: smhiResult.value.issuedAt,
+      rawResponse: smhiProvider.getLastRawForecastResponse(),
+    });
   }
   if (openMeteoResult.status === "fulfilled" && openMeteoResult.value.length > 0) {
-    entries.push({ source: "open-meteo", observations: openMeteoResult.value, issuedAt: null });
+    entries.push({
+      source: "open-meteo",
+      observations: openMeteoResult.value,
+      issuedAt: null,
+      rawResponse: openMeteoProvider.getLastRawForecastResponse(),
+    });
   }
   if (metNoResult.status === "fulfilled" && metNoResult.value.observations.length > 0) {
-    entries.push({ source: "met-no", observations: metNoResult.value.observations, issuedAt: metNoResult.value.issuedAt });
+    entries.push({
+      source: "met-no",
+      observations: metNoResult.value.observations,
+      issuedAt: metNoResult.value.issuedAt,
+      rawResponse: metNoProvider.getLastRawForecastResponse(),
+    });
   }
   return entries;
 }

@@ -23,7 +23,7 @@ vi.mock("../../src/services/geocodingApi", () => ({
   searchPlaces: vi.fn(),
 }));
 
-import { getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
+import { getMultiSourceForecast, getNearbyStationSeries, getObservations } from "../../src/services/weatherApi";
 import { getNearestStations } from "../../src/services/smhiProvider";
 import { addFavorite } from "../../src/services/favoritesStorage";
 
@@ -789,5 +789,59 @@ describe("Nearby-station data is deferred until Details/graph is opened (025-red
     await user.click(screen.getByRole("button", { name: "Home" }));
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
     expect(getNearbyStationSeries).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Debug panel (060-debug-page-bottom)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockGeolocation("unavailable");
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getObservations).mockResolvedValue({
+      location: stockholm,
+      window: "last-24-hours",
+      status: "ready",
+      observations: [],
+    });
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getNearestStations).mockReset();
+    vi.mocked(getNearestStations).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([
+      { source: "smhi", observations: [], issuedAt: null, rawResponse: { approvedTime: "smhi-raw" } },
+      { source: "open-meteo", observations: [], rawResponse: { hourly: "open-meteo-raw" } },
+    ]);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("renders a collapsed debug section with a heading per source, without any extra fetch of forecast data (FR-002)", async () => {
+    addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
+    localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    await waitFor(() => expect(getMultiSourceForecast).toHaveBeenCalledTimes(1));
+
+    const summary = screen.getByText("Debug: raw source responses");
+    expect(summary).toBeInTheDocument();
+    expect(screen.getByText(/smhi-raw/)).not.toBeVisible();
+
+    await user.click(summary);
+
+    expect(screen.getByRole("heading", { name: "SMHI" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Open-Meteo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "MET Norway" })).toBeInTheDocument();
+    expect(screen.getByText(/smhi-raw/)).toBeVisible();
+    expect(screen.getByText(/open-meteo-raw/)).toBeVisible();
+    expect(screen.getByText("No data")).toBeInTheDocument();
+
+    // Opening the panel must not trigger any additional forecast fetch (FR-002).
+    expect(getMultiSourceForecast).toHaveBeenCalledTimes(1);
   });
 });

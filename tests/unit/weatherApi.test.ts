@@ -8,15 +8,18 @@ vi.mock("../../src/services/smhiProvider", () => ({
   getNearestStations: vi.fn(),
   getUvIndex: vi.fn(),
   getActiveWarnings: vi.fn(),
+  getLastRawForecastResponse: vi.fn(),
 }));
 
 vi.mock("../../src/services/openMeteoProvider", () => ({
   getObservations: vi.fn(),
   getForecastOnly: vi.fn(),
+  getLastRawForecastResponse: vi.fn(),
 }));
 
 vi.mock("../../src/services/metNoProvider", () => ({
   getForecastOnly: vi.fn(),
+  getLastRawForecastResponse: vi.fn(),
 }));
 
 import * as smhiProvider from "../../src/services/smhiProvider";
@@ -412,6 +415,31 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7;
     const openMeteoEntry = result.find((r) => r.source === "open-meteo");
     expect(smhiEntry?.issuedAt).toBe("2026-09-05T06:00:00.000Z");
     expect(openMeteoEntry?.issuedAt).toBeNull();
+  });
+
+  it("carries each source's raw response from its own getLastRawForecastResponse getter, never a separate fetch (060-debug-page-bottom)", async () => {
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+    vi.mocked(smhiProvider.getForecastOnly).mockResolvedValue({
+      observations: [forecastPoint()],
+      issuedAt: null,
+    });
+    vi.mocked(openMeteoProvider.getForecastOnly).mockResolvedValue([forecastPoint()]);
+    vi.mocked(metNoProvider.getForecastOnly).mockResolvedValue({
+      observations: [forecastPoint()],
+      issuedAt: null,
+    });
+    const smhiRaw = { timeSeries: "smhi-raw" } as unknown as ReturnType<typeof smhiProvider.getLastRawForecastResponse>;
+    const openMeteoRaw = { hourly: "open-meteo-raw" } as unknown as ReturnType<typeof openMeteoProvider.getLastRawForecastResponse>;
+    const metNoRaw = { properties: "met-no-raw" } as unknown as ReturnType<typeof metNoProvider.getLastRawForecastResponse>;
+    vi.mocked(smhiProvider.getLastRawForecastResponse).mockReturnValue(smhiRaw);
+    vi.mocked(openMeteoProvider.getLastRawForecastResponse).mockReturnValue(openMeteoRaw);
+    vi.mocked(metNoProvider.getLastRawForecastResponse).mockReturnValue(metNoRaw);
+
+    const result = await getMultiSourceForecast(location, "last-24-hours");
+
+    expect(result.find((r) => r.source === "smhi")?.rawResponse).toBe(smhiRaw);
+    expect(result.find((r) => r.source === "open-meteo")?.rawResponse).toBe(openMeteoRaw);
+    expect(result.find((r) => r.source === "met-no")?.rawResponse).toBe(metNoRaw);
   });
 });
 

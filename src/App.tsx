@@ -16,6 +16,7 @@ import ThemeToggle from "./components/ThemeToggle";
 import SettingsMenu from "./components/SettingsMenu";
 import LocationPanel from "./components/LocationPanel";
 import Footer from "./components/Footer";
+import DebugPanel from "./components/DebugPanel";
 import MapView from "./components/MapView";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 import type { MultiSourceForecastEntry } from "./services/weatherApi";
@@ -256,6 +257,8 @@ export default function App() {
           onSelectLocation={selectLocation}
         />
       )}
+
+      <DebugPanel multiSourceForecast={multiSourceForecast} />
 
       <Footer
         series={series}

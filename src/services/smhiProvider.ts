@@ -143,7 +143,7 @@ interface SmhiForecastTimeSeriesEntry {
   data: SmhiForecastData;
 }
 
-interface SmhiForecastResponse {
+export interface SmhiForecastResponse {
   /** ISO 8601 — when this specific forecast data was generated, matching the timestamp SMHI's
    *  own app/site shows as "Prognosen utfärdades ... lokal tid" ("The forecast was issued at...").
    *  `referenceTime` (the forecast model run's own reference time) was tried first
@@ -303,6 +303,18 @@ function roundCoordinate(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
 
+// The most recent raw forecast response this provider parsed, exposed via the getter below for
+// the debug panel (060-debug-page-bottom) — captured as a side effect of the fetch every caller
+// already triggers, so displaying it never causes a second network request.
+let lastRawForecastResponse: SmhiForecastResponse | null = null;
+
+/** The exact raw response `fetchForecastTimeSeries` most recently parsed (or `null` if it hasn't
+ *  run yet, or its last run failed/returned non-ok) — for the debug panel only
+ *  (060-debug-page-bottom). Never triggers a fetch itself. */
+export function getLastRawForecastResponse(): SmhiForecastResponse | null {
+  return lastRawForecastResponse;
+}
+
 async function fetchForecastTimeSeries(
   location: { latitude: number; longitude: number }
 ): Promise<SmhiForecastFetchResult> {
@@ -311,12 +323,17 @@ async function fetchForecastTimeSeries(
   const url = `${FORECAST_BASE_URL}/lon/${lon}/lat/${lat}/data.json`;
   try {
     const response = await fetch(url);
-    if (!response.ok) return { timeSeries: [], issuedAt: null };
+    if (!response.ok) {
+      lastRawForecastResponse = null;
+      return { timeSeries: [], issuedAt: null };
+    }
     const data = (await response.json()) as SmhiForecastResponse;
+    lastRawForecastResponse = data;
     return { timeSeries: data.timeSeries ?? [], issuedAt: data.createdTime ?? null };
   } catch {
     // Forecast is a best-effort addition to an otherwise-complete observation
     // series — degrade to "no forecast" rather than failing the whole request.
+    lastRawForecastResponse = null;
     return { timeSeries: [], issuedAt: null };
   }
 }

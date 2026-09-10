@@ -28,11 +28,23 @@ interface MetNoTimeSeriesEntry {
   };
 }
 
-interface MetNoResponse {
+export interface MetNoResponse {
   properties?: {
     meta?: { updated_at?: string };
     timeseries?: MetNoTimeSeriesEntry[];
   };
+}
+
+// The most recent raw response this provider parsed, exposed via the getter below for the debug
+// panel (060-debug-page-bottom) — captured as a side effect of the fetch every caller already
+// triggers, so displaying it never causes a second network request.
+let lastRawForecastResponse: MetNoResponse | null = null;
+
+/** The exact raw response `fetchTimeSeries` most recently parsed (or `null` if it hasn't run yet,
+ *  or its last run failed/returned non-ok) — for the debug panel only (060-debug-page-bottom).
+ *  Never triggers a fetch itself. */
+export function getLastRawForecastResponse(): MetNoResponse | null {
+  return lastRawForecastResponse;
 }
 
 export interface MetNoForecastResult {
@@ -85,8 +97,12 @@ async function fetchTimeSeries(
   const lon = roundCoordinate(location.longitude);
   try {
     const response = await fetch(`${BASE_URL}?lat=${lat}&lon=${lon}`);
-    if (!response.ok) return { timeseries: [], issuedAt: null };
+    if (!response.ok) {
+      lastRawForecastResponse = null;
+      return { timeseries: [], issuedAt: null };
+    }
     const data = (await response.json()) as MetNoResponse;
+    lastRawForecastResponse = data;
     return {
       timeseries: data.properties?.timeseries ?? [],
       issuedAt: data.properties?.meta?.updated_at ?? null,
@@ -94,6 +110,7 @@ async function fetchTimeSeries(
   } catch {
     // Forecast is a best-effort addition — degrade to "no forecast" rather than failing
     // the whole multi-source fetch, matching smhiProvider.ts/openMeteoProvider.ts's rule.
+    lastRawForecastResponse = null;
     return { timeseries: [], issuedAt: null };
   }
 }
