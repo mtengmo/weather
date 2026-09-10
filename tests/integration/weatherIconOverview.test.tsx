@@ -2144,7 +2144,7 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
     expect(screen.getByRole("region", { name: "7 day forecast" })).toBeInTheDocument();
   });
 
-  it("triggers no duplicate getObservations call for last-7-days when switching to/from the 7-day tab", async () => {
+  it("triggers no duplicate getObservations call for last-7-days when switching to/from the 7-day tab (062-reduce-loading-requests, US2)", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
       window: w,
@@ -2161,16 +2161,14 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
       .mock.calls.filter(([, w]) => w === "last-7-days").length;
     expect(sevenDayCallsBeforeSwitch).toBe(1);
 
-    // Switching the active window to "last-7-days" makes a genuinely new primary fetch (a
-    // fresh call with that window is expected here) — the dedup only avoids a *second*,
-    // redundant weeklySeries fetch alongside it.
+    // Switching the active window to "last-7-days" now reuses that same already-fetched weekly
+    // data instead of re-fetching it (062-reduce-loading-requests, US2/FR-002) — no new call.
     await user.click(screen.getByRole("button", { name: "7 Days" }));
-    await waitFor(() => {
-      const sevenDayCallsAfterSwitch = vi
-        .mocked(getObservations)
-        .mock.calls.filter(([, w]) => w === "last-7-days").length;
-      expect(sevenDayCallsAfterSwitch).toBe(2);
-    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "7 Days" })).toHaveAttribute("aria-pressed", "true"));
+    const sevenDayCallsAfterSwitch = vi
+      .mocked(getObservations)
+      .mock.calls.filter(([, w]) => w === "last-7-days").length;
+    expect(sevenDayCallsAfterSwitch).toBe(1);
   });
 });
 
@@ -2807,4 +2805,43 @@ describe("Temperature line colored by band (037-header-controls-and-chart-fixes,
       Number(stops[stops.length - 1].getAttribute("stop-opacity"))
     );
   });
+});
+
+describe("Reduced loading requests (062-reduce-loading-requests)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+  });
+
+  it("issues no duplicate requests across a 24h -> 7d -> 24h round trip (US2, FR-002/FR-003)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations: [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+    // Initial 24h load fetches both "last-24-hours" (primary) and "last-7-days" (weekly).
+    await waitFor(() => expect(getObservations).toHaveBeenCalledTimes(2));
+    const callsAfterInitialLoad = vi.mocked(getObservations).mock.calls.length;
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "7 Days" })).toHaveAttribute("aria-pressed", "true"));
+    expect(getObservations).toHaveBeenCalledTimes(callsAfterInitialLoad);
+
+    await user.click(screen.getByRole("button", { name: "24 Hours" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "24 Hours" })).toHaveAttribute("aria-pressed", "true"));
+    expect(getObservations).toHaveBeenCalledTimes(callsAfterInitialLoad);
+  });
+
+  // US3 (comparison data stays deferred until Details is opened) is already covered end-to-end
+  // through the real App wiring by appHeader.test.tsx's existing "does not fetch nearby-station
+  // data on the Overview" / "fetches nearby-station data once the Details/graph view is opened
+  // for the first time" tests (025-reduce-api-requests) — nothing to add here.
 });

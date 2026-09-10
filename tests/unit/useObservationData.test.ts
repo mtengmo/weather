@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Location, ObservationSeries } from "../../src/models/types";
+import type { MultiSourceForecastEntry } from "../../src/services/weatherApi";
 
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
@@ -69,9 +70,9 @@ describe("useObservationData preserves data across a window-only change (042-pre
     vi.mocked(getObservations).mockResolvedValue(series());
 
     const { result, rerender } = renderHook(
-      ({ window }: { window: "last-24-hours" | "last-7-days" }) =>
+      ({ window }: { window: "last-24-hours" | "last-30-days" }) =>
         useObservationData(STOCKHOLM, window, 0, false),
-      { initialProps: { window: "last-24-hours" as "last-24-hours" | "last-7-days" } }
+      { initialProps: { window: "last-24-hours" as "last-24-hours" | "last-30-days" } }
     );
 
     await waitFor(() => expect(result.current.series).not.toBeNull());
@@ -81,7 +82,11 @@ describe("useObservationData preserves data across a window-only change (042-pre
     const pending = pendingPromise<ObservationSeries>();
     vi.mocked(getObservations).mockReturnValue(pending.promise);
 
-    rerender({ window: "last-7-days" });
+    // "last-30-days" is never pre-fetched alongside "last-24-hours" (only "last-7-days" is, for
+    // the always-visible Today card/7-day strip), so this switch is guaranteed to be a genuine
+    // cache miss — a real pending fetch, unlike "last-7-days" would now be
+    // (062-reduce-loading-requests, US2: that data is already cached from the initial load).
+    rerender({ window: "last-30-days" });
 
     // The new fetch is now in flight (getObservations returns a still-pending promise) — the
     // hook must still be showing the previous window's data, not null, and must report
@@ -320,5 +325,107 @@ describe("useObservationData warnings fetch isolation (028-severe-weather-warnin
 
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(STOCKHOLM, "last-7-days"));
     expect(getWarningsForLocation).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useObservationData request caching and progressive rendering (062-reduce-loading-requests)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getUvRisk).mockReset();
+    vi.mocked(getUvRisk).mockResolvedValue(new Set());
+    vi.mocked(getWarningsForLocation).mockReset();
+    vi.mocked(getWarningsForLocation).mockResolvedValue([]);
+  });
+
+  it("renders series/weeklySeries before a slower multiSourceForecast resolves (US1, FR-001)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series());
+    const pendingMultiSource = pendingPromise<MultiSourceForecastEntry[]>();
+    vi.mocked(getMultiSourceForecast).mockReturnValue(pendingMultiSource.promise);
+
+    const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    expect(result.current.weeklySeries).not.toBeNull();
+    // multiSourceForecast's fetch is still pending — must not have blocked the above.
+    expect(result.current.multiSourceForecast).toEqual([]);
+
+    pendingMultiSource.resolve([]);
+    await waitFor(() => expect(result.current.isRefreshing).toBe(false));
+  });
+
+  it("reuses already-fetched data across a 24h -> 7d -> 24h round trip, issuing no duplicate requests (US2, FR-002/FR-003)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({ ...series(), window: w }));
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+
+    const { result, rerender } = renderHook(
+      ({ window }: { window: "last-24-hours" | "last-7-days" }) =>
+        useObservationData(STOCKHOLM, window, 0, false),
+      { initialProps: { window: "last-24-hours" as "last-24-hours" | "last-7-days" } }
+    );
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    // Initial 24h load fetches both "last-24-hours" (primary) and "last-7-days" (weekly).
+    expect(getObservations).toHaveBeenCalledTimes(2);
+    expect(getMultiSourceForecast).toHaveBeenCalledTimes(1);
+    const callsAfterInitialLoad = vi.mocked(getObservations).mock.calls.length;
+
+    rerender({ window: "last-7-days" });
+    await waitFor(() => expect(result.current.series?.window).toBe("last-7-days"));
+    // getObservations("last-7-days") is a cache hit (already fetched as the initial load's
+    // weekly data) — no new call. getMultiSourceForecast("last-7-days") is a genuine cache miss
+    // (multi-source data was only ever fetched for "last-24-hours" so far) — one new call.
+    expect(getObservations).toHaveBeenCalledTimes(callsAfterInitialLoad);
+    expect(getMultiSourceForecast).toHaveBeenCalledTimes(2);
+
+    rerender({ window: "last-24-hours" });
+    await waitFor(() => expect(result.current.series?.window).toBe("last-24-hours"));
+    // Both are now cache hits — "last-24-hours" was fetched on the initial load for both.
+    expect(getObservations).toHaveBeenCalledTimes(callsAfterInitialLoad);
+    expect(getMultiSourceForecast).toHaveBeenCalledTimes(2);
+  });
+
+  it("still fetches fresh data for every window once the periodic refresh tick fires, even though it was cached (US2, FR-002 staleness bound)", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(getObservations).mockResolvedValue(series());
+      vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+
+      const { result } = renderHook(() => useObservationData(STOCKHOLM, "last-24-hours", 0, false));
+      await vi.waitFor(() => expect(result.current.series).not.toBeNull());
+      const observationsCallsBefore = vi.mocked(getObservations).mock.calls.length;
+      const multiSourceCallsBefore = vi.mocked(getMultiSourceForecast).mock.calls.length;
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15 * 60_000);
+      });
+
+      expect(vi.mocked(getObservations).mock.calls.length).toBeGreaterThan(observationsCallsBefore);
+      expect(vi.mocked(getMultiSourceForecast).mock.calls.length).toBeGreaterThan(multiSourceCallsBefore);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("always fetches fresh data for a new location, even one that reuses the same window as the previous location (FR-006)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(series());
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+
+    const { result, rerender } = renderHook(
+      ({ location }: { location: Location }) => useObservationData(location, "last-24-hours", 0, false),
+      { initialProps: { location: STOCKHOLM } }
+    );
+
+    await waitFor(() => expect(result.current.series).not.toBeNull());
+    const observationsCallsBefore = vi.mocked(getObservations).mock.calls.length;
+    const multiSourceCallsBefore = vi.mocked(getMultiSourceForecast).mock.calls.length;
+
+    rerender({ location: PARIS });
+
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(PARIS, "last-24-hours"));
+    expect(vi.mocked(getObservations).mock.calls.length).toBeGreaterThan(observationsCallsBefore);
+    expect(vi.mocked(getMultiSourceForecast).mock.calls.length).toBeGreaterThan(multiSourceCallsBefore);
   });
 });
