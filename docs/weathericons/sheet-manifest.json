@@ -1,0 +1,39 @@
+{
+  "description": "Manifest för väderikon-sprite-sheets. Varje sheet har 2 rader (rad 0 = day, rad 1 = night) och N kolumner enligt 'columns'. Output-filnamn byggs som weather_{typ}_{day|night}_{band}.png.",
+  "rows": ["day", "night"],
+  "sheets": [
+    { "input_file": "01_kvinna-frozen.png",   "band": "frozen",   "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+    { "input_file": "02_kvinna-cold.png",     "band": "cold",     "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+    { "input_file": "03_kvinna-nearzero.png", "band": "nearzero", "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+    { "input_file": "04_kvinna-mild.png",     "band": "mild",     "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+    { "input_file": "05_kvinna-warm.png",     "band": "warm",     "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+    { "input_file": "06_kvinna-hot.png",      "band": "hot",      "columns": ["clear", "nearly-clear", "variable", "cloudy", "overcast", "fog"] },
+
+    { "input_file": "07_par_nerzero.png", "band": "nearzero", "columns": ["rain-light", "rain-heavy"] },
+    { "input_file": "08_par_mild.png",     "band": "mild",     "columns": ["rain-light", "rain-heavy"] },
+    { "input_file": "09_par_varm.png",     "band": "warm",     "columns": ["rain-light", "rain-heavy"] },
+    { "input_file": "10_par_hot.png",      "band": "hot",      "columns": ["rain-light", "rain-heavy"] },
+
+    { "input_file": "11_pojke_gubbe_frozen.png",   "band": "frozen",   "columns": ["thunder", "sleet"] },
+    { "input_file": "12_pojke_gubbe_cold.png",     "band": "cold",     "columns": ["thunder", "sleet"] },
+    { "input_file": "13_pojke_gubbe_nearzero.png", "band": "nearzero", "columns": ["thunder", "sleet"] },
+    { "input_file": "14_pojke_gubbe_mild.png",     "band": "mild",     "columns": ["thunder", "sleet"] },
+    { "input_file": "15_pojke_gubbe_warm.png",     "band": "warm",     "columns": ["thunder", "sleet"] },
+    { "input_file": "16_pojke_gubbe_hot.png",      "band": "hot",      "columns": ["thunder", "sleet"] },
+
+    { "input_file": "17_flicka_fronzen.png",   "band": "frozen",   "columns": ["snow-light", "snow-heavy"] },
+    { "input_file": "18_flicka_cold.png",     "band": "cold",     "columns": ["snow-light", "snow-heavy"] },
+    { "input_file": "19_flicka_nearzero.png", "band": "nearzero", "columns": ["snow-light", "snow-heavy"] }
+  ],
+  "code_mapping": {
+    "clear": [1], "nearly-clear": [2], "variable": [3, 4], "cloudy": [5], "overcast": [6], "fog": [7],
+    "rain-light": [8, 9, 18, 19], "rain-heavy": [10, 20],
+    "thunder": [11, 21], "sleet": [12, 13, 14, 22, 23, 24],
+    "snow-light": [15, 16, 25, 26], "snow-heavy": [17, 27]
+  },
+  "fallback": {
+    "note": "Om SMHI-kod är rain-light/rain-heavy men temperaturband är frozen/cold, eller snow-light/snow-heavy men band är mild/warm/hot, finns ingen genererad fil — använd sleet-ikonen för det bandet istället.",
+    "rain_at_extreme_cold": "sleet",
+    "snow_at_warm_or_hot": "sleet"
+  }
+}

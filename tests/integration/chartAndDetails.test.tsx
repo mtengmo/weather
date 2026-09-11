@@ -247,6 +247,30 @@ describe("Condition column on the Details table (020-dashboard-polish-round-five
     const table = await screen.findByRole("table");
     expect(within(table).getByLabelText("No data")).toBeInTheDocument();
   });
+
+  it("renders the new character artwork for a row with a known SMHI code and temperature (063-replace-weather-icons)", async () => {
+    vi.mocked(getObservations).mockResolvedValue(
+      series("last-24-hours", [
+        {
+          timestamp: "2026-08-30T10:00:00Z",
+          temperature: 10,
+          precipitation: 0,
+          windSpeed: 1,
+          cloudCoverPercent: 5,
+          smhiSymbolCode: 11, // thunderstorm -> "thunder" weather type
+        },
+      ])
+    );
+
+    render(<ChartAndDetailsHarness location={stockholm} />);
+    const viewDetails = await screen.findByRole("button", { name: "View details" });
+    await userEvent.setup().click(viewDetails);
+
+    const table = await screen.findByRole("table");
+    const icon = within(table).getByAltText("Thunderstorm");
+    // 10C -> mild band.
+    expect(icon).toHaveAttribute("src", expect.stringContaining("weather_thunder_day_mild"));
+  });
 });
 
 describe("US1 (005): 24h forecast continuation", () => {

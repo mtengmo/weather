@@ -176,8 +176,8 @@ describe("US1: synchronized 24h timeline", () => {
     await screen.findByText("Clear");
 
     const conditionCell = container.querySelector(".weather-timeline-condition");
-    expect(conditionCell?.querySelector('img[src*="01-clear-night"]')).toBeInTheDocument();
-    expect(conditionCell?.querySelector('img[src*="01-clear.png"]')).not.toBeInTheDocument();
+    expect(conditionCell?.querySelector('img[src*="weather_clear_night_mild"]')).toBeInTheDocument();
+    expect(conditionCell?.querySelector('img[src*="weather_clear_day_mild"]')).not.toBeInTheDocument();
   });
 
   it("shows the unavailable message rather than the timeline when the series status is unavailable", async () => {
@@ -1171,10 +1171,13 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
     await screen.findByText("Clear");
 
-    expect(container.querySelector('img[src*="01-clear-night"]')).toBeInTheDocument();
-    expect(container.querySelector('img[src*="05-cloudy"]')).toBeInTheDocument();
-    expect(container.querySelector('img[src*="18-light-rain"]')).toBeInTheDocument();
-    expect(container.querySelector('img[src*="25-light-snowfall"]')).toBeInTheDocument();
+    // Entries 2-4 use `hoursAgo()` (relative to the real clock), so their day/night variant isn't
+    // deterministic here — only the weather type + temperature band are asserted for those; entry
+    // 1 uses a fixed timestamp (23:00) so its night variant is asserted too.
+    expect(container.querySelector('img[src*="weather_clear"][src*="night"][src*="mild"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src*="weather_cloudy"][src*="mild"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src*="weather_rain-light"][src*="mild"]')).toBeInTheDocument();
+    expect(container.querySelector('img[src*="weather_snow-light"][src*="nearzero"]')).toBeInTheDocument();
   });
 
   it("renders distinct icons for SMHI codes 9 and 10, which today's WeatherCondition collapses into the same heavy-rain bucket (043-smhi-27-symbol-icons, US1)", async () => {
@@ -1244,8 +1247,9 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
 
     const conditionImages = container.querySelectorAll(".weather-timeline-row-condition img");
     expect(conditionImages).toHaveLength(2);
-    expect(conditionImages[0].getAttribute("src")).toContain("01-clear.png");
-    expect(conditionImages[1].getAttribute("src")).toContain("01-clear-night");
+    // 15C -> warm band; 5C -> mild band (both boundary values, resolved to the warmer band).
+    expect(conditionImages[0].getAttribute("src")).toContain("weather_clear_day_warm");
+    expect(conditionImages[1].getAttribute("src")).toContain("weather_clear_night_mild");
   });
 
   it("does not show a rain icon for a small forecast amount with a low chance of rain (038-granular-weather-icons-and-graph-header, US1 — reported live: 'chance is 7% ... in reality its not a rain forecast')", async () => {
@@ -1704,6 +1708,28 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     expect(card).toHaveTextContent(/Moon/);
   });
 
+  it("renders the new character artwork for the current condition, not the old lucide icon (063-replace-weather-icons)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 15, precipitation: 1, windSpeed: 3, cloudCoverPercent: 10 }]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const card = await screen.findByRole("region", { name: "Today" });
+    // precipitation=1mm (light) + 15C (warm band, boundary) -> rain-light weather type.
+    const icon = card.querySelector(".today-summary-icon img");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("src", expect.stringContaining("weather_rain-light"));
+    expect(icon).toHaveAttribute("src", expect.stringContaining("warm"));
+  });
+
   it("shows an informational warning's title only by default, revealing its description on click (048-split-informational-smhi, 052-collapse-informational-warnings)", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,
@@ -2092,6 +2118,27 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
 
     const strip = await screen.findByRole("region", { name: "7 day forecast" });
     expect(strip.querySelectorAll(".weekly-forecast-day")).toHaveLength(7);
+  });
+
+  it("renders the new character artwork for each day, not the old lucide icon (063-replace-weather-icons)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 }]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const icon = strip.querySelector(".weekly-forecast-day img");
+    expect(icon).not.toBeNull();
+    // clear-day (0mm precip, 0% cloud, no timestamp -> always day) at 10C -> mild band.
+    expect(icon).toHaveAttribute("src", expect.stringContaining("weather_clear_day_mild"));
   });
 
   it("colors each day's icon via the same weather-condition-* class the main timeline uses (022-met-forecast-source, US2)", async () => {

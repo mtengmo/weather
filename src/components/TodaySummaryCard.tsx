@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
-import { WEATHER_ICONS } from "./weatherIcons";
+import { deriveWeatherCondition, isNight, type WeatherCondition } from "../services/weatherCondition";
+import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { resolveCharacterIcon } from "./weatherCharacterIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
@@ -85,11 +85,16 @@ export default function TodaySummaryCard({
     chanceOfRain: today.chanceOfRainMax,
   });
   const condition = currentCondition ?? dayCondition;
-  const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
   // Falls back to today's high/low midpoint when there's no current reading, rather than omitting
-  // the character outright (061-cartoon-weather-companion, US3; research.md §5).
+  // the icon/character outright (061-cartoon-weather-companion, US3; research.md §5).
   const characterTemperature =
     currentTemperature ?? (today.high != null && today.low != null ? (today.high + today.low) / 2 : null);
+  const iconInfo = resolveConditionIconFromCondition(
+    undefined,
+    condition,
+    isNight(new Date().toISOString()),
+    characterTemperature
+  );
   const characterIcon = resolveCharacterIcon(condition, characterTemperature);
   const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
   const { sunrise, sunset } = getSunTimes(location, new Date());
@@ -103,7 +108,13 @@ export default function TodaySummaryCard({
           .filter(Boolean)
           .join(" ")}
       >
-        {iconInfo ? <iconInfo.Icon aria-hidden="true" size={40} /> : null}
+        {iconInfo ? (
+          iconInfo.kind === "smhi-symbol" ? (
+            <img src={iconInfo.src} alt="" aria-hidden="true" width={40} height={40} />
+          ) : (
+            <iconInfo.Icon aria-hidden="true" size={40} />
+          )
+        ) : null}
         {characterIcon ? (
           <img src={characterIcon} alt="" aria-hidden="true" className="today-summary-character" />
         ) : null}

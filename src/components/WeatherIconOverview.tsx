@@ -565,7 +565,8 @@ function ConditionRow({
             const iconInfo = resolveConditionIconFromCondition(
               period.smhiSymbolCode,
               period.condition,
-              isNight(period.key)
+              isNight(period.key),
+              period.temperature
             );
             return (
               <div

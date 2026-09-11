@@ -1,5 +1,5 @@
 import { deriveWeatherCondition } from "../services/weatherCondition";
-import { WEATHER_ICONS } from "./weatherIcons";
+import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
 import type { DailyAggregate, UnitSystem } from "../models/types";
@@ -26,7 +26,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
           cloudCoverPercent: day.cloudAverage,
           chanceOfRain: day.chanceOfRainMax,
         });
-        const iconInfo = condition !== null ? WEATHER_ICONS[condition] : null;
+        const iconInfo = resolveConditionIconFromCondition(undefined, condition, false, day.average);
         return (
           <div
             className={[
@@ -40,7 +40,15 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             <span className="weekly-forecast-weekday">
               {new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" })}
             </span>
-            {iconInfo ? <iconInfo.Icon aria-hidden="true" size={28} /> : <span aria-hidden="true">—</span>}
+            {iconInfo ? (
+              iconInfo.kind === "smhi-symbol" ? (
+                <img src={iconInfo.src} alt="" aria-hidden="true" width={28} height={28} />
+              ) : (
+                <iconInfo.Icon aria-hidden="true" size={28} />
+              )
+            ) : (
+              <span aria-hidden="true">—</span>
+            )}
             <span className="weekly-forecast-highlow">
               {formatValue(convertTemperature(day.high, unit), 0)}° /{" "}
               {formatValue(convertTemperature(day.low, unit), 0)}°

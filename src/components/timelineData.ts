@@ -83,6 +83,11 @@ export interface TimelinePeriod {
    *  (`daysToTimelineData`) never carry this, since a symbol code is an hourly-forecast property
    *  with no daily equivalent. */
   smhiSymbolCode?: number | null;
+  /** The period's own temperature reading, for the icon's temperature-band selection
+   *  (063-replace-weather-icons). `null` when unavailable — resolved to a default band rather
+   *  than omitting the icon (research.md §8). Populated the same way `smhiSymbolCode` already is,
+   *  from the same source value each builder already reads for condition derivation. */
+  temperature: number | null;
 }
 
 /** One column's value for a single metric row. `value === null` renders as a gap (FR-006). */
@@ -314,6 +319,7 @@ export function buildHourlyTimelineData(
       }),
       uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
       smhiSymbolCode: obs.smhiSymbolCode,
+      temperature: obs.temperature,
     };
   });
 
@@ -382,6 +388,7 @@ function daysToTimelineData(
         chanceOfRain: day.chanceOfRainMax,
       }),
       uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
+      temperature: day.average,
     };
   });
 
