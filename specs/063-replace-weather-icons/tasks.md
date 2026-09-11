@@ -193,12 +193,17 @@ artwork is returned, not `null`.
 
 ## Implementation Notes (discovered during implementation)
 
-- The new artwork files are considerably larger than the old SMHI icon set (~31 MB total across
-  124 files vs. a few MB before) — each character illustration is much more detailed than the old
-  flat SMHI symbols. This doesn't violate any requirement (SC-003 is about request count, not
-  payload size, and these load as normal `<img>` requests exactly like the old icons did — never
-  part of the service worker's precache), but it's worth flagging as a follow-up candidate
-  (image compression/resizing) if load time on slow connections becomes a concern.
+- The new artwork files were initially considerably larger than the old SMHI icon set (~31 MB
+  total across 124 files vs. a few MB before) — each character illustration was a much
+  higher-detail illustration than the old flat SMHI symbols, at dimensions (avg. ~344x471px) far
+  beyond the 28-40 CSS px these ever render at. Addressed with `docs/weathericons/resize_icons.py`
+  (T025 below): resized to a 160px max dimension and re-saved as a 128-color palette PNG (alpha
+  preserved) — visually indistinguishable at display size, ~31.9 MB -> ~0.93 MB (97% smaller).
+- [X] T025 Follow-up (user-requested): `docs/weathericons/resize_icons.py` shrinks all 124 files
+      in `src/assets/weather-icons-v2/` in place (160px max dimension, 128-color palette,
+      `Image.Quantize.FASTOCTREE` + Floyd-Steinberg dither, alpha preserved). Verified visually
+      (spot-checked several outputs), then via full `npm test`/`npm run build` — no code change
+      needed since filenames are unchanged, only the pixel content shrinks.
 
 ## Implementation Strategy
 
