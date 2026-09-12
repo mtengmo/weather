@@ -13,3 +13,7 @@ Thumbs.db
 *.swp
 .vscode/
 !.vscode/extensions.json
+
+# 070-dalle-icon-prompt-tool: scratch output from the icon-generation tool, never committed
+docs/weathericons/generated/
+docs/weathericons/__pycache__/

@@ -1,0 +1,45 @@
+flat vector cartoon illustration, thick clean outlines, playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style, no text, no watermark, no signature.
+
+Layout: a grid sprite sheet with exactly 2 columns and exactly 2 rows
+(4 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: bright crisp daylight, sparkling white snow highlights, cheerful glinting snowflakes catching the sun — small secondary touches only, never obscuring the snow cloud.
+
+Row 2 = nighttime scenes. Mood: soft cold blue night, gently glowing snow under moonlight, twinkling stars, a cozy glitter effect on the snow — small secondary touches only, never obscuring the snow cloud.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
+core outfit and colors in every column of this sheet, in both rows — only
+pose/expression changes per weather type, never the clothing: full eskimo outfit, fur hood, only the eyes visible, icicles in the eyelashes, standing frozen solid
+Exception: daylight-only accessories (e.g. sunglasses worn because of bright
+sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
+in daytime, removed/pushed up at night — if the clothing description above
+specifies a DAY/NIGHT difference. Everything else about the outfit stays
+identical between rows.
+
+Character(s) for this sheet: a young girl with pigtails, clearly a child, full eskimo outfit, fur hood, only the eyes visible, icicles in the eyelashes, standing frozen solid. Identical to the reference image, do not redesign.
+
+Temperature band: frozen, < -20°C
+
+Columns, left to right (same weather type in row 1 and row 2, day mood
+above / night mood below):
+1. Light-to-moderate snow — catching a snowflake, cheerful pose, sparkling white highlights (day) / gently glowing snow under moonlight (night)
+2. Heavy snow — small snowman forming next to them, snow piling up, bright crisp daylight (day) / cozy glitter effect on the snow at night (night)

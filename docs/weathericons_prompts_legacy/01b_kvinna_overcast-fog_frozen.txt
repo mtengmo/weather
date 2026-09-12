@@ -1,0 +1,81 @@
+flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
+
+CRITICAL — reference image protocol: a reference image IS attached to this prompt. You MUST
+match it exactly — same face shape, same proportions, same hairstyle, same art style, same line
+weight, same color palette. Do not reinterpret, restyle, or redesign the character in any way.
+If no reference image is attached, match the flat-vector children's-book icon style described
+above as closely and consistently as possible — avoid drifting toward a painterly, semi-realistic,
+or oversized-head "chibi" style.
+
+Layout: a grid sprite sheet with exactly 2 columns and exactly 2 rows
+(4 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: bright daylight matching each weather type — warm golden sunlight for sun, soft diffused light for cloud, hazy pale light for fog — with small charming secondary touches (a tiny bird, a sparkle, a wisp of breath) that never obscure the weather symbol itself.
+
+Row 2 = nighttime scenes. Mood: dark navy-blue night palette matching each weather type — soft blue-white moonlight, muted moonlight through cloud, glowing mysterious fog — with small charming secondary touches (twinkling stars, a tiny firefly, a glimmer of frost) that never obscure the weather symbol itself.. If the clothing description
+below specifies a daylight-only accessory (e.g. sunglasses) for row 1, that
+accessory MUST be physically absent (not worn, not on the head, not visible
+anywhere) in EVERY column of row 2 — this is not optional.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
+core outfit and colors in every column of this sheet, in both rows — only
+pose/expression changes per weather type, never the clothing: dressed as a frozen eskimo — huge fur-lined parka hood, only eyes visible, icicles on eyebrows, breath frozen into an ice cloud, standing stiff like a popsicle
+Exception: daylight-only accessories (e.g. sunglasses worn because of bright
+sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
+in daytime, removed/pushed up at night — if the clothing description above
+specifies a DAY/NIGHT difference. Everything else about the outfit stays
+identical between rows.
+
+CRITICAL — no invented accessories: do not add any clothing item, accessory, or prop that is not
+explicitly listed in the character/clothing description below (e.g. no sunglasses unless the
+clothing description explicitly says so for that specific band).
+
+CRITICAL — this character NEVER experiences precipitation of any kind, in any column,
+in either row: NO rain, NO raindrops, NO rain streaks, NO snow, NO snowflakes, NO sleet,
+NO hail — not even a single drop or flake anywhere in the frame. This character is the
+strictly DRY-weather character (clear/cloudy/foggy skies only). If a column's weather
+type does not explicitly describe precipitation, do not add any on your own initiative,
+no matter how visually interesting it might seem — an empty sky/cloud with no rain or
+snow is the CORRECT and expected result for every single column on this sheet.
+
+CRITICAL — no invented wind effects anywhere on this sheet, in any column, in either
+row, unless a specific column's description explicitly mentions wind: NO blowing
+leaves, NO swirling air lines, NO flying debris, NO hair or clothing blown sideways,
+NO wind-swirl decorations. Default to calm, still air in every column unless told
+otherwise.
+
+Character(s) for this sheet: an adult woman in her 30s, shoulder-length wavy brown hair, average non-exaggerated adult cartoon body proportions (not curvy/body-conscious, not chibi/oversized-head), dressed as a frozen eskimo — huge fur-lined parka hood, only eyes visible, icicles on eyebrows, breath frozen into an ice cloud, standing stiff like a popsicle. Identical to the reference image, do not redesign.
+
+Temperature band: frozen, < -20°C
+
+CRITICAL — strict column order: the list below is FIXED. Each numbered item is
+exactly one column, in exactly that position, showing exactly that weather type —
+no more, no fewer. Do NOT reorder, merge, skip, duplicate, or substitute any column
+with a different or invented weather concept (e.g. do not invent "windy", "rainbow",
+or any scene not explicitly listed below). If a weather type is hard to visualize
+(e.g. Overcast, Fog), render it as literally described below rather than replacing
+it with an easier or more visually interesting alternative.
+
+Columns, left to right (same weather type in row 1 and row 2, day mood
+above / night mood below):
+1. Overcast — a WIDE, 100% OPAQUE, solid-filled gray cloud shape with a crisp thick black outline, like a single big pillow completely filling the upper frame edge-to-edge. Flat, even, matte gray fill color (like the 'Cloudy' cloud but larger and one shade darker) — a normal cartoon cloud shape, just bigger and covering the whole sky. NO transparency, NO haze, NO soft edges, NO glow, NO see-through quality anywhere in this cloud. NO rain, NO lightning, NO wind/blowing leaves. Character: standing normally, fully clearly visible from head to toe with sharp edges, NOT obscured, NOT hazy, NOT blurred — flat cool daylight (day) / near-total cloud cover, gray-not-black (night).
+2. Fog — NO cloud shape at all in the sky (leave the upper frame empty/blank). Instead, thin, wispy, semi-TRANSPARENT horizontal bands of pale gray-white mist drift across the LOWER half of the frame, partially obscuring the character's legs/feet — soft, diffuse, see-through edges (like a soft airbrushed haze, opposite rendering style from the solid opaque cloud shapes used everywhere else in this set). Character's upper body/face stays clearly visible, only the lower body is softly veiled by the mist. Hazy pale light filtering through (day) / a faint glowing moon smudge barely visible through the mist (night).

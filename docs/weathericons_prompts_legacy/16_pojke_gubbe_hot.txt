@@ -1,0 +1,51 @@
+flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
+
+Layout: a grid sprite sheet with exactly 2 columns and exactly 2 rows
+(4 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: dramatic but playful daytime storm light, a bright flash of lightning, ominous yet cute storm cloud — the lightning bolt and cloud remain the clear, bold focal point. cold grey daylight, wet slushy highlights, a dull sparkle on melting ice — small secondary touches only, never obscuring the cloud or slush.
+
+Row 2 = nighttime scenes. Mood: dramatic night storm, lightning flashing bright white against the dark sky, a brief illuminated glow around the cloud — the lightning bolt and cloud remain the clear, bold focal point. dark blue slushy night, a faint glisten of icy puddles under weak moonlight — small secondary touches only, never obscuring the cloud or slush.. If the clothing description
+below specifies a daylight-only accessory (e.g. sunglasses) for row 1, that
+accessory MUST be physically absent (not worn, not on the head, not visible
+anywhere) in EVERY column of row 2 — this is not optional.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — column-to-character mapping: column 1 (Thunderstorm) shows ONLY character
+(C), the boy — the elderly man must NOT appear in column 1. Column 2 (Sleet) shows
+ONLY character (D), the elderly man — the boy must NOT appear in column 2. The two
+characters are never shown together in the same cell.
+
+CRITICAL — clothing consistency: each character keeps their OWN exact outfit
+consistent across both rows (day and night) — the boy always wears the outfit
+described for column 1 (wearing beachwear, sprinting screaming toward a beach hut, towel flapping behind), the elderly man always wears the outfit
+described for column 2 (shorts, wading confused through oddly melting slush in the summer heat, puzzled expression). Never mix the two outfits or characters.
+
+Character(s) for this sheet:
+(C) a young boy with tousled brown hair, wearing beachwear, sprinting screaming toward a beach hut, towel flapping behind. Identical to the boy's reference image, do not redesign.
+(D) an elderly man, bushy gray eyebrows, small round glasses, balding gray hair, shorts, wading confused through oddly melting slush in the summer heat, puzzled expression. Identical to the elderly man's reference image, do not redesign.
+
+Temperature band: hot, > 25°C
+
+Columns, left to right (same weather type in row 1 and row 2, day mood
+above / night mood below):
+1. Thunderstorm — startled expression, hands near ears, bright lightning bolt visible in the cloud (day) / lightning flashing white against the dark sky (night)
+2. Sleet (snöblandat regn, but now too warm for ice) — cloud is a medium-gray, calm-toned cloud, CLEARLY LIGHTER than the angry near-black thunderstorm cloud in column 1, NO lightning, NO angry face, dropping ONLY plain rain streaks — NO falling hail, NO falling ice pellets, NO falling snow of any kind, since it's too warm for ice to still be falling — grumpy character irritably stepping around a puddle of already-melted grey slush on the ground only, sour expression (day) / faint glisten of the melted puddle under weak moonlight (night)
