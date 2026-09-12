@@ -3,7 +3,7 @@ generate_icon.py
 
 Direct-generation icon prompt tool (070-dalle-icon-prompt-tool). Builds one complete prompt from a
 maintainer-specified combination (weather type, temperature band, day/night, optional wind
-condition), calls OpenAI's gpt-image-1 for exactly one image, verifies both real alpha
+condition), calls OpenAI's gpt-image-2.5-flare for exactly one image, verifies both real alpha
 transparency and — via a separate vision-capable-model call — that the image's actual content
 matches what was requested, and saves the result (plus its prompt and verdict) to a scratch output
 directory that never touches this app's shipped icon set or the sprite-sheet-and-split pipeline.
@@ -12,11 +12,11 @@ Runs alongside split_icons.py/resize_icons.py; does not replace them.
 
 Prerequisites:
     pip install openai pillow
-    export OPENAI_API_KEY=sk-...          (never commit this)
-    export ICON_GEN_MODEL=gpt-image-1     (optional override; see research.md §3)
-    export ICON_VERIFY_MODEL=...          (optional override; confirm the current recommended
-                                            vision-capable model name at the time you run this —
-                                            model lineups change frequently)
+    export OPENAI_API_KEY=sk-...              (never commit this)
+    export ICON_GEN_MODEL=gpt-image-2.5-flare (optional override; see research.md §3)
+    export ICON_VERIFY_MODEL=...              (optional override; confirm the current recommended
+                                                vision-capable model name at the time you run this —
+                                                model lineups change frequently)
 
 Run (from docs/weathericons/):
     python generate_icon.py --type overcast --band mild --time day
@@ -40,9 +40,11 @@ from PIL import Image
 import icon_prompt_data as data
 
 OUTPUT_DIR = Path(__file__).parent / "generated"
-DEFAULT_GEN_MODEL = "gpt-image-1"
-# Confirm this is still a current, cost-effective vision-capable model name before relying on the
-# default — OpenAI's model lineup changes frequently (research.md §3).
+# gpt-image-2.5-flare (released 2026-09-08) — faster than gpt-image-1 and explicitly documented
+# as having better transparent-background output, which directly addresses the transparency risk
+# noted in research.md §1. Confirm this is still current before relying on the default — OpenAI's
+# model lineup changes frequently (research.md §3).
+DEFAULT_GEN_MODEL = "gpt-image-2.5-flare"
 DEFAULT_VERIFY_MODEL = "gpt-4o-mini"
 ALPHA_VARIATION_MIN = 2
 

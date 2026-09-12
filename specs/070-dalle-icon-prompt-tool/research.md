@@ -1,13 +1,13 @@
 # Phase 0 Research: Direct-Generation Icon Prompt Tool
 
-## §1 — Image generation: OpenAI `gpt-image-1`, `images.generate`
+## §1 — Image generation: OpenAI `gpt-image-2.5-flare`, `images.generate`
 
 **Decision**: Use the official `openai` Python SDK's `client.images.generate(...)`, model
-`gpt-image-1`, with `background="transparent"` and `output_format="png"`.
+`gpt-image-2.5-flare`, with `background="transparent"` and `output_format="png"`.
 
 ```python
 result = client.images.generate(
-    model="gpt-image-1",
+    model="gpt-image-2.5-flare",
     prompt=prompt_text,
     size="1024x1024",
     quality="auto",
@@ -17,21 +17,30 @@ result = client.images.generate(
 image_bytes = base64.b64decode(result.data[0].b64_json)
 ```
 
-**Rationale**: `gpt-image-1` is the model OpenAI's own current image-generation docs (verified via
-web search, September 2026) document for exactly this transparent-background-icon use case; the
-`response_format` parameter isn't supported for this model family — it always returns
-`b64_json`, so the tool decodes that directly rather than downloading from a URL.
+**Rationale**: `gpt-image-2.5-flare` (released 2026-09-08, verified via web search) is OpenAI's
+current fast, everyday-quality image model — same `images.generate` API shape as its predecessor
+`gpt-image-1`, generates roughly 2-4x faster, and is explicitly documented as having better
+transparent-background output. The `response_format` parameter isn't supported for this model
+family — it always returns `b64_json`, so the tool decodes that directly rather than downloading
+from a URL.
 
-**Known risk** (flagged in an OpenAI community bug report found during research): `gpt-image-1`'s
-transparency handling can occasionally cut out other white/light areas of the artwork it shouldn't
-(over-aggressive background removal), not just the intended background. This is exactly why FR-005
-(alpha-transparency check) and FR-005a (vision-based content check) both exist as independent
-safety nets — a technically-transparent image that also accidentally punched a hole through part of
-the character would still need to fail the content-verification check.
+**Known risk** (flagged in an OpenAI community bug report about the `gpt-image-1` generation,
+found during research; `gpt-image-2.5-flare`'s improved transparency handling should reduce but not
+necessarily eliminate this): background-removal on this model family can occasionally cut out other
+white/light areas of the artwork it shouldn't, not just the intended background. This is exactly
+why FR-005 (alpha-transparency check) and FR-005a (vision-based content check) both exist as
+independent safety nets — a technically-transparent image that also accidentally punched a hole
+through part of the character would still need to fail the content-verification check.
 
-**Alternatives considered**: The image *edit* endpoint (`images.edit`, which accepts an input
-reference image) — rejected per the "text-only, no reference image" clarification already recorded
-in spec.md.
+**Alternatives considered**: The now-superseded `gpt-image-1` — kept as a documented fallback via
+`ICON_GEN_MODEL` (§3) rather than removed, in case `gpt-image-2.5-flare` is ever rolled back or
+rate-limited differently. `gpt-image-2.5-sunburst` (the higher-fidelity, slower sibling released
+the same day) — rejected as the default for this pilot's everyday icon-generation use case, but
+also a reasonable `ICON_GEN_MODEL` override if a specific combination needs more precise control.
+The image *edit* endpoint (`images.edit`, which accepts an input reference image) — rejected per
+the "text-only, no reference image" clarification already recorded in spec.md. Claude/Anthropic as
+a generation provider — not possible: Claude has no native image-output model (confirmed via web
+search, September 2026) and only produces visuals via SVG/code or by calling an external tool.
 
 ## §2 — Content verification: a separate vision-capable chat/completions call
 
