@@ -1298,16 +1298,31 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
       window: "last-24-hours",
       status: "ready",
       observations: [
-        { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 60 },
-        { timestamp: hoursAgo(0), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 95 },
+        // Fixed local-time (no "Z") daytime timestamps, not hoursAgo(), so this doesn't depend on
+        // when the test actually runs: both a real-clock-time dependency (day/night artwork) and,
+        // since 066-daily-forecast-language-setting, the Weekly Forecast Strip's own
+        // daytime-vs-night condition split for whichever of these two hours the real clock treats
+        // as "today" — a stray boundary crossing there previously could flip *that* component's
+        // condition and incidentally affect this assertion, since both components reuse the same
+        // "weather-condition-*" class name (queried below is now scoped to the hourly row only).
+        { timestamp: "2026-08-31T12:00:00", temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 60 },
+        { timestamp: "2026-08-31T13:00:00", temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 95 },
       ],
     });
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
+    await screen.findByText("Temp");
 
-    expect(container.querySelector(".weather-condition-partly-cloudy")).toBeInTheDocument();
-    expect(container.querySelector(".weather-condition-cloudy")).toBeInTheDocument();
+    // Both conditions now render as full character artwork rather than a CSS-tinted lucide icon
+    // (063-replace-weather-icons) — distinguished by resolved image src, not a
+    // "weather-condition-*" class, and scoped to just the hourly condition row so a coincidental
+    // match from the Today card or Weekly strip (which reuse the same class name) can't mask a
+    // real regression here.
+    const conditionRow = container.querySelector(".weather-timeline-row-condition");
+    expect(conditionRow).not.toBeNull();
+    expect(conditionRow!.querySelector('img[src*="weather_variable_day_mild"]')).toBeInTheDocument();
+    expect(conditionRow!.querySelector('img[src*="weather_cloudy_day_mild"]')).toBeInTheDocument();
   });
 });
 
