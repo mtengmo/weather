@@ -2245,6 +2245,82 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
     expect(days.some((day) => day.classList.contains("weather-condition-heavy-rain"))).toBe(true);
   });
 
+  it("shows a dry condition, not rain, for a day whose rain is confined to a couple of morning hours (067-fix-rain-brief-icons)", async () => {
+    // Uppsala-shaped scenario: a light shower for a couple of morning hours, dry the rest of the
+    // daytime span — the daytime total is still nonzero, but rain covers only a minority of the
+    // day's daytime hours and never gets heavy, so it must not drive the day's condition.
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 50 },
+              { timestamp: atLocalHour(8), temperature: 10, precipitation: 0.5, windSpeed: 1, cloudCoverPercent: 50 },
+              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = Array.from(strip.querySelectorAll(".weekly-forecast-day"));
+    expect(days.some((day) => Array.from(day.classList).some((c) => c.includes("rain")))).toBe(false);
+  });
+
+  it("still shows rain for a day where rain spans most of the daytime hours (067-fix-rain-brief-icons)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(9), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(11), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(18), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 20 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = Array.from(strip.querySelectorAll(".weekly-forecast-day"));
+    expect(days.some((day) => Array.from(day.classList).some((c) => c.includes("rain")))).toBe(true);
+  });
+
+  it("still shows rain for a day with a single brief but heavy daytime downpour (067-fix-rain-brief-icons)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 6, windSpeed: 1, cloudCoverPercent: 90 }, // one heavy hour
+              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = Array.from(strip.querySelectorAll(".weekly-forecast-day"));
+    expect(days.some((day) => day.classList.contains("weather-condition-heavy-rain"))).toBe(true);
+  });
+
   it("is visible on all three tabs", async () => {
     vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
       location: stockholm,

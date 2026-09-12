@@ -77,15 +77,35 @@ function daytimeAggregateFields(
   bucket: WeatherObservation[]
 ): Pick<
   DailyAggregate,
-  "daytimeAverage" | "daytimeTotalPrecipitation" | "daytimeWindAverage" | "daytimeCloudAverage" | "daytimeChanceOfRainMax"
+  | "daytimeAverage"
+  | "daytimeTotalPrecipitation"
+  | "daytimeWindAverage"
+  | "daytimeCloudAverage"
+  | "daytimeChanceOfRainMax"
+  | "daytimeHourCount"
+  | "daytimeRainHourCount"
+  | "daytimeMaxHourlyPrecipitation"
 > {
-  const daytimeAggregate = aggregateBucket(bucket.filter(isDaytimeObservation));
+  const daytimeBucket = bucket.filter(isDaytimeObservation);
+  const daytimeAggregate = aggregateBucket(daytimeBucket);
+  // Hour-level precipitation readings, separate from `aggregateBucket`'s sum — needed to judge
+  // whether the day's daytime rain is "meaningful enough to display" (067-fix-rain-brief-icons,
+  // research.md §2): a brief morning shower and a full day of rain can produce the same nonzero
+  // sum, but differ in how many hours had rain and how heavy the worst single hour was.
+  const daytimePrecipitationReadings = nonNull(daytimeBucket.map((o) => o.precipitation));
   return {
     daytimeAverage: daytimeAggregate.average,
     daytimeTotalPrecipitation: daytimeAggregate.totalPrecipitation,
     daytimeWindAverage: daytimeAggregate.windAverage,
     daytimeCloudAverage: daytimeAggregate.cloudAverage,
     daytimeChanceOfRainMax: daytimeAggregate.chanceOfRainMax,
+    daytimeHourCount: daytimePrecipitationReadings.length > 0 ? daytimePrecipitationReadings.length : null,
+    daytimeRainHourCount:
+      daytimePrecipitationReadings.length > 0
+        ? daytimePrecipitationReadings.filter((p) => p > 0).length
+        : null,
+    daytimeMaxHourlyPrecipitation:
+      daytimePrecipitationReadings.length > 0 ? Math.max(...daytimePrecipitationReadings) : null,
   };
 }
 

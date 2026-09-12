@@ -125,6 +125,15 @@ export interface DailyAggregate {
   daytimeWindAverage?: number | null;
   daytimeCloudAverage?: number | null;
   daytimeChanceOfRainMax?: number | null;
+  /** Exist solely to judge whether a day's daytime rain is "meaningful enough to display" —
+   *  `daytimeTotalPrecipitation` alone can't distinguish "a brief morning shower" from "rain most
+   *  of the day," since both can produce the same nonzero sum (067-fix-rain-brief-icons,
+   *  data-model.md). Not a replacement for `daytimeTotalPrecipitation`, which keeps its existing
+   *  raw-sum meaning. All three are `null` together exactly when no daytime observation in the
+   *  bucket has a precipitation reading at all. */
+  daytimeHourCount?: number | null;
+  daytimeRainHourCount?: number | null;
+  daytimeMaxHourlyPrecipitation?: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

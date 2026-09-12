@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { deriveWeatherCondition } from "../services/weatherCondition";
+import { deriveWeatherCondition, PRECIPITATION_HEAVY_THRESHOLD_MM } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
@@ -32,9 +32,22 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
           day.daytimeWindAverage != null ||
           day.daytimeCloudAverage != null ||
           day.daytimeChanceOfRainMax != null;
+        // A brief morning shower alone can still push `daytimeTotalPrecipitation` above zero —
+        // that sum doesn't distinguish "rain for a couple of hours" from "rain most of the day"
+        // (067-fix-rain-brief-icons, data-model.md). Only let it drive the day's condition when
+        // rain covers a majority of the day's daytime hours, or a single hour was heavy enough to
+        // matter on its own — otherwise treat the day's daytime precipitation as zero for
+        // condition purposes only; every other input, and the whole-bucket fallback below when
+        // there's no daytime data at all, is unchanged.
+        const dayRainIsMeaningful =
+          day.daytimeHourCount != null &&
+          day.daytimeRainHourCount != null &&
+          (day.daytimeRainHourCount / day.daytimeHourCount > 0.5 ||
+            (day.daytimeMaxHourlyPrecipitation ?? 0) >= PRECIPITATION_HEAVY_THRESHOLD_MM);
+        const daytimePrecipitationForCondition = dayRainIsMeaningful ? day.daytimeTotalPrecipitation : 0;
         const condition = deriveWeatherCondition({
           temperature: (hasDaytimeData ? day.daytimeAverage : day.average) ?? null,
-          precipitation: (hasDaytimeData ? day.daytimeTotalPrecipitation : day.totalPrecipitation) ?? null,
+          precipitation: (hasDaytimeData ? daytimePrecipitationForCondition : day.totalPrecipitation) ?? null,
           windSpeed: (hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null,
           cloudCoverPercent: (hasDaytimeData ? day.daytimeCloudAverage : day.cloudAverage) ?? null,
           chanceOfRain: (hasDaytimeData ? day.daytimeChanceOfRainMax : day.chanceOfRainMax) ?? null,

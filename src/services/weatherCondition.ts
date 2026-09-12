@@ -60,8 +60,9 @@ const FREEZING_CELSIUS = 0;
 // granularity this function is called with (same "fixed constant, no per-granularity scaling"
 // pattern already established by WINDY_THRESHOLD_MS/CLOUDY_THRESHOLD_PERCENT above) — used only
 // when no symbol-code intensity is available (032-dashboard-polish-round-seven, US5,
-// research.md §6).
-const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
+// research.md §6). Exported so dailyAggregation.ts's daytime rain-significance check
+// (067-fix-rain-brief-icons) reuses this exact value rather than duplicating it.
+export const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
 // Fixed local-clock-hour day/night rule (research.md §3) — not sunrise/sunset calculation.
 // Exported so other whole-day aggregations (e.g. dailyAggregation.ts's daytime-only filtering,
 // 066-daily-forecast-language-setting) apply exactly this same boundary rather than duplicating it.

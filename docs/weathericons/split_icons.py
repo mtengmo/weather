@@ -4,6 +4,10 @@ split_icons.py
 Splittar väderikon-sprite-sheets (2 rader: day/night, N kolumner enligt
 sheet-manifest.json) till enskilda transparenta PNG-ikoner.
 
+(067-fix-rain-brief-icons: added `from __future__ import annotations` below so this still runs
+under Python 3.9 — the `X | None` return-type syntax otherwise raises a TypeError at import time
+on anything older than 3.10.)
+
 Förutsättningar:
     pip install pillow numpy scipy
 
@@ -17,6 +21,8 @@ Kör:
     python split_icons.py
     python split_icons.py --sheets-dir mina_sheets --out-dir mina_ikoner
 """
+
+from __future__ import annotations
 
 import argparse
 import json

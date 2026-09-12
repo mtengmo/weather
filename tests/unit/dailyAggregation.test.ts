@@ -179,6 +179,70 @@ describe("toDailyAggregates", () => {
     });
   });
 
+  describe("daytime rain-significance fields (067-fix-rain-brief-icons)", () => {
+    it("counts a minority of rainy daytime hours and records the worst single hour's amount", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(7), precipitation: 1 }), // rainy
+        obs({ timestamp: atLocalHour(8), precipitation: 0.5 }), // rainy
+        obs({ timestamp: atLocalHour(12), precipitation: 0 }), // dry
+        obs({ timestamp: atLocalHour(14), precipitation: 0 }), // dry
+        obs({ timestamp: atLocalHour(18), precipitation: 0 }), // dry
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeHourCount).toBe(5);
+      expect(mostRecentBucket.daytimeRainHourCount).toBe(2);
+      expect(mostRecentBucket.daytimeMaxHourlyPrecipitation).toBeCloseTo(1);
+      // Whole-bucket total still reflects both rainy readings (unchanged behavior).
+      expect(mostRecentBucket.totalPrecipitation).toBeCloseTo(1.5);
+    });
+
+    it("counts a majority of rainy daytime hours", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(7), precipitation: 1 }),
+        obs({ timestamp: atLocalHour(9), precipitation: 1 }),
+        obs({ timestamp: atLocalHour(11), precipitation: 1 }),
+        obs({ timestamp: atLocalHour(18), precipitation: 0 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeHourCount).toBe(4);
+      expect(mostRecentBucket.daytimeRainHourCount).toBe(3);
+    });
+
+    it("records a single heavy daytime hour's amount even when it's the only rainy hour", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(7), precipitation: 6 }), // one heavy hour
+        obs({ timestamp: atLocalHour(12), precipitation: 0 }),
+        obs({ timestamp: atLocalHour(18), precipitation: 0 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeHourCount).toBe(3);
+      expect(mostRecentBucket.daytimeRainHourCount).toBe(1);
+      expect(mostRecentBucket.daytimeMaxHourlyPrecipitation).toBeCloseTo(6);
+    });
+
+    it("leaves all three fields null together when no daytime observation has a precipitation reading", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(3), precipitation: 5 }), // night — excluded from daytime entirely
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeHourCount).toBeNull();
+      expect(mostRecentBucket.daytimeRainHourCount).toBeNull();
+      expect(mostRecentBucket.daytimeMaxHourlyPrecipitation).toBeNull();
+    });
+  });
+
   it("nulls windHigh/windLow independently when the bucket has no wind readings", () => {
     const observations: WeatherObservation[] = [
       obs({ timestamp: hoursAgo(1), temperature: 10 }),
