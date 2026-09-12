@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PlaceCandidate } from "../services/geocodingApi";
 import { searchPlaces } from "../services/geocodingApi";
 
@@ -8,6 +9,7 @@ interface PlaceSearchProps {
 }
 
 export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceCandidate[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps)
           }
         })
         .catch(() => {
-          if (!cancelled) setSearchError("Couldn't search for places. Please try again.");
+          if (!cancelled) setSearchError("placeSearch.searchError");
         });
     }, 300);
 
@@ -42,22 +44,22 @@ export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps)
 
   return (
     <div className="place-search">
-      <label htmlFor="place-search-input">Search for a place</label>
+      <label htmlFor="place-search-input">{t("placeSearch.label")}</label>
       <input
         id="place-search-input"
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="e.g. Stockholm"
+        placeholder={t("placeSearch.placeholder")}
       />
 
       {searchError && (
         <p className="error-banner" role="alert">
-          {searchError}
+          {t(searchError)}
         </p>
       )}
 
-      {results.length === 0 && query.trim() && !searchError && <p>No places found.</p>}
+      {results.length === 0 && query.trim() && !searchError && <p>{t("placeSearch.noResults")}</p>}
 
       {results.length > 0 && (
         <ul className="favorites-list">
@@ -72,7 +74,7 @@ export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps)
                   setResults([]);
                 }}
               >
-                View
+                {t("placeSearch.view")}
               </button>
               <button
                 type="button"
@@ -82,7 +84,7 @@ export default function PlaceSearch({ onAddFavorite, onView }: PlaceSearchProps)
                   setResults([]);
                 }}
               >
-                Add to favorites
+                {t("placeSearch.addToFavorites")}
               </button>
             </li>
           ))}

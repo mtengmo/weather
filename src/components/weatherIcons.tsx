@@ -17,6 +17,9 @@ import type { WeatherCondition } from "../services/weatherCondition";
 
 interface WeatherIconInfo {
   Icon: LucideIcon;
+  /** A translation KEY (not display text) — consumers must call `t(iconInfo.label)` themselves
+   *  (064-swedish-translation) rather than rendering this value directly, since this module has
+   *  no React tree to hook `useTranslation()` into. */
   label: string;
 }
 
@@ -29,16 +32,16 @@ interface WeatherIconInfo {
  * 038-granular-weather-icons-and-graph-header, US1 — no day/night variant, matching `cloudy`'s
  * own existing day/night-agnostic pattern). */
 export const WEATHER_ICONS: Record<WeatherCondition, WeatherIconInfo> = {
-  "clear-day": { Icon: Sun, label: "Clear" },
-  "clear-night": { Icon: Moon, label: "Clear" },
-  "partly-cloudy": { Icon: CloudSun, label: "Partly cloudy" },
-  cloudy: { Icon: Cloud, label: "Cloudy" },
-  "light-rain": { Icon: CloudDrizzle, label: "Light rain" },
-  "heavy-rain": { Icon: CloudRain, label: "Rain" },
-  windy: { Icon: Wind, label: "Windy" },
-  "light-snow": { Icon: Snowflake, label: "Light snow" },
-  "heavy-snow": { Icon: CloudSnow, label: "Snow" },
-  thunderstorm: { Icon: CloudLightning, label: "Thunderstorm" },
-  foggy: { Icon: CloudFog, label: "Fog" },
-  sleet: { Icon: CloudHail, label: "Sleet" },
+  "clear-day": { Icon: Sun, label: "weatherCondition.clearDay" },
+  "clear-night": { Icon: Moon, label: "weatherCondition.clearNight" },
+  "partly-cloudy": { Icon: CloudSun, label: "weatherCondition.partlyCloudy" },
+  cloudy: { Icon: Cloud, label: "weatherCondition.cloudy" },
+  "light-rain": { Icon: CloudDrizzle, label: "weatherCondition.lightRain" },
+  "heavy-rain": { Icon: CloudRain, label: "weatherCondition.heavyRain" },
+  windy: { Icon: Wind, label: "weatherCondition.windy" },
+  "light-snow": { Icon: Snowflake, label: "weatherCondition.lightSnow" },
+  "heavy-snow": { Icon: CloudSnow, label: "weatherCondition.heavySnow" },
+  thunderstorm: { Icon: CloudLightning, label: "weatherCondition.thunderstorm" },
+  foggy: { Icon: CloudFog, label: "weatherCondition.foggy" },
+  sleet: { Icon: CloudHail, label: "weatherCondition.sleet" },
 };

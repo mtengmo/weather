@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   DailyAggregate,
   Location,
@@ -58,10 +59,12 @@ type OverviewDisplayMode = "last-24-hours" | "last-3-days" | "last-7-days";
 // Each label directly names its own time span rather than implying a fixed historical look-back
 // via "Last" — misleading now that these windows also extend into forecast territory
 // (016-dashboard-polish-round-two, FR-004).
+// `label` is a translation KEY, not display text — translated at render via `t(w.label)`
+// (064-swedish-translation), matching `WeatherIconInfo.label`'s convention in `weatherIcons.tsx`.
 const OVERVIEW_WINDOWS: { value: OverviewDisplayMode; label: string }[] = [
-  { value: "last-24-hours", label: "24 Hours" },
-  { value: "last-3-days", label: "3 Days" },
-  { value: "last-7-days", label: "7 Days" },
+  { value: "last-24-hours", label: "weatherOverview.windowLabel24h" },
+  { value: "last-3-days", label: "weatherOverview.windowLabel3d" },
+  { value: "last-7-days", label: "weatherOverview.windowLabel7d" },
 ];
 
 function xPercent(index: number, count: number): number {
@@ -261,6 +264,7 @@ function LineRow({
   highLowVisible: boolean;
   subLabel?: string;
 }) {
+  const { t } = useTranslation();
   if (!row.available) return null;
   const scale = computeYScale(row);
   const segments = buildSegments(row, scale);
@@ -285,7 +289,7 @@ function LineRow({
           </div>
         )}
         <span className="weather-timeline-row-title-text">
-          {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
+          {t(row.label)} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
           {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
         </span>
       </div>
@@ -378,7 +382,7 @@ function LineRow({
           {(_period, i) => {
             const point = row.points[i];
             if (point.value === null) {
-              return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+              return <span className="weather-timeline-gap" aria-label={t("weatherOverview.noData")}>—</span>;
             }
             return (
               <span
@@ -388,10 +392,10 @@ function LineRow({
                 ]
                   .filter(Boolean)
                   .join(" ") || undefined}
-                title={point.interpolated ? "Estimated" : undefined}
+                title={point.interpolated ? t("weatherOverview.estimated") : undefined}
               >
                 {highLowVisible && point.high != null && point.low != null
-                  ? `${formatRowValue(row, point.value)} (H ${formatValue(point.high, 0)}° / L ${formatValue(point.low, 0)}°)`
+                  ? `${formatRowValue(row, point.value)} (${t("weatherOverview.highAbbr")} ${formatValue(point.high, 0)}° / ${t("weatherOverview.lowAbbr")} ${formatValue(point.low, 0)}°)`
                   : formatRowValue(row, point.value)}
               </span>
             );
@@ -420,6 +424,7 @@ function BarRow({
   nowBoundaryIndex: number | null;
   subLabel?: string;
 }) {
+  const { t } = useTranslation();
   if (!row.available) return null;
   const values = row.points.map((p) => p.value).filter((v): v is number => v !== null);
   const max = values.length > 0 ? Math.max(...values, 0.001) : 1;
@@ -428,7 +433,7 @@ function BarRow({
     <>
       <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
         <div className="weather-timeline-row-title">
-          {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
+          {t(row.label)} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
           {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
         </div>
         <div className="weather-timeline-row-grid-cells">
@@ -436,7 +441,7 @@ function BarRow({
             {(_period, i) => {
               const point = row.points[i];
               if (point.value === null) {
-                return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+                return <span className="weather-timeline-gap" aria-label={t("weatherOverview.noData")}>—</span>;
               }
               const heightPercent = Math.max(2, (point.value / max) * 100);
               return (
@@ -458,7 +463,7 @@ function BarRow({
             {(_period, i) => {
               const point = row.points[i];
               if (point.value === null) {
-                return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+                return <span className="weather-timeline-gap" aria-label={t("weatherOverview.noData")}>—</span>;
               }
               return (
                 <span
@@ -469,7 +474,7 @@ function BarRow({
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  title={point.interpolated ? "Estimated" : undefined}
+                  title={point.interpolated ? t("weatherOverview.estimated") : undefined}
                 >
                   {formatRowValue(row, point.value)}
                   {point.chanceOfRain !== null && point.chanceOfRain !== undefined && point.chanceOfRain > 0 && (
@@ -496,10 +501,11 @@ function WindRow({
   nowBoundaryIndex: number | null;
   subLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className={`weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-${row.key}`}>
       <div className="weather-timeline-row-title">
-        {row.label} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
+        {t(row.label)} <span className="weather-timeline-row-unit">({row.unitLabel})</span>
         {subLabel && <span className="weather-timeline-row-sublabel">{subLabel}</span>}
       </div>
       <div className="weather-timeline-row-grid-cells">
@@ -507,7 +513,7 @@ function WindRow({
           {(_period, i) => {
             const point = row.points[i];
             if (point.value === null) {
-              return <span className="weather-timeline-gap" aria-label="No data">—</span>;
+              return <span className="weather-timeline-gap" aria-label={t("weatherOverview.noData")}>—</span>;
             }
             // Meteorological direction is where wind blows FROM — rotate +180deg so the arrow
             // visually points where the wind is blowing TOWARD (the intuitive reading).
@@ -536,7 +542,7 @@ function WindRow({
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined}
-                  title={point.interpolated ? "Estimated" : undefined}
+                  title={point.interpolated ? t("weatherOverview.estimated") : undefined}
                 >
                   {speedText}
                 </span>
@@ -556,9 +562,10 @@ function ConditionRow({
   periods: TimelinePeriod[];
   nowBoundaryIndex: number | null;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="weather-timeline-row weather-timeline-row-label-wrap weather-timeline-row-condition">
-      <div className="weather-timeline-row-title">Weather</div>
+      <div className="weather-timeline-row-title">{t("weatherOverview.weatherRowTitle")}</div>
       <div className="weather-timeline-row-grid-cells">
         <PeriodGrid periods={periods} className="weather-timeline-row weather-timeline-row-grid">
           {(period, i) => {
@@ -568,6 +575,7 @@ function ConditionRow({
               isNight(period.key),
               period.temperature
             );
+            const noDataLabel = t("weatherOverview.noData");
             return (
               <div
                 className={[
@@ -583,7 +591,7 @@ function ConditionRow({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                aria-label={`${period.label}: ${iconInfo ? iconInfo.label : "No data"}${period.isForecast ? " (forecast)" : ""}${period.uvRisk ? " · High UV" : ""}`}
+                aria-label={`${period.label}: ${iconInfo ? t(iconInfo.label) : noDataLabel}${period.isForecast ? t("weatherOverview.forecastParenthetical") : ""}${period.uvRisk ? t("weatherOverview.highUvParenthetical") : ""}`}
               >
                 {iconInfo ? (
                   iconInfo.kind === "smhi-symbol" ? (
@@ -595,12 +603,12 @@ function ConditionRow({
                   <span className="weather-timeline-gap" aria-hidden="true">—</span>
                 )}
                 {period.uvRisk && (
-                  <span className="weather-timeline-uv-badge" aria-hidden="true" title="High UV">
+                  <span className="weather-timeline-uv-badge" aria-hidden="true" title={t("weatherOverview.highUv")}>
                     UV
                   </span>
                 )}
                 <span className="weather-timeline-condition-label">
-                  {iconInfo ? iconInfo.label : "No data"}
+                  {iconInfo ? t(iconInfo.label) : noDataLabel}
                 </span>
               </div>
             );
@@ -651,6 +659,7 @@ export default function WeatherIconOverview({
   uvRiskHours,
   informationalWarnings,
 }: WeatherIconOverviewProps) {
+  const { t } = useTranslation();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
 
@@ -815,12 +824,12 @@ export default function WeatherIconOverview({
   }, [series, window, displayMode, nowLeftPercent]);
 
   return (
-    <section aria-label={`Weather overview for ${location.displayName}`} className="weather-overview">
+    <section aria-label={t("weatherOverview.ariaLabel", { location: location.displayName })} className="weather-overview">
       {/* Visually redundant with the app-level header's own location/conditions display
           (018-dashboard-visual-redesign, US1) but kept for the focus-on-view-change a11y
           convention every other view (ObservationChart/ObservationDetails) also follows. */}
       <h2 ref={headingRef} tabIndex={-1} className="visually-hidden">
-        {location.displayName} — overview
+        {location.displayName} {t("weatherOverview.headingSuffix")}
       </h2>
 
       <TodaySummaryCard
@@ -839,7 +848,7 @@ export default function WeatherIconOverview({
           section design to protect, so it always prioritizes the days ahead over older history. */}
       <WeeklyForecastStrip days={windowAroundToday(weeklyDays, 7)} unit={unit} />
 
-      <div className="window-toggle" role="group" aria-label="Overview window">
+      <div className="window-toggle" role="group" aria-label={t("weatherOverview.windowGroupLabel")}>
         {OVERVIEW_WINDOWS.map((w) => (
           <button
             key={w.value}
@@ -847,16 +856,16 @@ export default function WeatherIconOverview({
             aria-pressed={displayMode === w.value}
             onClick={() => selectDisplayMode(w.value)}
           >
-            {w.label}
+            {t(w.label)}
           </button>
         ))}
       </div>
 
-      {series === null && <p role="status">Loading weather overview…</p>}
+      {series === null && <p role="status">{t("weatherOverview.loading")}</p>}
 
       {series !== null && series.status === "unavailable" && (
         <p className="error-banner" role="alert">
-          Weather data is unavailable for this location right now. Please try again later.
+          {t("weatherOverview.unavailable")}
         </p>
       )}
 
@@ -873,9 +882,9 @@ export default function WeatherIconOverview({
                 <div
                   className="weather-timeline-now"
                   style={{ left: `calc(7rem + (100% - 7rem) * ${nowLeftPercent / 100})` }}
-                  aria-label="Now"
+                  aria-label={t("weatherOverview.now")}
                 >
-                  <span className="weather-timeline-now-label">Now</span>
+                  <span className="weather-timeline-now-label">{t("weatherOverview.now")}</span>
                 </div>
               )}
 
@@ -895,7 +904,7 @@ export default function WeatherIconOverview({
                       className="weather-timeline-section-observed"
                       style={{ width: `${(observedCount / timelinePeriodCount) * 100}%` }}
                     >
-                      Observed
+                      {t("weatherOverview.observed")}
                     </div>
                   )}
                   {showForecastSection && (
@@ -903,7 +912,7 @@ export default function WeatherIconOverview({
                       className="weather-timeline-section-forecast"
                       style={{ width: `${((timelinePeriodCount - observedCount) / timelinePeriodCount) * 100}%` }}
                     >
-                      Forecast
+                      {t("weatherOverview.forecast")}
                     </div>
                   )}
                 </div>
@@ -942,8 +951,8 @@ export default function WeatherIconOverview({
 
               <ConditionRow periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
               <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} highLowVisible={highLowVisible} />
-              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel="Probability" />
-              <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel="Gusts" />
+              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel={t("weatherOverview.probability")} />
+              <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel={t("weatherOverview.gusts")} />
               <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
             </div>
           </div>

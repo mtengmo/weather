@@ -1,27 +1,20 @@
+import { useTranslation } from "react-i18next";
+
 interface PrivacyNoticeProps {
   onClose: () => void;
 }
 
 export default function PrivacyNotice({ onClose }: PrivacyNoticeProps) {
+  const { t } = useTranslation();
   return (
-    <div className="privacy-notice" role="dialog" aria-label="Privacy notice">
-      <button type="button" className="privacy-notice-close" aria-label="Close" onClick={onClose}>
+    <div className="privacy-notice" role="dialog" aria-label={t("privacyNotice.ariaLabel")}>
+      <button type="button" className="privacy-notice-close" aria-label={t("privacyNotice.close")} onClick={onClose}>
         ×
       </button>
-      <h2>Privacy</h2>
-      <p>
-        This app runs entirely in your browser — there is no backend server and no account. Your
-        favorite places, last-viewed location, and display preferences (theme, units, toggles) are
-        saved only in this browser&apos;s local storage; they are never sent anywhere.
-      </p>
-      <p>
-        Weather data comes directly from SMHI and Open-Meteo&apos;s public APIs, requested by your
-        browser each time you view it.
-      </p>
-      <p>
-        This site uses Google Analytics to collect anonymous usage statistics (pages viewed,
-        general interaction patterns) to help understand how the app is used.
-      </p>
+      <h2>{t("footer.privacy")}</h2>
+      <p>{t("privacyNotice.storage")}</p>
+      <p>{t("privacyNotice.dataSources")}</p>
+      <p>{t("privacyNotice.analytics")}</p>
     </div>
   );
 }

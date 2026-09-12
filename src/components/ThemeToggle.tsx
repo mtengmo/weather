@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Theme } from "../models/types";
 
 interface ThemeToggleProps {
@@ -10,9 +11,10 @@ const OTHER_THEME: Record<Theme, Theme> = {
   ivory: "midnight",
 };
 
+// Translation KEYS, not display text — translated at render via `t(...)` (064-swedish-translation).
 const THEME_LABEL: Record<Theme, string> = {
-  midnight: "Dark",
-  ivory: "Light",
+  midnight: "themeToggle.dark",
+  ivory: "themeToggle.light",
 };
 
 /**
@@ -24,6 +26,7 @@ const THEME_LABEL: Record<Theme, string> = {
  * dark, the button reads "Light" (037 follow-up: "the Light/Dark switch should be opposite").
  */
 export default function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) {
+  const { t } = useTranslation();
   const nextTheme = OTHER_THEME[theme];
   return (
     <button
@@ -31,7 +34,7 @@ export default function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) 
       className="theme-toggle"
       onClick={() => onThemeChange(nextTheme)}
     >
-      {THEME_LABEL[nextTheme]}
+      {t(THEME_LABEL[nextTheme])}
     </button>
   );
 }

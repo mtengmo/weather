@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 
 interface DebugPanelProps {
@@ -19,10 +20,11 @@ const SOURCES: { key: MultiSourceForecastEntry["source"]; label: string }[] = [
  * way of the app's normal content.
  */
 export default function DebugPanel({ multiSourceForecast }: DebugPanelProps) {
+  const { t } = useTranslation();
   return (
     <details className="debug-panel">
-      <summary>Debug: raw source responses</summary>
-      <section aria-label="Debug: raw source responses">
+      <summary>{t("debugPanel.title")}</summary>
+      <section aria-label={t("debugPanel.title")}>
         {SOURCES.map(({ key, label }) => {
           const entry = multiSourceForecast.find((e) => e.source === key);
           return (
@@ -31,7 +33,7 @@ export default function DebugPanel({ multiSourceForecast }: DebugPanelProps) {
               {entry ? (
                 <pre className="debug-panel-raw">{JSON.stringify(entry.rawResponse, null, 2)}</pre>
               ) : (
-                <p className="debug-panel-no-data">No data</p>
+                <p className="debug-panel-no-data">{t("weatherOverview.noData")}</p>
               )}
             </div>
           );

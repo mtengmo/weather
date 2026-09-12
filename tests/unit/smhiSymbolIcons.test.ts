@@ -140,7 +140,8 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     expect(icon?.kind).toBe("smhi-symbol");
     if (icon?.kind === "smhi-symbol") {
       expect(icon.src).toBe(WEATHER_TYPE_ARTWORK["rain-light"]?.mild?.day);
-      expect(icon.label).toBe("Moderate rain");
+      // .label is a translation KEY (064-swedish-translation), not display text.
+      expect(icon.label).toBe("smhiCode.19");
     }
   });
 
@@ -177,7 +178,7 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     });
 
     expect(icon?.kind).toBe("smhi-symbol");
-    expect(icon?.label).toBe("Clear");
+    expect(icon?.label).toBe("weatherCondition.clearDay");
     if (icon?.kind === "smhi-symbol") {
       expect(icon.src).toBe(WEATHER_TYPE_ARTWORK.clear?.mild?.day);
     }
@@ -187,7 +188,7 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     const icon = resolveConditionIconFromCondition(null, "cloudy", false, 10);
 
     expect(icon?.kind).toBe("smhi-symbol");
-    expect(icon?.label).toBe("Cloudy");
+    expect(icon?.label).toBe("weatherCondition.cloudy");
     if (icon?.kind === "smhi-symbol") {
       expect(icon.src).toBe(WEATHER_TYPE_ARTWORK.cloudy?.mild?.day);
     }
@@ -197,7 +198,7 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     const icon = resolveConditionIconFromCondition(null, "windy", false, 10);
 
     expect(icon?.kind).toBe("condition");
-    expect(icon?.label).toBe("Windy");
+    expect(icon?.label).toBe("weatherCondition.windy");
   });
 
   it("returns null when there isn't enough data to classify and no smhiSymbolCode is present", () => {
@@ -219,7 +220,7 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     const icon = resolveConditionIconFromCondition(999, "cloudy", false, 10);
 
     expect(icon?.kind).toBe("smhi-symbol");
-    expect(icon?.label).toBe("Cloudy");
+    expect(icon?.label).toBe("weatherCondition.cloudy");
   });
 });
 

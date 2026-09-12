@@ -6,39 +6,41 @@ export interface SmhiSymbolIconEntry {
   label: string;
 }
 
-/** One label per SMHI `symbol_code` (1-27), matching SMHI's own documented meanings
+/** One label (translation KEY, not display text — see `WeatherIconInfo.label`'s doc comment in
+ *  `weatherIcons.tsx`, same convention here; consumers must call `t(...)` themselves,
+ *  064-swedish-translation) per SMHI `symbol_code` (1-27), matching SMHI's own documented meanings
  *  (043-smhi-27-symbol-icons, research.md §2). These labels are kept even though several codes now
  *  share one combined artwork (063-replace-weather-icons, research.md §4) — the label is still the
  *  only thing that distinguishes e.g. "Light rain showers" (8) from "Light rain" (18) once both
  *  render the same `rain-light` image. */
 const SMHI_SYMBOL_LABELS: Record<number, string> = {
-  1: "Clear sky",
-  2: "Nearly clear sky",
-  3: "Variable cloudiness",
-  4: "Halfclear sky",
-  5: "Cloudy sky",
-  6: "Overcast",
-  7: "Fog",
-  8: "Light rain showers",
-  9: "Moderate rain showers",
-  10: "Heavy rain showers",
-  11: "Thunderstorm",
-  12: "Light sleet showers",
-  13: "Moderate sleet showers",
-  14: "Heavy sleet showers",
-  15: "Light snow showers",
-  16: "Moderate snow showers",
-  17: "Heavy snow showers",
-  18: "Light rain",
-  19: "Moderate rain",
-  20: "Heavy rain",
-  21: "Thunder",
-  22: "Light sleet",
-  23: "Moderate sleet",
-  24: "Heavy sleet",
-  25: "Light snowfall",
-  26: "Moderate snowfall",
-  27: "Heavy snowfall",
+  1: "smhiCode.1",
+  2: "smhiCode.2",
+  3: "smhiCode.3",
+  4: "smhiCode.4",
+  5: "smhiCode.5",
+  6: "smhiCode.6",
+  7: "smhiCode.7",
+  8: "smhiCode.8",
+  9: "smhiCode.9",
+  10: "smhiCode.10",
+  11: "smhiCode.11",
+  12: "smhiCode.12",
+  13: "smhiCode.13",
+  14: "smhiCode.14",
+  15: "smhiCode.15",
+  16: "smhiCode.16",
+  17: "smhiCode.17",
+  18: "smhiCode.18",
+  19: "smhiCode.19",
+  20: "smhiCode.20",
+  21: "smhiCode.21",
+  22: "smhiCode.22",
+  23: "smhiCode.23",
+  24: "smhiCode.24",
+  25: "smhiCode.25",
+  26: "smhiCode.26",
+  27: "smhiCode.27",
 };
 
 /** The 12 consolidated, recognizable weather types the new character artwork was generated for

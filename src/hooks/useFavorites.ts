@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import type { FavoritePlace } from "../models/types";
+import { useTranslation } from "react-i18next";
+import { FAVORITES_LIMIT, type FavoritePlace } from "../models/types";
 import {
   addFavorite,
   DuplicateFavoriteError,
@@ -18,6 +19,7 @@ export interface UseFavoritesResult {
 }
 
 export function useFavorites(): UseFavoritesResult {
+  const { t } = useTranslation();
   const [favorites, setFavorites] = useState<FavoritePlace[]>(() => listFavorites());
   const [error, setError] = useState<string | null>(null);
 
@@ -28,18 +30,21 @@ export function useFavorites(): UseFavoritesResult {
         setFavorites(listFavorites());
         setError(null);
       } catch (err) {
-        if (
-          err instanceof DuplicateFavoriteError ||
-          err instanceof FavoritesLimitReachedError ||
-          err instanceof StorageUnavailableError
-        ) {
-          setError(err.message);
+        // Translated here (064-swedish-translation) rather than using the thrown error's own
+        // English `.message` directly — these error classes live in a plain service module with
+        // no React tree to hook `useTranslation()` into.
+        if (err instanceof DuplicateFavoriteError) {
+          setError(t("favoritesError.duplicate"));
+        } else if (err instanceof FavoritesLimitReachedError) {
+          setError(t("favoritesError.limitReached", { limit: FAVORITES_LIMIT }));
+        } else if (err instanceof StorageUnavailableError) {
+          setError(t("favoritesError.storageUnavailable"));
         } else {
           throw err;
         }
       }
     },
-    []
+    [t]
   );
 
   const remove = useCallback((id: string) => {

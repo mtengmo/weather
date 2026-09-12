@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { NearbyStationCount } from "../models/types";
 
 interface NearbyStationCountControlProps {
@@ -11,9 +12,10 @@ export default function NearbyStationCountControl({
   count,
   onChange,
 }: NearbyStationCountControlProps) {
+  const { t } = useTranslation();
   return (
     <label className="nearby-station-count">
-      Nearby stations{" "}
+      {t("nearbyStationCount.label")}{" "}
       <select
         value={count}
         onChange={(e) => onChange(Number(e.target.value) as NearbyStationCount)}

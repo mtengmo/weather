@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { FavoritePlace } from "../models/types";
 
 interface FavoritesListProps {
@@ -17,20 +18,21 @@ export default function FavoritesList({
   onRemove,
   onDismissError,
 }: FavoritesListProps) {
+  const { t } = useTranslation();
   return (
     <div className="favorites">
-      <h3>Favorite places</h3>
+      <h3>{t("favoritesList.title")}</h3>
 
       {error && (
         <p className="error-banner" role="alert">
           {error}{" "}
           <button type="button" onClick={onDismissError}>
-            Dismiss
+            {t("favoritesList.dismiss")}
           </button>
         </p>
       )}
 
-      {favorites.length === 0 && <p>No favorite places saved yet.</p>}
+      {favorites.length === 0 && <p>{t("favoritesList.empty")}</p>}
 
       <ul className="favorites-list">
         {favorites.map((place) => (
@@ -42,8 +44,12 @@ export default function FavoritesList({
             >
               {place.displayName}
             </button>
-            <button type="button" onClick={() => onRemove(place.id)} aria-label={`Remove ${place.displayName}`}>
-              Remove
+            <button
+              type="button"
+              onClick={() => onRemove(place.id)}
+              aria-label={t("favoritesList.removeAriaLabel", { place: place.displayName })}
+            >
+              {t("favoritesList.remove")}
             </button>
           </li>
         ))}

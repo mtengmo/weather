@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { HighLowVisibility } from "../models/types";
 
 interface HighLowToggleProps {
@@ -6,13 +7,14 @@ interface HighLowToggleProps {
 }
 
 export default function HighLowToggle({ visible, onChange }: HighLowToggleProps) {
+  const { t } = useTranslation();
   return (
-    <div className="high-low-toggle" role="group" aria-label="High/low lines">
+    <div className="high-low-toggle" role="group" aria-label={t("highLowToggle.ariaLabel")}>
       <button type="button" aria-pressed={visible} onClick={() => onChange(true)}>
-        High/Low on
+        {t("highLowToggle.on")}
       </button>
       <button type="button" aria-pressed={!visible} onClick={() => onChange(false)}>
-        High/Low off
+        {t("highLowToggle.off")}
       </button>
     </div>
   );

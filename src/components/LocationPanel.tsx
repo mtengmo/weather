@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { FavoritePlace, Location } from "../models/types";
 import type { PlaceCandidate } from "../services/geocodingApi";
 import type { GeolocationStatus } from "../hooks/useGeolocation";
@@ -50,6 +51,7 @@ export default function LocationPanel({
   geoStatus,
   onRequestCurrentLocation,
 }: LocationPanelProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +91,7 @@ export default function LocationPanel({
         aria-controls="location-panel-content"
         onClick={() => setOpen((prev) => !prev)}
       >
-        Change location
+        {t("locationPanel.changeLocation")}
       </button>
 
       {open && (
@@ -97,7 +99,7 @@ export default function LocationPanel({
           <button
             type="button"
             className="location-panel-close"
-            aria-label="Close"
+            aria-label={t("locationPanel.close")}
             onClick={() => setOpen(false)}
           >
             ×

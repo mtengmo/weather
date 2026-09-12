@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { HighLowVisibility, UnitSystem } from "../models/types";
 import UnitToggle from "./UnitToggle";
 import HighLowToggle from "./HighLowToggle";
@@ -22,6 +23,7 @@ export default function SettingsMenu({
   highLowVisible,
   onHighLowChange,
 }: SettingsMenuProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +58,7 @@ export default function SettingsMenu({
         aria-controls="settings-menu-content"
         onClick={() => setOpen((prev) => !prev)}
       >
-        Settings
+        {t("settingsMenu.settings")}
       </button>
 
       {open && (

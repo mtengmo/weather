@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Bar,
   CartesianGrid,
@@ -93,15 +94,15 @@ const SOURCE_LABELS: Record<MultiSourceForecastEntry["source"], string> = {
 };
 
 const METRIC_LABELS: Record<SingleSeriesMetric, { name: string; unit: (unit: UnitSystem) => string }> = {
-  rain: { name: "precipitation", unit: (u) => (u === "imperial" ? "in" : "mm") },
-  wind: { name: "wind speed", unit: (u) => (u === "imperial" ? "mph" : "m/s") },
-  cloud: { name: "cloud coverage", unit: () => "%" },
+  rain: { name: "observationDetails.precipitationSuffix", unit: (u) => (u === "imperial" ? "in" : "mm") },
+  wind: { name: "chart.windSpeed", unit: (u) => (u === "imperial" ? "mph" : "m/s") },
+  cloud: { name: "chart.cloudCoverage", unit: () => "%" },
 };
 
 const WINDOWS: { value: ObservationWindow; label: string }[] = [
-  { value: "last-24-hours", label: "Last 24 hours" },
-  { value: "last-7-days", label: "Last 7 days" },
-  { value: "last-30-days", label: "Last 30 days" },
+  { value: "last-24-hours", label: "chart.windowLabel24h" },
+  { value: "last-7-days", label: "chart.windowLabel7d" },
+  { value: "last-30-days", label: "chart.windowLabel30d" },
 ];
 
 const DAILY_BUCKET_COUNT: Partial<Record<ObservationWindow, number>> = {
@@ -122,7 +123,6 @@ const TOOLTIP_LABEL_STYLE: CSSProperties = { color: "var(--text)" };
 // The "now" marker (006-forecast-now-marker): a neutral color distinct from any series
 // color, so it never reads as "another data line."
 const NOW_MARKER_STROKE = "var(--text-muted)";
-const NOW_MARKER_LABEL = { value: "Now", position: "insideTopLeft" as const, fill: NOW_MARKER_STROKE };
 
 export default function ObservationChart({
   location,
@@ -136,9 +136,11 @@ export default function ObservationChart({
   nearbyStations,
   multiSourceForecast,
 }: ObservationChartProps) {
+  const { t } = useTranslation();
   const tempUnitLabel = unit === "imperial" ? "°F" : "°C";
   const precipUnitLabel = unit === "imperial" ? "in" : "mm";
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const nowMarkerLabel = { value: t("weatherOverview.now"), position: "insideTopLeft" as const, fill: NOW_MARKER_STROKE };
 
   // "Now" marker position (006-forecast-now-marker): null when there's no forecast to
   // divide, in which case no ReferenceLine is rendered anywhere below (FR-003).
@@ -168,8 +170,8 @@ export default function ObservationChart({
   // (no hover required) whenever the forecast came from the fallback source rather than
   // the same source as the observed data it continues.
   const forecastLabelSuffix = series?.forecastFromFallbackSource
-    ? "(forecast, alt. source)"
-    : "(forecast)";
+    ? t("chart.forecastAltSourceSuffix")
+    : t("chart.forecastSuffix");
 
   useEffect(() => {
     // Mirrors ObservationDetails: move focus to this view's heading when it
@@ -249,7 +251,7 @@ export default function ObservationChart({
   const showCombinedForecast = multiSourceForecast.length > 1;
 
   return (
-    <section aria-label={`Observed weather for ${location.displayName}`}>
+    <section aria-label={t("chart.ariaLabel", { location: location.displayName })}>
       {/* Now shown inline (038-granular-weather-icons-and-graph-header, US2) rather than
           visually-hidden — reused as the one visible title instead of adding a second copy of
           the location name, so it still serves the existing focus-on-view-change a11y
@@ -260,7 +262,7 @@ export default function ObservationChart({
           {location.displayName}
         </h2>
 
-        <div className="window-toggle" role="group" aria-label="Observation window">
+        <div className="window-toggle" role="group" aria-label={t("chart.windowGroupLabel")}>
           {WINDOWS.map((w) => (
             <button
               key={w.value}
@@ -268,7 +270,7 @@ export default function ObservationChart({
               aria-pressed={window === w.value}
               onClick={() => onWindowChange(w.value)}
             >
-              {w.label}
+              {t(w.label)}
             </button>
           ))}
         </div>
@@ -282,40 +284,43 @@ export default function ObservationChart({
 
       {observedExtremes && (
         <p className="observed-extremes-note">
-          High: {formatValue(convertTemperature(observedExtremes.high.value, unit), 0)}
-          {tempUnitLabel} at{" "}
-          {new Date(observedExtremes.high.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
+          {t("chart.highAt", {
+            value: `${formatValue(convertTemperature(observedExtremes.high.value, unit), 0)}${tempUnitLabel}`,
+            time: new Date(observedExtremes.high.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           })}
           {" · "}
-          Low: {formatValue(convertTemperature(observedExtremes.low.value, unit), 0)}
-          {tempUnitLabel} at{" "}
-          {new Date(observedExtremes.low.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
+          {t("chart.lowAt", {
+            value: `${formatValue(convertTemperature(observedExtremes.low.value, unit), 0)}${tempUnitLabel}`,
+            time: new Date(observedExtremes.low.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           })}
         </p>
       )}
 
-      {series === null && <p role="status">Loading observed weather…</p>}
+      {series === null && <p role="status">{t("chart.loading")}</p>}
 
       {series !== null && series.status === "unavailable" && (
         <p className="error-banner" role="alert">
-          Weather data is unavailable for this location right now. Please try again later.
+          {t("weatherOverview.unavailable")}
         </p>
       )}
 
       {series !== null && series.status === "ready" && !isMetricAvailable(series, metric) && (
         <p className="error-banner" role="alert">
-          {metric === "temperature" ? "Temperature" : METRIC_LABELS[metric].name} data is not
-          available for this location.
+          {t("chart.metricUnavailable", {
+            metric: t(metric === "temperature" ? "metricTabs.temperature" : METRIC_LABELS[metric].name),
+          })}
         </p>
       )}
 
       {forecastUnavailable && (
         <p className="error-banner" role="alert">
-          A forecast isn't available for this location right now.
+          {t("chart.forecastUnavailable")}
         </p>
       )}
 
@@ -371,19 +376,19 @@ export default function ObservationChart({
                 yAxisId="temp"
                 stroke={NOW_MARKER_STROKE}
                 strokeDasharray="2 2"
-                label={NOW_MARKER_LABEL}
+                label={nowMarkerLabel}
               />
             )}
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitation"
-              name={`${location.displayName} precipitation`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")}`}
               fill="url(#precipGradient-24h)"
             />
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitationForecast"
-              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")} ${forecastLabelSuffix}`}
               fill="url(#precipGradient-24h)"
               fillOpacity={0.45}
             />
@@ -430,7 +435,7 @@ export default function ObservationChart({
                   yAxisId="temp"
                   type="monotone"
                   dataKey={sourceKey(i)}
-                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  name={t("chart.sourceForecast", { source: SOURCE_LABELS[entry.source] })}
                   stroke={seriesColor(nearbyStations.length + i + 1)}
                   strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
                   connectNulls={false}
@@ -442,7 +447,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="combinedAverage"
-                name="Combined average forecast"
+                name={t("chart.combinedAverageForecast")}
                 stroke="var(--text)"
                 strokeWidth={2}
                 connectNulls={false}
@@ -512,19 +517,19 @@ export default function ObservationChart({
                 yAxisId="temp"
                 stroke={NOW_MARKER_STROKE}
                 strokeDasharray="2 2"
-                label={NOW_MARKER_LABEL}
+                label={nowMarkerLabel}
               />
             )}
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitation"
-              name={`${location.displayName} precipitation`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")}`}
               fill="url(#precipGradient-daily)"
             />
             <Bar
               yAxisId="precip"
               dataKey="primaryPrecipitationForecast"
-              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")} ${forecastLabelSuffix}`}
               fill="url(#precipGradient-daily)"
               fillOpacity={0.45}
             />
@@ -533,7 +538,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryHigh"
-                name={`${location.displayName} high`}
+                name={`${location.displayName} ${t("observationDetails.highSuffix")}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
@@ -548,7 +553,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryHighForecast"
-                name={`${location.displayName} high ${forecastLabelSuffix}`}
+                name={`${location.displayName} ${t("observationDetails.highSuffix")} ${forecastLabelSuffix}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -561,7 +566,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryLow"
-                name={`${location.displayName} low`}
+                name={`${location.displayName} ${t("observationDetails.lowSuffix")}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
@@ -573,7 +578,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="primaryLowForecast"
-                name={`${location.displayName} low ${forecastLabelSuffix}`}
+                name={`${location.displayName} ${t("observationDetails.lowSuffix")} ${forecastLabelSuffix}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -585,7 +590,7 @@ export default function ObservationChart({
               yAxisId="temp"
               type="monotone"
               dataKey="primaryAverage"
-              name={`${location.displayName} average`}
+              name={`${location.displayName} ${t("observationDetails.averageSuffix")}`}
               stroke={dailyObservedRange ? "url(#temp-line-gradient-observed-daily)" : seriesColor(0)}
               connectNulls={false}
               dot={{ r: 3 }}
@@ -595,7 +600,7 @@ export default function ObservationChart({
               yAxisId="temp"
               type="monotone"
               dataKey="primaryAverageForecast"
-              name={`${location.displayName} average ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t("observationDetails.averageSuffix")} ${forecastLabelSuffix}`}
               stroke={dailyForecastRange ? "url(#temp-line-gradient-forecast-daily)" : seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -608,7 +613,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey={seriesKey(i + 1)}
-                name={`${n.station.displayName} average (${n.station.distanceKm.toFixed(1)} km)`}
+                name={`${n.station.displayName} ${t("observationDetails.averageSuffix")} (${n.station.distanceKm.toFixed(1)} km)`}
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
@@ -622,7 +627,7 @@ export default function ObservationChart({
                   yAxisId="temp"
                   type="monotone"
                   dataKey={sourceKey(i)}
-                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  name={t("chart.sourceForecast", { source: SOURCE_LABELS[entry.source] })}
                   stroke={seriesColor(nearbyStations.length + i + 1)}
                   strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
                   connectNulls={false}
@@ -634,7 +639,7 @@ export default function ObservationChart({
                 yAxisId="temp"
                 type="monotone"
                 dataKey="combinedAverage"
-                name="Combined average forecast"
+                name={t("chart.combinedAverageForecast")}
                 stroke="var(--text)"
                 strokeWidth={2}
                 connectNulls={false}
@@ -692,17 +697,17 @@ export default function ObservationChart({
                 x={window === "last-24-hours" ? hourlyNowMarker! : dailyNowMarker!}
                 stroke={NOW_MARKER_STROKE}
                 strokeDasharray="2 2"
-                label={NOW_MARKER_LABEL}
+                label={nowMarkerLabel}
               />
             )}
             <Bar
               dataKey={seriesKey(0)}
-              name={`${location.displayName} precipitation`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")}`}
               fill="url(#rainGradient)"
             />
             <Bar
               dataKey={forecastKey(seriesKey(0))}
-              name={`${location.displayName} precipitation ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t("observationDetails.precipitationSuffix")} ${forecastLabelSuffix}`}
               fill="url(#rainGradient)"
               fillOpacity={0.45}
             />
@@ -720,7 +725,7 @@ export default function ObservationChart({
                   key={entry.source}
                   type="monotone"
                   dataKey={sourceKey(i)}
-                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  name={t("chart.sourceForecast", { source: SOURCE_LABELS[entry.source] })}
                   stroke={seriesColor(nearbyStations.length + i + 1)}
                   strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
                   connectNulls={false}
@@ -731,7 +736,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="combinedAverage"
-                name="Combined average forecast"
+                name={t("chart.combinedAverageForecast")}
                 stroke="var(--text)"
                 strokeWidth={2}
                 connectNulls={false}
@@ -788,13 +793,13 @@ export default function ObservationChart({
                 x={window === "last-24-hours" ? hourlyNowMarker! : dailyNowMarker!}
                 stroke={NOW_MARKER_STROKE}
                 strokeDasharray="2 2"
-                label={NOW_MARKER_LABEL}
+                label={nowMarkerLabel}
               />
             )}
             <Line
               type="monotone"
               dataKey={seriesKey(0)}
-              name={`${location.displayName} ${METRIC_LABELS[metric].name}`}
+              name={`${location.displayName} ${t(METRIC_LABELS[metric].name)}`}
               stroke={seriesColor(0)}
               connectNulls={false}
               dot={{ r: 3 }}
@@ -803,7 +808,7 @@ export default function ObservationChart({
             <Line
               type="monotone"
               dataKey={forecastKey(seriesKey(0))}
-              name={`${location.displayName} ${METRIC_LABELS[metric].name} ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t(METRIC_LABELS[metric].name)} ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -829,7 +834,7 @@ export default function ObservationChart({
                   key={entry.source}
                   type="monotone"
                   dataKey={sourceKey(i)}
-                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  name={t("chart.sourceForecast", { source: SOURCE_LABELS[entry.source] })}
                   stroke={seriesColor(nearbyStations.length + i + 1)}
                   strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
                   connectNulls={false}
@@ -840,7 +845,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="combinedAverage"
-                name="Combined average forecast"
+                name={t("chart.combinedAverageForecast")}
                 stroke="var(--text)"
                 strokeWidth={2}
                 connectNulls={false}
@@ -892,14 +897,14 @@ export default function ObservationChart({
                 x={dailyNowMarker}
                 stroke={NOW_MARKER_STROKE}
                 strokeDasharray="2 2"
-                label={NOW_MARKER_LABEL}
+                label={nowMarkerLabel}
               />
             )}
             {highLowVisible && (
               <Line
                 type="monotone"
                 dataKey="primaryHigh"
-                name={`${location.displayName} high`}
+                name={`${location.displayName} ${t("observationDetails.highSuffix")}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
@@ -910,7 +915,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="primaryHighForecast"
-                name={`${location.displayName} high ${forecastLabelSuffix}`}
+                name={`${location.displayName} ${t("observationDetails.highSuffix")} ${forecastLabelSuffix}`}
                 stroke={HIGH_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -922,7 +927,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="primaryLow"
-                name={`${location.displayName} low`}
+                name={`${location.displayName} ${t("observationDetails.lowSuffix")}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 connectNulls={false}
@@ -933,7 +938,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="primaryLowForecast"
-                name={`${location.displayName} low ${forecastLabelSuffix}`}
+                name={`${location.displayName} ${t("observationDetails.lowSuffix")} ${forecastLabelSuffix}`}
                 stroke={LOW_COLOR}
                 strokeDasharray="4 2"
                 strokeOpacity={0.5}
@@ -944,7 +949,7 @@ export default function ObservationChart({
             <Line
               type="monotone"
               dataKey="primaryAverage"
-              name={`${location.displayName} average`}
+              name={`${location.displayName} ${t("observationDetails.averageSuffix")}`}
               stroke={seriesColor(0)}
               connectNulls={false}
               dot={{ r: 3 }}
@@ -953,7 +958,7 @@ export default function ObservationChart({
             <Line
               type="monotone"
               dataKey="primaryAverageForecast"
-              name={`${location.displayName} average ${forecastLabelSuffix}`}
+              name={`${location.displayName} ${t("observationDetails.averageSuffix")} ${forecastLabelSuffix}`}
               stroke={seriesColor(0)}
               strokeDasharray={FORECAST_DASH}
               connectNulls={false}
@@ -965,7 +970,7 @@ export default function ObservationChart({
                 key={n.station.id}
                 type="monotone"
                 dataKey={seriesKey(i + 1)}
-                name={`${n.station.displayName} average (${n.station.distanceKm.toFixed(1)} km)`}
+                name={`${n.station.displayName} ${t("observationDetails.averageSuffix")} (${n.station.distanceKm.toFixed(1)} km)`}
                 stroke={seriesColor(i + 1)}
                 strokeDasharray={seriesDash(i + 1)}
                 connectNulls={false}
@@ -978,7 +983,7 @@ export default function ObservationChart({
                   key={entry.source}
                   type="monotone"
                   dataKey={sourceKey(i)}
-                  name={`${SOURCE_LABELS[entry.source]} forecast`}
+                  name={t("chart.sourceForecast", { source: SOURCE_LABELS[entry.source] })}
                   stroke={seriesColor(nearbyStations.length + i + 1)}
                   strokeDasharray={seriesDash(nearbyStations.length + i + 1)}
                   connectNulls={false}
@@ -989,7 +994,7 @@ export default function ObservationChart({
               <Line
                 type="monotone"
                 dataKey="combinedAverage"
-                name="Combined average forecast"
+                name={t("chart.combinedAverageForecast")}
                 stroke="var(--text)"
                 strokeWidth={2}
                 connectNulls={false}

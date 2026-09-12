@@ -124,6 +124,9 @@ export type TimelineRowKind = "line" | "bar" | "wind";
 
 export interface TimelineRow {
   key: string;
+  /** A translation KEY (not display text) — consumers must call `t(row.label)` themselves
+   *  (064-swedish-translation), matching `WeatherIconInfo.label`'s same convention in
+   *  `weatherIcons.tsx`, since this module has no React tree to hook `useTranslation()` into. */
   label: string;
   unitLabel: string;
   kind: TimelineRowKind;
@@ -206,7 +209,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
 
   const temperature: TimelineRow = {
     key: "temperature",
-    label: "Temp",
+    label: "timelineRow.temperature",
     unitLabel: labels.temp,
     kind: "line",
     points: sources.map((s) => ({
@@ -220,7 +223,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
 
   const precipitation: TimelineRow = {
     key: "precipitation",
-    label: "Precipitation",
+    label: "timelineRow.precipitation",
     unitLabel: labels.precip,
     kind: "bar",
     points: sources.map((s) => ({
@@ -235,7 +238,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
 
   const wind: TimelineRow = {
     key: "wind",
-    label: "Wind",
+    label: "timelineRow.wind",
     unitLabel: labels.wind,
     kind: "wind",
     points: sources.map((s) => ({
@@ -255,7 +258,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
   }));
   const snow: TimelineRow = {
     key: "snow",
-    label: "Snow",
+    label: "timelineRow.snow",
     unitLabel: labels.precip,
     kind: "bar",
     points: snowPoints,

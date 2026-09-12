@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { WeatherWarning } from "../models/types";
 
 interface WarningBannerProps {
@@ -8,13 +10,14 @@ interface WarningBannerProps {
 /** A short "starts in X" phrase for a warning that hasn't gone active yet
  *  (045-show-upcoming-smhi, research.md §4) — hours for anything under a day, otherwise a
  *  day-level phrase, since a viewer planning around "will it arrive tomorrow" cares more about
- *  the day than the exact hour once it's that far out. */
-function startsInLabel(validFrom: string): string {
+ *  the day than the exact hour once it's that far out. Takes `t` as a parameter (064-swedish-
+ *  translation) since this plain function has no React tree of its own to hook into. */
+function startsInLabel(t: TFunction, validFrom: string): string {
   const hours = Math.max(0, Math.round((Date.parse(validFrom) - Date.now()) / 3_600_000));
-  if (hours < 1) return "starts within the hour";
-  if (hours < 24) return `starts in ${hours}h`;
+  if (hours < 1) return t("warningBanner.startsWithinHour");
+  if (hours < 24) return t("warningBanner.startsInHours", { hours });
   const days = Math.round(hours / 24);
-  return days === 1 ? "starts tomorrow" : `starts in ${days} days`;
+  return days === 1 ? t("warningBanner.startsTomorrow") : t("warningBanner.startsInDays", { days });
 }
 
 /**
@@ -28,6 +31,7 @@ function startsInLabel(validFrom: string): string {
  * an unwanted persistent banner).
  */
 export default function WarningBanner({ warnings }: WarningBannerProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   if (warnings.length === 0) return null;
@@ -36,7 +40,7 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
   const moreCount = warnings.length - 1;
 
   return (
-    <section className="warning-banner" aria-label="Weather warnings">
+    <section className="warning-banner" aria-label={t("warningBanner.ariaLabel")}>
       <div
         className={`warning-banner-summary warning-level-${leading.severityCode.toLowerCase()}${leading.isActive ? "" : " warning-upcoming"}`}
       >
@@ -49,9 +53,11 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
           <span className="warning-banner-severity">{leading.severityLabel}</span>
           <span className="warning-banner-title">{leading.title}</span>
           {!leading.isActive && (
-            <span className="warning-banner-upcoming-label">{startsInLabel(leading.validFrom)}</span>
+            <span className="warning-banner-upcoming-label">{startsInLabel(t, leading.validFrom)}</span>
           )}
-          {moreCount > 0 && <span className="warning-banner-more">+{moreCount} more</span>}
+          {moreCount > 0 && (
+            <span className="warning-banner-more">{t("warningBanner.moreCount", { count: moreCount })}</span>
+          )}
         </button>
       </div>
       {expanded && (
@@ -64,15 +70,15 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
               <h3 className="warning-banner-item-title">
                 {warning.severityLabel}: {warning.title}
                 {!warning.isActive && (
-                  <span className="warning-banner-upcoming-label"> — {startsInLabel(warning.validFrom)}</span>
+                  <span className="warning-banner-upcoming-label"> — {startsInLabel(t, warning.validFrom)}</span>
                 )}
               </h3>
               <p className="warning-banner-item-area">{warning.areaName}</p>
               <p className="warning-banner-item-validity">
-                {warning.isActive ? "Since" : "From"}{" "}
+                {warning.isActive ? t("warningBanner.since") : t("warningBanner.from")}{" "}
                 {new Date(warning.validFrom).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
                 {warning.validUntil &&
-                  ` until ${new Date(warning.validUntil).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}
+                  ` ${t("warningBanner.until", { date: new Date(warning.validUntil).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) })}`}
               </p>
               <p className="warning-banner-item-description">{warning.description}</p>
             </article>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_METRIC, type Location, type ObservationWindow, type WeatherMetric } from "./models/types";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useFavorites } from "./hooks/useFavorites";
@@ -32,6 +33,7 @@ const SOURCE_DISPLAY_NAMES: Record<MultiSourceForecastEntry["source"], string> =
 };
 
 export default function App() {
+  const { t } = useTranslation();
   const { location: currentLocation, status: geoStatus, request: requestLocation } =
     useGeolocation();
   const { favorites, error: favoritesError, add, remove, clearError } = useFavorites();
@@ -171,31 +173,31 @@ export default function App() {
               Overview, graph, details, and map (032-dashboard-polish-round-seven, US3). */}
           {view === "overview" && (
             <button type="button" onClick={() => setView("graph")}>
-              Details
+              {t("app.detailsButton")}
             </button>
           )}
           {view === "graph" && (
             <>
               <button type="button" onClick={() => setView("details")}>
-                Details
+                {t("app.detailsButton")}
               </button>
               <button type="button" onClick={viewOverview}>
-                Home
+                {t("app.homeButton")}
               </button>
             </>
           )}
           {view === "details" && (
             <button type="button" onClick={viewOverview}>
-              Home
+              {t("app.homeButton")}
             </button>
           )}
           {view === "map" ? (
             <button type="button" onClick={closeMap}>
-              Home
+              {t("app.homeButton")}
             </button>
           ) : (
             <button type="button" onClick={openMap}>
-              Map
+              {t("app.mapButton")}
             </button>
           )}
         </div>
@@ -205,8 +207,7 @@ export default function App() {
 
       {locationUnavailable && (
         <p className="error-banner" role="alert">
-          We couldn't determine your current location. Search for a place below, or pick a saved
-          favorite, to see its weather history instead.
+          {t("app.locationUnavailable")}
         </p>
       )}
 

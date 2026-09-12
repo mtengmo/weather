@@ -1,3 +1,5 @@
+import i18next from "i18next";
+
 export function formatValue(value: number | null, decimals = 1): string {
   if (value === null) return "—";
   return value.toFixed(decimals);
@@ -14,8 +16,10 @@ export function dataSourceNote(series: {
   forecastFromFallbackSource?: boolean;
 }): string | null {
   if (series.primarySource === undefined) return null;
-  if (series.primarySource === "open-meteo") return "Data: Open-Meteo";
-  return series.forecastFromFallbackSource ? "Data: SMHI (forecast: Open-Meteo)" : "Data: SMHI";
+  if (series.primarySource === "open-meteo") return i18next.t("format.dataSourceOpenMeteo");
+  return series.forecastFromFallbackSource
+    ? i18next.t("format.dataSourceSmhiFallback")
+    : i18next.t("format.dataSourceSmhi");
 }
 
 /**
@@ -44,14 +48,15 @@ export function dataSourceDisclosure(
   contributingForecastSourceNames: string[]
 ): string | null {
   if (series.primarySource === undefined) return null;
-  const observedLabel = series.primarySource === "smhi" ? "SMHI observations" : "Open-Meteo observations";
+  const observedLabel =
+    series.primarySource === "smhi" ? i18next.t("format.observedSmhi") : i18next.t("format.observedOpenMeteo");
   const forecastLabel =
     contributingForecastSourceNames.length > 1
-      ? `${contributingForecastSourceNames.join(" + ")} forecast`
-      : "Forecast";
+      ? i18next.t("format.forecastCombined", { sources: contributingForecastSourceNames.join(" + ") })
+      : i18next.t("weatherOverview.forecast");
   const freshnessTime = series.forecastIssuedAt ?? lastUpdated;
   const freshness = freshnessTime
-    ? ` · ${forecastLabel} updated ${new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    ? ` · ${forecastLabel} ${i18next.t("format.updatedAt", { time: new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}`
     : "";
   return `${observedLabel}${freshness}`;
 }

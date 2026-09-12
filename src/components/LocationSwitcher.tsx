@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { FavoritePlace, Location } from "../models/types";
 import type { GeolocationStatus } from "../hooks/useGeolocation";
 
@@ -31,22 +32,23 @@ export default function LocationSwitcher({
   geoStatus,
   onRequestCurrentLocation,
 }: LocationSwitcherProps) {
+  const { t } = useTranslation();
   return (
-    <nav aria-label="Select location" className="location-switcher">
+    <nav aria-label={t("locationSwitcher.ariaLabel")} className="location-switcher">
       {currentLocation ? (
         <button
           type="button"
           aria-pressed={isSameLocation(selected, currentLocation)}
           onClick={() => onSelect(currentLocation)}
         >
-          Current Location
+          {t("locationSwitcher.currentLocation")}
         </button>
       ) : (
         (geoStatus === "denied" || geoStatus === "unavailable") && (
           // Without this, declining the browser's permission prompt once permanently hides
           // any way back to current-location from within the app (014, FR-004).
           <button type="button" onClick={onRequestCurrentLocation}>
-            Use current location
+            {t("locationSwitcher.useCurrentLocation")}
           </button>
         )
       )}

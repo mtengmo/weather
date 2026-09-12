@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   Location,
   NearbyStationSeries,
@@ -36,6 +37,7 @@ export default function ObservationDetails({
   series,
   nearbyStations,
 }: ObservationDetailsProps) {
+  const { t } = useTranslation();
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -46,19 +48,19 @@ export default function ObservationDetails({
   }, []);
 
   return (
-    <section aria-label={`Observation details for ${location.displayName}`}>
+    <section aria-label={t("observationDetails.ariaLabel", { location: location.displayName })}>
       {/* Visually redundant with the app-level header's own location display
           (020-dashboard-polish-round-five, US4 — matches WeatherIconOverview's existing
           pattern) but kept for the focus-on-view-change a11y convention every view follows. */}
       <h2 ref={headingRef} tabIndex={-1} className="visually-hidden">
-        {location.displayName} — details
+        {location.displayName} {t("observationDetails.headingSuffix")}
       </h2>
 
-      {series === null && <p role="status">Loading observed weather…</p>}
+      {series === null && <p role="status">{t("observationDetails.loading")}</p>}
 
       {series !== null && series.status === "unavailable" && (
         <p className="error-banner" role="alert">
-          Weather data is unavailable for this location right now. Please try again later.
+          {t("weatherOverview.unavailable")}
         </p>
       )}
 
@@ -67,11 +69,15 @@ export default function ObservationDetails({
           <table className="observation-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Condition</th>
-                <th>{location.displayName} temperature</th>
-                <th>{location.displayName} precipitation</th>
+                <th>{t("observationDetails.time")}</th>
+                <th>{t("observationDetails.status")}</th>
+                <th>{t("observationDetails.condition")}</th>
+                <th>
+                  {location.displayName} {t("observationDetails.temperatureSuffix")}
+                </th>
+                <th>
+                  {location.displayName} {t("observationDetails.precipitationSuffix")}
+                </th>
                 {nearbyStations.map((n) => (
                   <th key={n.station.id}>
                     {n.station.displayName} ({n.station.distanceKm.toFixed(1)} km)
@@ -102,16 +108,16 @@ export default function ObservationDetails({
                     }
                   >
                     <td>{new Date(obs.timestamp).toLocaleString()}</td>
-                    <td>{obs.isForecast ? "Forecast" : "Observed"}</td>
+                    <td>{obs.isForecast ? t("weatherOverview.forecast") : t("weatherOverview.observed")}</td>
                     <td>
                       {iconInfo ? (
                         iconInfo.kind === "smhi-symbol" ? (
-                          <img src={iconInfo.src} alt={iconInfo.label} width={44} height={44} />
+                          <img src={iconInfo.src} alt={t(iconInfo.label)} width={44} height={44} />
                         ) : (
-                          <iconInfo.Icon aria-label={iconInfo.label} size={44} />
+                          <iconInfo.Icon aria-label={t(iconInfo.label)} size={44} />
                         )
                       ) : (
-                        <span aria-label="No data">—</span>
+                        <span aria-label={t("weatherOverview.noData")}>—</span>
                       )}
                     </td>
                     <td>{formatTemperature(convertTemperature(obs.temperature, unit), unit)}</td>
@@ -142,15 +148,23 @@ export default function ObservationDetails({
           <table className="observation-table">
             <thead>
               <tr>
-                <th>Day ending</th>
-                {window === "last-7-days" && <th>Status</th>}
-                <th>{location.displayName} high</th>
-                <th>{location.displayName} low</th>
-                <th>{location.displayName} average</th>
-                <th>{location.displayName} total precipitation</th>
+                <th>{t("observationDetails.dayEnding")}</th>
+                {window === "last-7-days" && <th>{t("observationDetails.status")}</th>}
+                <th>
+                  {location.displayName} {t("observationDetails.highSuffix")}
+                </th>
+                <th>
+                  {location.displayName} {t("observationDetails.lowSuffix")}
+                </th>
+                <th>
+                  {location.displayName} {t("observationDetails.averageSuffix")}
+                </th>
+                <th>
+                  {location.displayName} {t("observationDetails.totalPrecipitationSuffix")}
+                </th>
                 {nearbyStations.map((n) => (
                   <th key={n.station.id}>
-                    {n.station.displayName} average ({n.station.distanceKm.toFixed(1)} km)
+                    {n.station.displayName} {t("observationDetails.averageSuffix")} ({n.station.distanceKm.toFixed(1)} km)
                   </th>
                 ))}
               </tr>
@@ -175,7 +189,7 @@ export default function ObservationDetails({
                     >
                       <td>{new Date(day.bucketEnd).toLocaleDateString()}</td>
                       {window === "last-7-days" && (
-                        <td>{day.isForecast ? "Forecast" : "Observed"}</td>
+                        <td>{day.isForecast ? t("weatherOverview.forecast") : t("weatherOverview.observed")}</td>
                       )}
                       <td>{formatTemperature(convertTemperature(day.high, unit), unit)}</td>
                       <td>{formatTemperature(convertTemperature(day.low, unit), unit)}</td>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { deriveWeatherCondition } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
@@ -14,10 +15,11 @@ interface WeeklyForecastStripProps {
  * fabricated beyond that (018-dashboard-visual-redesign, US5).
  */
 export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripProps) {
+  const { t } = useTranslation();
   if (days.length === 0) return null;
 
   return (
-    <section className="weekly-forecast-strip" aria-label="7 day forecast">
+    <section className="weekly-forecast-strip" aria-label={t("weeklyForecastStrip.ariaLabel")}>
       {days.map((day) => {
         const condition = deriveWeatherCondition({
           temperature: day.average,

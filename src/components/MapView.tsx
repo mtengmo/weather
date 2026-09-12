@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import type { FavoritePlace, Location } from "../models/types";
@@ -77,6 +78,7 @@ type MapOverlay = "rain" | "temperature" | "wind" | "none";
  * already uses.
  */
 export default function MapView({ favorites, cachedLocation, onSelectLocation }: MapViewProps) {
+  const { t } = useTranslation();
   const pins: Location[] = [
     ...favorites.map(favoriteToLocation),
     ...(cachedLocation &&
@@ -114,11 +116,8 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
 
   if (pins.length === 0) {
     return (
-      <section aria-label="Map">
-        <p>
-          No locations to show yet. Search for a place and add it to favorites, or view one, to
-          see it here.
-        </p>
+      <section aria-label={t("mapView.ariaLabel")}>
+        <p>{t("mapView.empty")}</p>
       </section>
     );
   }
@@ -131,19 +130,19 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
   const openWeatherMapApiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY as string | undefined;
 
   const overlays: { value: MapOverlay; label: string }[] = [
-    { value: "rain", label: "Rain" },
+    { value: "rain", label: t("mapView.overlayRain") },
     ...(openWeatherMapApiKey
       ? [
-          { value: "temperature" as const, label: "Temperature" },
-          { value: "wind" as const, label: "Wind" },
+          { value: "temperature" as const, label: t("mapView.overlayTemperature") },
+          { value: "wind" as const, label: t("mapView.overlayWind") },
         ]
       : []),
-    { value: "none", label: "None" },
+    { value: "none", label: t("mapView.overlayNone") },
   ];
 
   return (
-    <section aria-label="Map">
-      <div className="window-toggle" role="group" aria-label="Map overlay">
+    <section aria-label={t("mapView.ariaLabel")}>
+      <div className="window-toggle" role="group" aria-label={t("mapView.overlayAriaLabel")}>
         {overlays.map((o) => (
           <button
             key={o.value}
@@ -198,7 +197,7 @@ export default function MapView({ favorites, cachedLocation, onSelectLocation }:
               {pin.displayName}
               <br />
               <button type="button" onClick={() => onSelectLocation(pin)}>
-                View
+                {t("mapView.view")}
               </button>
             </Popup>
           </Marker>

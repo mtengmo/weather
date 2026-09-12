@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Location } from "../models/types";
 import { getNearestStations } from "../services/smhiProvider";
 import { reverseGeocode } from "../services/geocoding";
@@ -11,11 +12,14 @@ export interface UseGeolocationResult {
   request: () => void;
 }
 
-// Same fallback text used for a nearby comparison station with no usable name
-// (004-chart-styling-fixes) — reused here so "Current Location" never appears (FR-008).
-const UNNAMED_STATION = "Unnamed station";
+// The untranslated raw value smhiProvider.ts's own "Unnamed station" fallback still produces
+// (that service is data-fetching logic, out of scope for 064-swedish-translation) — used only to
+// detect that fallback, never displayed; the user-facing label is the translated
+// "location.unnamedStation" key below.
+const UNNAMED_STATION_RAW = "Unnamed station";
 
 export function useGeolocation(): UseGeolocationResult {
+  const { t } = useTranslation();
   const [location, setLocation] = useState<Location | null>(null);
   const [status, setStatus] = useState<GeolocationStatus>("idle");
 
@@ -36,7 +40,7 @@ export function useGeolocation(): UseGeolocationResult {
           ...coords,
           // Placeholder until the nearest station resolves below; also the final value if
           // resolution fails or finds no usable name (005-add-weather-forecast).
-          displayName: UNNAMED_STATION,
+          displayName: t("location.unnamedStation"),
           source: "current-position",
         });
         setStatus("granted");
@@ -52,7 +56,7 @@ export function useGeolocation(): UseGeolocationResult {
             const stationName =
               stationResult.status === "fulfilled" ? stationResult.value[0]?.displayName : undefined;
 
-            const name = placeName ?? (stationName && stationName !== UNNAMED_STATION ? stationName : null);
+            const name = placeName ?? (stationName && stationName !== UNNAMED_STATION_RAW ? stationName : null);
             if (!name) return;
 
             setLocation((current) =>
@@ -65,7 +69,7 @@ export function useGeolocation(): UseGeolocationResult {
         setStatus(error.code === error.PERMISSION_DENIED ? "denied" : "unavailable");
       }
     );
-  }, []);
+  }, [t]);
 
   return { location, status, request };
 }

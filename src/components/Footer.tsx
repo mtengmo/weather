@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { APP_VERSION } from "../services/appVersion";
 import { dataSourceDisclosure } from "../services/format";
 import type { ObservationSeries } from "../models/types";
@@ -15,6 +16,7 @@ interface FooterProps {
 }
 
 export default function Footer({ series, lastUpdated, contributingForecastSourceNames }: FooterProps) {
+  const { t } = useTranslation();
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   // dataSourceDisclosure now embeds its own freshness time inline (019-dashboard-polish-round-four,
@@ -28,10 +30,10 @@ export default function Footer({ series, lastUpdated, contributingForecastSource
       {disclosure !== null && <span className="app-footer-source">{disclosure}</span>}
       <span>Tengmo Väder v{APP_VERSION}</span>
       <button type="button" onClick={() => setHowItWorksOpen(true)}>
-        How this works
+        {t("footer.howThisWorks")}
       </button>
       <button type="button" onClick={() => setPrivacyOpen(true)}>
-        Privacy
+        {t("footer.privacy")}
       </button>
       {howItWorksOpen && <HowItWorks onClose={() => setHowItWorksOpen(false)} />}
       {privacyOpen && <PrivacyNotice onClose={() => setPrivacyOpen(false)} />}
