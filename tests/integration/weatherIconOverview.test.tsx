@@ -285,6 +285,99 @@ describe("US2: synchronized 7-day timeline", () => {
     const forecastLabels = await screen.findAllByText("Forecast");
     expect(forecastLabels.length).toBeGreaterThan(0);
   });
+
+  it("shows a dry condition, not rain, for a 7-day column whose rain is confined to a couple of morning hours (069-fix-7day-graph-rain)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHour(8), temperature: 10, precipitation: 0.5, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    const conditionRow = await screen.findByText("Temp").then(() =>
+      document.querySelector(".weather-timeline-row-condition")
+    );
+    expect(conditionRow).not.toBeNull();
+    // Character artwork (063), not a CSS color class — see the equivalent fix in
+    // 067-fix-rain-brief-icons for why "rain" text/class assertions here are unreliable.
+    expect(conditionRow!.querySelectorAll('img[src*="rain"]').length).toBe(0);
+  });
+
+  it("still shows rain for a 7-day column where rain spans most of the daytime hours (069-fix-7day-graph-rain)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(9), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(11), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(18), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 20 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    const conditionRow = await screen.findByText("Temp").then(() =>
+      document.querySelector(".weather-timeline-row-condition")
+    );
+    expect(conditionRow).not.toBeNull();
+    expect(conditionRow!.querySelectorAll('img[src*="rain"]').length).toBeGreaterThan(0);
+  });
+
+  it("still shows rain for a 7-day column with a single brief but heavy daytime downpour (069-fix-7day-graph-rain)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              { timestamp: atLocalHour(7), temperature: 10, precipitation: 6, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "7 Days" }));
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-7-days"));
+
+    const conditionRow = await screen.findByText("Temp").then(() =>
+      document.querySelector(".weather-timeline-row-condition")
+    );
+    expect(conditionRow).not.toBeNull();
+    expect(conditionRow!.querySelectorAll('img[src*="rain-heavy"]').length).toBeGreaterThan(0);
+  });
 });
 
 describe("7-day timeline fill width (014-dashboard-usability-fixes, US3)", () => {

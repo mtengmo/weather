@@ -5,7 +5,7 @@ import type {
   WeatherObservation,
 } from "../models/types";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
-import { deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
+import { deriveDailyCondition, deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { toDailyAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
@@ -382,14 +382,11 @@ function daysToTimelineData(
         new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
       isForecast: day.isForecast ?? false,
       // No timestamp passed: a clear day always shows the sun, never the moon (007/008
-      // research.md §3) — a whole day inherently spans both.
-      condition: deriveWeatherCondition({
-        temperature: day.average,
-        precipitation: day.totalPrecipitation,
-        windSpeed: day.windAverage,
-        cloudCoverPercent: day.cloudAverage,
-        chanceOfRain: day.chanceOfRainMax,
-      }),
+      // research.md §3) — a whole day inherently spans both. Daytime-weighted the same way the
+      // daily brief strip already is (069-fix-7day-graph-rain) — for 3-day/sub-day `day` objects
+      // (no `daytime*` fields populated), this takes the exact same whole-bucket fallback path as
+      // before, unchanged.
+      condition: deriveDailyCondition(day),
       uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
       temperature: day.average,
     };

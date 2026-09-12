@@ -1,3 +1,5 @@
+import type { DailyAggregate } from "../models/types";
+
 /** One of twelve recognizable weather conditions, or the input didn't have enough data
  * (007-weather-icon-overview; thunderstorm/foggy/sleet added 022-met-forecast-source;
  * light/heavy rain and snow replace the previous flat "rainy"/"snowy" values,
@@ -138,4 +140,46 @@ export function deriveWeatherCondition(input: WeatherConditionInput): WeatherCon
   }
 
   return timestamp !== undefined && isNight(timestamp) ? "clear-night" : "clear-day";
+}
+
+/**
+ * A whole rolling-24h `DailyAggregate` bucket's single displayed condition, driven by its daytime
+ * hours (6 AM-8 PM local) rather than the whole bucket, so an overnight-only or brief-morning
+ * shower doesn't make an otherwise-dry day show as rain (066-daily-forecast-language-setting,
+ * 067-fix-rain-brief-icons). Extracted from `WeeklyForecastStrip.tsx`'s original inline logic into
+ * this single shared function (069-fix-7day-graph-rain) so every consumer of a whole-day condition
+ * — the persistent daily brief strip and the 7-day overview alike — agrees by construction rather
+ * than by two independently-maintained copies of the same rule.
+ *
+ * Falls back to the bucket's whole-day fields when it has no daytime observations at all (e.g.
+ * sparse forecast data) — a day never ends up with no computable condition. `toSubDayBuckets`'
+ * sub-day periods (the 3-day view) never populate the `daytime*` fields at all, so they always
+ * take this fallback path, reproducing their pre-existing behavior unchanged.
+ */
+export function deriveDailyCondition(day: DailyAggregate): WeatherCondition | null {
+  const hasDaytimeData =
+    day.daytimeAverage != null ||
+    day.daytimeTotalPrecipitation != null ||
+    day.daytimeWindAverage != null ||
+    day.daytimeCloudAverage != null ||
+    day.daytimeChanceOfRainMax != null;
+  // A brief morning shower alone can still push `daytimeTotalPrecipitation` above zero — that sum
+  // doesn't distinguish "rain for a couple of hours" from "rain most of the day" (067, data-model.md).
+  // Only let it drive the day's condition when rain covers a majority of the day's daytime hours,
+  // or a single hour was heavy enough to matter on its own — otherwise treat the day's daytime
+  // precipitation as zero for condition purposes only; every other input, and the whole-bucket
+  // fallback above when there's no daytime data at all, is unchanged.
+  const dayRainIsMeaningful =
+    day.daytimeHourCount != null &&
+    day.daytimeRainHourCount != null &&
+    (day.daytimeRainHourCount / day.daytimeHourCount > 0.5 ||
+      (day.daytimeMaxHourlyPrecipitation ?? 0) >= PRECIPITATION_HEAVY_THRESHOLD_MM);
+  const daytimePrecipitationForCondition = dayRainIsMeaningful ? day.daytimeTotalPrecipitation : 0;
+  return deriveWeatherCondition({
+    temperature: (hasDaytimeData ? day.daytimeAverage : day.average) ?? null,
+    precipitation: (hasDaytimeData ? daytimePrecipitationForCondition : day.totalPrecipitation) ?? null,
+    windSpeed: (hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null,
+    cloudCoverPercent: (hasDaytimeData ? day.daytimeCloudAverage : day.cloudAverage) ?? null,
+    chanceOfRain: (hasDaytimeData ? day.daytimeChanceOfRainMax : day.chanceOfRainMax) ?? null,
+  });
 }
