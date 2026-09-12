@@ -141,6 +141,12 @@ export const sv: Record<string, string> = {
   "favoritesList.removeAriaLabel": "Ta bort {{place}}",
 
   "settingsMenu.settings": "Inställningar",
+  "settingsMenu.language": "Språk",
+
+  "languageToggle.ariaLabel": "Språk",
+  "languageToggle.auto": "Automatiskt",
+  "languageToggle.english": "Engelska",
+  "languageToggle.swedish": "Svenska",
 
   "themeToggle.dark": "Mörkt",
   "themeToggle.light": "Ljust",

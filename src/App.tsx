@@ -7,6 +7,7 @@ import { useUnitPreference } from "./hooks/useUnitPreference";
 import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
 import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
+import { useLanguagePreference } from "./hooks/useLanguagePreference";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
@@ -43,6 +44,7 @@ export default function App() {
     useNearbyStationCountPreference();
   const { visible: highLowVisible, setVisible: setHighLowVisible } =
     useHighLowVisibilityPreference();
+  const { language, setLanguage } = useLanguagePreference();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -164,6 +166,8 @@ export default function App() {
             onUnitChange={setUnit}
             highLowVisible={highLowVisible}
             onHighLowChange={setHighLowVisible}
+            language={language}
+            onLanguageChange={setLanguage}
           />
           {view !== "overview" && (
             <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />

@@ -21,12 +21,23 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
   return (
     <section className="weekly-forecast-strip" aria-label={t("weeklyForecastStrip.ariaLabel")}>
       {days.map((day) => {
+        // Driven by the day's daytime hours (6 AM-8 PM local) rather than the whole rolling 24h
+        // bucket, so an overnight-only shower doesn't make an otherwise-dry day show as rain
+        // (066-daily-forecast-language-setting) — falls back to the whole-bucket fields when a
+        // bucket has no daytime observations at all (e.g. sparse forecast data), so a day never
+        // ends up with no computable condition.
+        const hasDaytimeData =
+          day.daytimeAverage != null ||
+          day.daytimeTotalPrecipitation != null ||
+          day.daytimeWindAverage != null ||
+          day.daytimeCloudAverage != null ||
+          day.daytimeChanceOfRainMax != null;
         const condition = deriveWeatherCondition({
-          temperature: day.average,
-          precipitation: day.totalPrecipitation,
-          windSpeed: day.windAverage,
-          cloudCoverPercent: day.cloudAverage,
-          chanceOfRain: day.chanceOfRainMax,
+          temperature: (hasDaytimeData ? day.daytimeAverage : day.average) ?? null,
+          precipitation: (hasDaytimeData ? day.daytimeTotalPrecipitation : day.totalPrecipitation) ?? null,
+          windSpeed: (hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null,
+          cloudCoverPercent: (hasDaytimeData ? day.daytimeCloudAverage : day.cloudAverage) ?? null,
+          chanceOfRain: (hasDaytimeData ? day.daytimeChanceOfRainMax : day.chanceOfRainMax) ?? null,
         });
         const iconInfo = resolveConditionIconFromCondition(undefined, condition, false, day.average);
         return (

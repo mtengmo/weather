@@ -63,8 +63,10 @@ const FREEZING_CELSIUS = 0;
 // research.md §6).
 const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
 // Fixed local-clock-hour day/night rule (research.md §3) — not sunrise/sunset calculation.
-const NIGHT_START_HOUR = 20;
-const NIGHT_END_HOUR = 6;
+// Exported so other whole-day aggregations (e.g. dailyAggregation.ts's daytime-only filtering,
+// 066-daily-forecast-language-setting) apply exactly this same boundary rather than duplicating it.
+export const NIGHT_START_HOUR = 20;
+export const NIGHT_END_HOUR = 6;
 
 export function isNight(timestamp: string): boolean {
   const hour = new Date(timestamp).getHours();

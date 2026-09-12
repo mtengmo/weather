@@ -1,5 +1,6 @@
 import type { DailyAggregate, WeatherObservation } from "../models/types";
 import { deriveFeelsLike } from "./feelsLike";
+import { NIGHT_END_HOUR, NIGHT_START_HOUR } from "./weatherCondition";
 
 const BUCKET_MS = 24 * 3600_000;
 
@@ -60,6 +61,34 @@ function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bu
   };
 }
 
+/** Daytime local-clock hours (066-daily-forecast-language-setting, research.md §2) — the inverse
+ *  of `isNight`'s own boundary, reused exactly rather than re-derived, so a whole-day condition
+ *  computed from these hours never disagrees with the app's existing day/night icon logic. */
+function isDaytimeObservation(obs: WeatherObservation): boolean {
+  const hour = new Date(obs.timestamp).getHours();
+  return hour >= NIGHT_END_HOUR && hour < NIGHT_START_HOUR;
+}
+
+/** The `daytime*` subset of `DailyAggregate`, computed by re-running `aggregateBucket` on just a
+ *  bucket's daytime-hour observations (research.md §3) — reuses the exact same mean/max/sum math
+ *  as the whole-bucket fields rather than duplicating it, so the two can never silently diverge in
+ *  *how* they aggregate, only in *which observations* they aggregate. */
+function daytimeAggregateFields(
+  bucket: WeatherObservation[]
+): Pick<
+  DailyAggregate,
+  "daytimeAverage" | "daytimeTotalPrecipitation" | "daytimeWindAverage" | "daytimeCloudAverage" | "daytimeChanceOfRainMax"
+> {
+  const daytimeAggregate = aggregateBucket(bucket.filter(isDaytimeObservation));
+  return {
+    daytimeAverage: daytimeAggregate.average,
+    daytimeTotalPrecipitation: daytimeAggregate.totalPrecipitation,
+    daytimeWindAverage: daytimeAggregate.windAverage,
+    daytimeCloudAverage: daytimeAggregate.cloudAverage,
+    daytimeChanceOfRainMax: daytimeAggregate.chanceOfRainMax,
+  };
+}
+
 export function toDailyAggregates(
   observations: WeatherObservation[],
   bucketCount: number
@@ -94,6 +123,7 @@ export function toDailyAggregates(
       bucketEnd,
       ...(isForecast ? { isForecast: true } : {}),
       ...aggregateBucket(bucket),
+      ...daytimeAggregateFields(bucket),
     });
   }
 

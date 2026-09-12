@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { HighLowVisibility, UnitSystem } from "../models/types";
+import type { HighLowVisibility, LanguagePreference, UnitSystem } from "../models/types";
 import UnitToggle from "./UnitToggle";
 import HighLowToggle from "./HighLowToggle";
+import LanguageToggle from "./LanguageToggle";
 
 interface SettingsMenuProps {
   unit: UnitSystem;
   onUnitChange: (unit: UnitSystem) => void;
   highLowVisible: HighLowVisibility;
   onHighLowChange: (visible: HighLowVisibility) => void;
+  language: LanguagePreference;
+  onLanguageChange: (language: LanguagePreference) => void;
 }
 
 /**
@@ -22,6 +25,8 @@ export default function SettingsMenu({
   onUnitChange,
   highLowVisible,
   onHighLowChange,
+  language,
+  onLanguageChange,
 }: SettingsMenuProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -65,6 +70,7 @@ export default function SettingsMenu({
         <div id="settings-menu-content" className="settings-menu-content">
           <UnitToggle unit={unit} onChange={onUnitChange} />
           <HighLowToggle visible={highLowVisible} onChange={onHighLowChange} />
+          <LanguageToggle language={language} onChange={onLanguageChange} />
         </div>
       )}
     </div>

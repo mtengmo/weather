@@ -20,7 +20,7 @@ vi.mock("../../src/services/geocodingApi", () => ({
   searchPlaces: vi.fn(),
 }));
 
-function mockGeolocationUnavailable() {
+function mockGeolocationUnavailable(language: string) {
   const getCurrentPosition = vi.fn((_success: PositionCallback, error?: PositionErrorCallback) => {
     error?.({
       code: 2,
@@ -30,28 +30,29 @@ function mockGeolocationUnavailable() {
       message: "",
     } as GeolocationPositionError);
   });
-  vi.stubGlobal("navigator", { geolocation: { getCurrentPosition }, language: "en-US", languages: ["en-US"] });
+  vi.stubGlobal("navigator", { geolocation: { getCurrentPosition }, language, languages: [language] });
 }
 
-// These tests drive language via i18n.changeLanguage rather than by re-triggering browser
-// detection (the app only detects once, at module-init time, per spec.md's Assumptions) — this
-// still exercises the real resource files and the real rendered output for both languages
-// (064-swedish-translation, SC-001).
+// Driven by the browser's reported language (via a mocked `navigator.language`) rather than a
+// direct `i18n.changeLanguage` call before render — `App` itself now resolves and applies the
+// language on every mount through `useLanguagePreference` (default "auto",
+// 066-daily-forecast-language-setting), so a manual pre-render call would just be immediately
+// overridden. This still exercises the real resource files and the real rendered output for both
+// languages (064-swedish-translation, SC-001).
 describe("Swedish translation rendering (064-swedish-translation)", () => {
   beforeEach(() => {
     localStorage.clear();
-    mockGeolocationUnavailable();
   });
 
   afterEach(async () => {
     await i18n.changeLanguage("en");
   });
 
-  it("renders Swedish text when the language is Swedish", async () => {
-    await i18n.changeLanguage("sv");
+  it("renders Swedish text when the browser's language is Swedish", async () => {
+    mockGeolocationUnavailable("sv-SE");
     render(<App />);
 
-    expect(screen.getByRole("button", { name: "Karta" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Karta" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "Vi kunde inte fastställa din nuvarande plats. Sök efter en plats nedan, eller välj en sparad favorit, för att se dess väderhistorik istället."
@@ -59,11 +60,11 @@ describe("Swedish translation rendering (064-swedish-translation)", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders English text (unchanged) when the language is English", async () => {
-    await i18n.changeLanguage("en");
+  it("renders English text (unchanged) when the browser's language is English", async () => {
+    mockGeolocationUnavailable("en-US");
     render(<App />);
 
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Map" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "We couldn't determine your current location. Search for a place below, or pick a saved favorite, to see its weather history instead."

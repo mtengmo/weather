@@ -80,6 +80,12 @@ export interface ObservationSeries {
 
 export type UnitSystem = "metric" | "imperial";
 
+/** The user's chosen display-language mode (066-daily-forecast-language-setting) — "auto" resolves
+ *  through the browser-language detection 064-swedish-translation already performs; "en"/"sv"
+ *  force that language regardless of the browser's reported language. */
+export type LanguagePreference = "auto" | "en" | "sv";
+export const DEFAULT_LANGUAGE_PREFERENCE: LanguagePreference = "auto";
+
 export const FAVORITES_LIMIT = 10;
 
 /** One day's aggregated point for the 7-/30-day graph: a rolling 24h bucket, not a calendar day. */
@@ -107,6 +113,18 @@ export interface DailyAggregate {
   /** The bucket's most recent non-null wind direction reading (degrees, 0-360), for the Today
    *  card's compass display (018-dashboard-visual-redesign, research.md §5). */
   windDirection?: number | null;
+  /** Daytime-hour-only (6 AM-8 PM local, matching `isNight`'s boundary) counterparts of `average`/
+   *  `totalPrecipitation`/`windAverage`/`cloudAverage`/`chanceOfRainMax`, used solely to derive a
+   *  whole-day condition/icon that isn't dominated by an overnight blip (066-daily-forecast-
+   *  language-setting, data-model.md). Only populated by `toDailyAggregates`' rolling-24h buckets,
+   *  never by `toSubDayBuckets`' already-narrow sub-day periods. All five are `null` when the
+   *  bucket has zero observations in that window at all (same per-field null-when-empty rule
+   *  `aggregateBucket` already applies to the whole-bucket fields above). */
+  daytimeAverage?: number | null;
+  daytimeTotalPrecipitation?: number | null;
+  daytimeWindAverage?: number | null;
+  daytimeCloudAverage?: number | null;
+  daytimeChanceOfRainMax?: number | null;
 }
 
 /** Identity of a nearby physical weather-observation station (SMHI-only). */

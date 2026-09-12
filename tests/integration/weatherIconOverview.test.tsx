@@ -44,6 +44,16 @@ function hoursAgo(h: number): string {
   return hoursFromNow(-h);
 }
 
+// A timestamp at the given local-clock hour, guaranteed to fall within the most recent rolling
+// 24h bucket (066-daily-forecast-language-setting) — used to test the weekly strip's
+// daytime-vs-night filtering without depending on what time the test itself runs at.
+function atLocalHour(hour: number): string {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
+  return d.toISOString();
+}
+
 function OverviewHarness({
   location,
   highLowVisible = false,
@@ -2169,6 +2179,55 @@ describe("7-day forecast strip (018-dashboard-visual-redesign, US5)", () => {
       Array.from(day.classList).some((c) => c.startsWith("weather-condition-"))
     );
     expect(coloredDays.length).toBeGreaterThan(0);
+  });
+
+  it("shows a dry condition, not rain, for a day whose only rain is overnight (066-daily-forecast-language-setting)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              // Night (3 AM): heavy rain and overcast — excluded from the daytime-only fields.
+              { timestamp: atLocalHour(3), temperature: 5, precipitation: 5, windSpeed: 1, cloudCoverPercent: 90 },
+              // Daytime (2 PM): dry and clear.
+              { timestamp: atLocalHour(14), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = Array.from(strip.querySelectorAll(".weekly-forecast-day"));
+    expect(days.some((day) => day.classList.contains("weather-condition-clear-day"))).toBe(true);
+    expect(days.some((day) => Array.from(day.classList).some((c) => c.includes("rain")))).toBe(false);
+  });
+
+  it("still shows rain for a day with any rain during daytime hours (066-daily-forecast-language-setting)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [
+              // Night (3 AM): dry.
+              { timestamp: atLocalHour(3), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              // Daytime (2 PM): heavy rain.
+              { timestamp: atLocalHour(14), temperature: 15, precipitation: 5, windSpeed: 1, cloudCoverPercent: 90 },
+            ]
+          : [],
+    }));
+
+    render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const strip = await screen.findByRole("region", { name: "7 day forecast" });
+    const days = Array.from(strip.querySelectorAll(".weekly-forecast-day"));
+    expect(days.some((day) => day.classList.contains("weather-condition-heavy-rain"))).toBe(true);
   });
 
   it("is visible on all three tabs", async () => {

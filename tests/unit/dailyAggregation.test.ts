@@ -6,6 +6,16 @@ function hoursAgo(h: number): string {
   return new Date(Date.now() - h * 3600_000).toISOString();
 }
 
+// A timestamp at the given local-clock hour, guaranteed to fall within the most recent rolling
+// 24h bucket (today at that hour, or yesterday at that hour if today's hasn't happened yet) —
+// used to test the daytime-hour filter without depending on what time the test itself runs at.
+function atLocalHour(hour: number): string {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
+  return d.toISOString();
+}
+
 function obs(partial: Partial<WeatherObservation> & { timestamp: string }): WeatherObservation {
   return {
     temperature: null,
@@ -106,6 +116,67 @@ describe("toDailyAggregates", () => {
     const mostRecentBucket = result[result.length - 1];
 
     expect(mostRecentBucket.windDirection).toBeNull();
+  });
+
+  describe("daytime-only fields (066-daily-forecast-language-setting)", () => {
+    it("excludes night-hour (before 6 AM/after 8 PM) readings from the daytime fields, but keeps them in the whole-bucket fields", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(3), temperature: 2, precipitation: 5, windSpeed: 10, cloudCoverPercent: 90 }),
+        obs({ timestamp: atLocalHour(22), temperature: 1, precipitation: 4, windSpeed: 12, cloudCoverPercent: 95 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      // Whole-bucket fields still reflect the night-only readings (unchanged behavior).
+      expect(mostRecentBucket.totalPrecipitation).toBeCloseTo(9);
+      expect(mostRecentBucket.average).toBeCloseTo(1.5);
+      // Daytime fields see no daytime observations at all -> null.
+      expect(mostRecentBucket.daytimeTotalPrecipitation).toBeNull();
+      expect(mostRecentBucket.daytimeAverage).toBeNull();
+      expect(mostRecentBucket.daytimeWindAverage).toBeNull();
+      expect(mostRecentBucket.daytimeCloudAverage).toBeNull();
+    });
+
+    it("includes daytime-hour (6 AM-8 PM inclusive-exclusive) readings in the daytime fields", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(3), temperature: 2, precipitation: 5 }), // night — excluded
+        obs({ timestamp: atLocalHour(14), temperature: 18, precipitation: 1, windSpeed: 3, cloudCoverPercent: 20 }), // daytime — included
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeTotalPrecipitation).toBeCloseTo(1);
+      expect(mostRecentBucket.daytimeAverage).toBeCloseTo(18);
+      expect(mostRecentBucket.daytimeWindAverage).toBeCloseTo(3);
+      expect(mostRecentBucket.daytimeCloudAverage).toBeCloseTo(20);
+      // Whole-bucket fields still combine both readings.
+      expect(mostRecentBucket.totalPrecipitation).toBeCloseTo(6);
+    });
+
+    it("treats the 6 AM and 8 PM boundary hours themselves as daytime", () => {
+      const observations: WeatherObservation[] = [
+        obs({ timestamp: atLocalHour(6), precipitation: 2 }),
+        obs({ timestamp: atLocalHour(19), precipitation: 3 }),
+      ];
+
+      const result = toDailyAggregates(observations, 7);
+      const mostRecentBucket = result[result.length - 1];
+
+      expect(mostRecentBucket.daytimeTotalPrecipitation).toBeCloseTo(5);
+    });
+
+    it("leaves every daytime field null when the bucket has no observations at all (fallback trigger)", () => {
+      const result = toDailyAggregates([], 7);
+      for (const bucket of result) {
+        expect(bucket.daytimeAverage).toBeNull();
+        expect(bucket.daytimeTotalPrecipitation).toBeNull();
+        expect(bucket.daytimeWindAverage).toBeNull();
+        expect(bucket.daytimeCloudAverage).toBeNull();
+        expect(bucket.daytimeChanceOfRainMax).toBeNull();
+      }
+    });
   });
 
   it("nulls windHigh/windLow independently when the bucket has no wind readings", () => {
