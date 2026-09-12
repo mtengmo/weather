@@ -187,9 +187,12 @@ the boundary of what it supports.
 
 ## Assumptions
 
-- The image-generation service is an OpenAI-family image API (DALL·E / `gpt-image-1`), consistent
-  with the app's existing prompt-authoring documentation (`docs/weathericons/vaderikoner-dalle-
-  addendum.md`), which already describes generating one character image per prompt this way.
+- The image-generation service is an OpenAI-family image API (`gpt-image-2.5-flare`, superseding
+  the originally-assumed `gpt-image-1`), consistent with the app's existing prompt-authoring
+  documentation (`docs/weathericons/vaderikoner-dalle-addendum.md`), which already describes
+  generating one character image per prompt this way. Content verification (FR-005a) deliberately
+  uses a *different* provider — Claude, via Anthropic's API — rather than the same model grading
+  its own generated image; this was a direct user request, not just a technical default.
 - The wind parameter is a simple selectable condition (e.g. "windy" vs. "calm") reflected as
   additional descriptive text in the prompt (e.g. windswept hair/clothing motion cues) — consistent
   in spirit with how the existing temperature-band and precipitation-category dimensions are each

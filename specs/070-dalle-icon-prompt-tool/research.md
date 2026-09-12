@@ -42,22 +42,23 @@ the "text-only, no reference image" clarification already recorded in spec.md. C
 a generation provider — not possible: Claude has no native image-output model (confirmed via web
 search, September 2026) and only produces visuals via SVG/code or by calling an external tool.
 
-## §2 — Content verification: a separate vision-capable chat/completions call
+## §2 — Content verification: Claude's vision input, a different provider than generation
 
-**Decision**: After the transparency check passes, send the decoded image (as a base64 data URL,
-`data:image/png;base64,...`) plus a short text description of the expected content (built from the
-same parameters used for the generation prompt, phrased as a plain question) to a vision-capable
-model via the Chat Completions API, and parse a structured pass/fail + reason from its response
-(e.g. by asking it to answer in a fixed `PASS`/`FAIL: <reason>` format, or JSON).
+**Decision**: After the transparency check passes, send the decoded image (as a base64-encoded
+`image` content block) plus a short text description of the expected content (built from the same
+parameters used for the generation prompt, phrased as a plain question) to Claude via the
+Anthropic Messages API, and parse a structured pass/fail + reason from its response (asking it to
+answer in a fixed `PASS`/`FAIL: <reason>` format).
 
 ```python
-verdict = client.chat.completions.create(
+message = client.messages.create(
     model=VERIFY_MODEL,  # see §3 — configurable, not hardcoded permanently
+    max_tokens=256,
     messages=[{
         "role": "user",
         "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": image_b64}},
             {"type": "text", "text": verification_question},
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_base64}"}},
         ],
     }],
 )
@@ -66,20 +67,34 @@ verdict = client.chat.completions.create(
 **Rationale**: This is the direct implementation of the "automated vision-based content
 verification" clarification already recorded in spec.md (FR-005a) — the exact mechanism needed to
 catch an "overcast" request that came back looking like fog, without a person reviewing every
-image.
+image. Verification deliberately uses a *different provider* (Claude) than generation (OpenAI's
+`gpt-image-2.5-flare`) — the model that produced an image judging its own output would be a weaker
+check than an independent second opinion, and this was an explicit ask from the user rather than
+just a technical default.
+
+**Alternatives considered**: OpenAI's own vision-capable chat models (`gpt-4o-mini` or similar,
+via `chat.completions.create` with an `image_url` content block) — this was the original design
+and remains a documented fallback shape if Claude access is ever unavailable, but was replaced by
+request: using the same provider for both generation and verification risks correlated blind
+spots (a bias in how the model *describes* what it *generated*), whereas Claude has no stake in
+the image having been produced "correctly" by another model.
 
 ## §3 — Vision model name: configurable, not hardcoded permanently
 
 **Finding**: Model naming in this space changes frequently — as of this research (September 2026),
-OpenAI's current vision-capable lineup spans the GPT-5.x series (including newly announced
-GPT-5.6 variants) as well as the still-supported GPT-4.1/GPT-4o families. A name that's current
-today may be deprecated by the next time this tool is touched.
+OpenAI released `gpt-image-2.5-flare`/`gpt-image-2.5-sunburst` on 2026-09-08, superseding
+`gpt-image-1`, and Anthropic's current lineup is the Claude 5 family plus Haiku 4.5
+(`claude-haiku-4-5-20251001`) — fast and vision-capable, a reasonable default for this
+cost-sensitive, per-image verification call. A name that's current today may be deprecated by the
+next time this tool is touched.
 
-**Decision**: The vision-verification model name (and, separately, the image-generation model
-name) are both read from environment variables with a documented default
-(`ICON_GEN_MODEL`/`ICON_VERIFY_MODEL`, defaulting to `gpt-image-1` and a cost-effective current
-vision model respectively) rather than hardcoded with no override — so a future model deprecation
-is a one-line environment change, not a code change.
+**Decision**: The vision-verification model name (`ICON_VERIFY_MODEL`, defaulting to
+`claude-haiku-4-5-20251001`) and the image-generation model name (`ICON_GEN_MODEL`, defaulting to
+`gpt-image-2.5-flare`) are both read from environment variables with a documented default, rather
+than hardcoded with no override — so a future model deprecation is a one-line environment change,
+not a code change. Both `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are required up front
+(`require_api_keys()`) rather than discovering the second one is missing only after the first
+(paid) generation call has already succeeded.
 
 **Rationale**: Directly serves FR-009's "no change to the app's runtime" framing extended to the
 tool's own maintainability — a maintainer-run tool that breaks the moment OpenAI retires a model

@@ -119,9 +119,11 @@ below (quickstart.md's woman/dry-weather pilot run) before wider use.
 
 - [X] T017 Run `python -m unittest discover docs/weathericons` (or equivalent) — confirm T015/T016
       pass with zero network calls made.
-**Pending**: T018-T020 require a real `OPENAI_API_KEY`, which wasn't configured in the environment
-this feature was implemented in — they're the maintainer's to run via quickstart.md whenever ready
-(each is a live, paid API call, deliberately not automated).
+**Pending**: T018-T020 require real `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` credentials (generation
+switched to `gpt-image-2.5-flare`; content verification switched to Claude, a deliberately
+different provider than generation — see research.md §2), neither of which was configured in the
+environment this feature was implemented in — they're the maintainer's to run via quickstart.md
+whenever ready (each is a live, paid API call, deliberately not automated).
 
 - [ ] T018 Run quickstart.md's full pilot sequence for real (all six kvinna dry-weather types at
       one band, plus the wind-parameter check) — this costs real API usage, so run it once

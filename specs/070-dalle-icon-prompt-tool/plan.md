@@ -8,11 +8,11 @@
 
 A local Python CLI tool, run alongside the existing sprite-sheet-and-split pipeline, that builds
 one complete image-generation prompt from a maintainer-specified combination (weather type,
-temperature band, day/night, optional wind condition), calls OpenAI's `gpt-image-1` image
+temperature band, day/night, optional wind condition), calls OpenAI's `gpt-image-2.5-flare` image
 generation directly for exactly one image, verifies both real alpha transparency and — via a
-separate vision-capable-model call — that the image's actual content matches what was requested,
-and saves the result (plus its prompt and verdict) to a scratch output directory that never
-touches the app's shipped icon set. The character (woman/couple/boy/girl) is auto-derived from the
+separate call to Claude's vision input, a deliberately different provider than generation — that
+the image's actual content matches what was requested, and saves the result (plus its prompt and
+verdict) to a scratch output directory that never touches the app's shipped icon set. The character (woman/couple/boy/girl) is auto-derived from the
 weather type via the app's existing category mapping. Character consistency is pursued through
 detailed, reused text description alone — no reference image is attached. The first validation run
 targets the woman character's six dry-weather types, reusing and adapting the already-authored
@@ -25,9 +25,10 @@ distinction that has been hard to get right).
 **Language/Version**: Python 3.9+ (matching `docs/weathericons/`'s existing scripts; verified
 working with both the system's default 3.9 and 3.13 in this environment)
 
-**Primary Dependencies**: `openai` (official Python SDK, not yet installed — added via the
+**Primary Dependencies**: `openai` (generation) and `anthropic` (content verification — a
+deliberately different provider, research.md §2) — both official Python SDKs, added via the
 script's own docstring `pip install` note, matching `split_icons.py`'s existing convention, not a
-project-wide dependency file); `pillow` (already used by the existing icon scripts, reused here for
+project-wide dependency file; `pillow` (already used by the existing icon scripts, reused here for
 the local alpha-transparency check)
 
 **Storage**: Local filesystem only — a new scratch directory (e.g.
@@ -49,10 +50,11 @@ throughput target beyond "faster than writing the prompt and calling the API by 
 
 **Constraints**: Must never write into `src/assets/weather-icons-v2/` or
 `docs/weathericons/icons_split/` (FR-008); must never write a credential to a committed file
-(FR-007 — reads `OPENAI_API_KEY` from the environment, optionally via a git-ignored local `.env`
-file, matching this repo's existing `.gitignore` `.env`/`.env.*` patterns); the exact vision-model
-name for content verification should be a configurable/overridable value, not hardcoded permanently
-— model lineups change frequently and a name hardcoded today may be retired by the time this tool
+(FR-007 — reads `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` from the environment, optionally via a
+git-ignored local `.env` file, matching this repo's existing `.gitignore` `.env`/`.env.*`
+patterns); the exact generation/vision-model names should be configurable/overridable values, not
+hardcoded permanently — model lineups change frequently and a name hardcoded today may be retired
+by the time this tool
 is next touched (research.md §3).
 
 **Scale/Scope**: One new Python script (plus a small, one-time-authored prompt-fragment data

@@ -4,19 +4,26 @@ generate_icon.py
 Direct-generation icon prompt tool (070-dalle-icon-prompt-tool). Builds one complete prompt from a
 maintainer-specified combination (weather type, temperature band, day/night, optional wind
 condition), calls OpenAI's gpt-image-2.5-flare for exactly one image, verifies both real alpha
-transparency and — via a separate vision-capable-model call — that the image's actual content
+transparency and — via a separate call to Claude's vision input — that the image's actual content
 matches what was requested, and saves the result (plus its prompt and verdict) to a scratch output
 directory that never touches this app's shipped icon set or the sprite-sheet-and-split pipeline.
+
+Generation and content-verification are deliberately two different providers: OpenAI has no
+image-generation-quality alternative worth switching away from, but Claude's own judgment on
+whether an image actually matches its description is an independent check, not the same model
+grading its own homework.
 
 Runs alongside split_icons.py/resize_icons.py; does not replace them.
 
 Prerequisites:
-    pip install openai pillow
-    export OPENAI_API_KEY=sk-...              (never commit this)
-    export ICON_GEN_MODEL=gpt-image-2.5-flare (optional override; see research.md §3)
-    export ICON_VERIFY_MODEL=...              (optional override; confirm the current recommended
-                                                vision-capable model name at the time you run this —
-                                                model lineups change frequently)
+    pip install openai anthropic pillow
+    export OPENAI_API_KEY=sk-...                    (never commit this)
+    export ANTHROPIC_API_KEY=sk-ant-...              (never commit this)
+    export ICON_GEN_MODEL=gpt-image-2.5-flare        (optional override; see research.md §3)
+    export ICON_VERIFY_MODEL=claude-haiku-4-5-20251001  (optional override; confirm the current
+                                                          recommended vision-capable model name at
+                                                          the time you run this — model lineups
+                                                          change frequently)
 
 Run (from docs/weathericons/):
     python generate_icon.py --type overcast --band mild --time day
@@ -45,7 +52,10 @@ OUTPUT_DIR = Path(__file__).parent / "generated"
 # noted in research.md §1. Confirm this is still current before relying on the default — OpenAI's
 # model lineup changes frequently (research.md §3).
 DEFAULT_GEN_MODEL = "gpt-image-2.5-flare"
-DEFAULT_VERIFY_MODEL = "gpt-4o-mini"
+# Claude Haiku 4.5 — fast, cheap, vision-capable; used for content verification specifically so
+# the judgment comes from a different provider than the one that generated the image (research.md
+# §2). Confirm this is still current before relying on the default — model lineups change often.
+DEFAULT_VERIFY_MODEL = "claude-haiku-4-5-20251001"
 ALPHA_VARIATION_MIN = 2
 
 
@@ -118,14 +128,21 @@ def build_prompt(request: IconRequest) -> str:
     return "\n\n".join(parts)
 
 
-def require_api_key() -> None:
+def require_api_keys() -> None:
     """FR-007: fail clearly, before any request, if credentials are missing — never prompt for
-    one to be hardcoded."""
-    if not os.environ.get("OPENAI_API_KEY"):
+    one to be hardcoded. Two separate providers are used (OpenAI for generation, Claude for
+    content verification — see module docstring), so both keys are required up front rather than
+    failing partway through a run after the (costly) generation call already succeeded."""
+    missing = [
+        name
+        for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY")
+        if not os.environ.get(name)
+    ]
+    if missing:
         print(
-            "ERROR: OPENAI_API_KEY is not set. Set it as an environment variable (or in a "
+            f"ERROR: {', '.join(missing)} not set. Set them as environment variables (or in a "
             "git-ignored .env file you load yourself) before running this tool — never hardcode "
-            "it into a file that could be committed.",
+            "them into a file that could be committed.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -182,11 +199,12 @@ def _expected_content_description(request: IconRequest) -> str:
 
 
 def verify_content(image_bytes: bytes, request: IconRequest, model: str) -> tuple[bool, str]:
-    """FR-005a: sends the image plus a description of the expected content to a vision-capable
-    model and uses its judgment as the content-correctness verdict."""
-    from openai import OpenAI
+    """FR-005a: sends the image plus a description of the expected content to Claude's vision
+    input and uses its judgment as the content-correctness verdict — deliberately a different
+    provider than the one that generated the image (module docstring, research.md §2)."""
+    import anthropic
 
-    client = OpenAI()
+    client = anthropic.Anthropic()
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
     question = (
         "You are verifying a generated cartoon weather icon. It was supposed to depict: "
@@ -194,22 +212,25 @@ def verify_content(image_bytes: bytes, request: IconRequest, model: str) -> tupl
         "Look at the attached image and judge whether it actually matches this description. "
         "Respond with exactly one line: either the single word PASS, or FAIL: <a short reason>."
     )
-    completion = client.chat.completions.create(
+    message = client.messages.create(
         model=model,
+        max_tokens=256,
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": question},
                     {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{image_b64}"},
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": "image/png", "data": image_b64},
                     },
+                    {"type": "text", "text": question},
                 ],
             }
         ],
     )
-    response_text = (completion.choices[0].message.content or "").strip()
+    response_text = "".join(
+        block.text for block in message.content if getattr(block, "type", None) == "text"
+    ).strip()
     passed = response_text.upper().startswith("PASS")
     return passed, "" if passed else response_text
 
@@ -229,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    require_api_key()
+    require_api_keys()
     gen_model = os.environ.get("ICON_GEN_MODEL", DEFAULT_GEN_MODEL)
     verify_model = os.environ.get("ICON_VERIFY_MODEL", DEFAULT_VERIFY_MODEL)
 

@@ -3,34 +3,37 @@
 ## Prerequisites
 
 ```powershell
-pip install openai pillow
+pip install openai anthropic pillow
 ```
 
-Set your OpenAI API key for the current shell session (never commit this):
+Two providers are used deliberately — OpenAI generates the image, Claude independently verifies
+it (research.md §2) — so both keys are required. Set them for the current shell session (never
+commit either):
 
 ```powershell
 # PowerShell (this repo's primary shell) — lasts only for this session/window
 $env:OPENAI_API_KEY = "sk-..."
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 ```sh
 # bash equivalent, if you're using Git Bash / WSL instead
 export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-To persist it across sessions instead of retyping it every time, either set it as a permanent
-Windows environment variable (`setx OPENAI_API_KEY "sk-..."` — takes effect in *new* terminals
-only, not the current one) or put it in a git-ignored `.env` file
-(`docs/weathericons/.env`, already covered by this repo's `.env`/`.env.*` `.gitignore` pattern)
-and load it yourself before running the tool.
+To persist them across sessions instead of retyping every time, either set them as permanent
+Windows environment variables (`setx OPENAI_API_KEY "sk-..."` / `setx ANTHROPIC_API_KEY "sk-ant-..."`
+— takes effect in *new* terminals only, not the current one) or put them in a git-ignored `.env`
+file (`docs/weathericons/.env`, already covered by this repo's `.env`/`.env.*` `.gitignore`
+pattern) and load it yourself before running the tool.
 
 Optionally override the models used (see research.md §3 — model names change over time):
 
 ```powershell
-$env:ICON_GEN_MODEL = "gpt-image-1"        # default
-$env:ICON_VERIFY_MODEL = "<a current vision-capable chat model>" # confirm the current recommended
-                                                                   # name with OpenAI's docs at the
-                                                                   # time you run this
+$env:ICON_GEN_MODEL = "gpt-image-2.5-flare"           # default
+$env:ICON_VERIFY_MODEL = "claude-haiku-4-5-20251001"  # default — confirm still current at the
+                                                        # time you run this
 ```
 
 ## First validation run — the woman character's dry-weather types
