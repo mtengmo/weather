@@ -106,9 +106,9 @@ export default function ObservationDetails({
                     <td>
                       {iconInfo ? (
                         iconInfo.kind === "smhi-symbol" ? (
-                          <img src={iconInfo.src} alt={iconInfo.label} width={28} height={28} />
+                          <img src={iconInfo.src} alt={iconInfo.label} width={44} height={44} />
                         ) : (
-                          <iconInfo.Icon aria-label={iconInfo.label} size={28} />
+                          <iconInfo.Icon aria-label={iconInfo.label} size={44} />
                         )
                       ) : (
                         <span aria-label="No data">—</span>

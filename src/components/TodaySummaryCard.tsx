@@ -110,9 +110,9 @@ export default function TodaySummaryCard({
       >
         {iconInfo ? (
           iconInfo.kind === "smhi-symbol" ? (
-            <img src={iconInfo.src} alt="" aria-hidden="true" width={40} height={40} />
+            <img src={iconInfo.src} alt="" aria-hidden="true" width={64} height={64} />
           ) : (
-            <iconInfo.Icon aria-hidden="true" size={40} />
+            <iconInfo.Icon aria-hidden="true" size={64} />
           )
         ) : null}
         {characterIcon ? (

@@ -42,9 +42,9 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             </span>
             {iconInfo ? (
               iconInfo.kind === "smhi-symbol" ? (
-                <img src={iconInfo.src} alt="" aria-hidden="true" width={28} height={28} />
+                <img src={iconInfo.src} alt="" aria-hidden="true" width={44} height={44} />
               ) : (
-                <iconInfo.Icon aria-hidden="true" size={28} />
+                <iconInfo.Icon aria-hidden="true" size={44} />
               )
             ) : (
               <span aria-hidden="true">—</span>

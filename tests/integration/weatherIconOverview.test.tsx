@@ -2892,3 +2892,48 @@ describe("Reduced loading requests (062-reduce-loading-requests)", () => {
   // data on the Overview" / "fetches nearby-station data once the Details/graph view is opened
   // for the first time" tests (025-reduce-api-requests) — nothing to add here.
 });
+
+describe("Larger weather icons (065-larger-weather-icons)", () => {
+  beforeEach(() => {
+    vi.mocked(getObservations).mockReset();
+    vi.mocked(getNearbyStationSeries).mockReset();
+    vi.mocked(getNearbyStationSeries).mockResolvedValue([]);
+    vi.mocked(getMultiSourceForecast).mockReset();
+    vi.mocked(getMultiSourceForecast).mockResolvedValue([]);
+  });
+
+  it("renders the Today card's icon at 64px, larger than the timeline/7-day-strip's 44px (FR-001/FR-002, SC-001)", async () => {
+    vi.mocked(getObservations).mockImplementation(async (_loc, w) => ({
+      location: stockholm,
+      window: w,
+      status: "ready",
+      observations:
+        w === "last-7-days"
+          ? [{ timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 }]
+          : [
+              { timestamp: hoursAgo(1), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0, smhiSymbolCode: 1 },
+            ],
+    }));
+
+    const { container } = render(<OverviewHarness location={stockholm} />);
+    await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
+
+    const todayIcon = container.querySelector(".today-summary-icon img");
+    expect(todayIcon).not.toBeNull();
+    expect(todayIcon).toHaveAttribute("width", "64");
+    expect(todayIcon).toHaveAttribute("height", "64");
+
+    const timelineIcon = container.querySelector(".weather-timeline-condition img");
+    expect(timelineIcon).not.toBeNull();
+    expect(timelineIcon).toHaveAttribute("width", "44");
+    expect(timelineIcon).toHaveAttribute("height", "44");
+
+    const stripIcon = await waitFor(() => {
+      const el = container.querySelector(".weekly-forecast-day img");
+      expect(el).not.toBeNull();
+      return el;
+    });
+    expect(stripIcon).toHaveAttribute("width", "44");
+    expect(stripIcon).toHaveAttribute("height", "44");
+  });
+});

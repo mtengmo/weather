@@ -270,6 +270,9 @@ describe("Condition column on the Details table (020-dashboard-polish-round-five
     const icon = within(table).getByAltText("Thunderstorm");
     // 10C -> mild band.
     expect(icon).toHaveAttribute("src", expect.stringContaining("weather_thunder_day_mild"));
+    // 065-larger-weather-icons: Details table icons render at 44px.
+    expect(icon).toHaveAttribute("width", "44");
+    expect(icon).toHaveAttribute("height", "44");
   });
 });
 
