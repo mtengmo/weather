@@ -4,6 +4,10 @@ A client-only web app showing observed (historical) weather for your current loc
 
 See [specs/001-weather-history-locations/](specs/001-weather-history-locations/) for the full specification, plan, and design docs.
 
+## Android app
+
+A native Android version (Kotlin + Jetpack Compose, with home-screen widgets) lives in [android/](android/) — see its [README](android/README.md) and [specs/071-mobile-apps/](specs/071-mobile-apps/).
+
 ## Getting started
 
 ```bash

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T024: color tokens ported 1:1 from src/index.css's [data-theme="midnight"|"ivory"]
+     custom properties, so the Android theme matches the web app's palette (FR-011). -->
+<resources>
+    <!-- Midnight (dark) -->
+    <color name="midnight_bg">#12141A</color>
+    <color name="midnight_surface">#1C1F27</color>
+    <color name="midnight_text">#F2F0EB</color>
+    <color name="midnight_text_muted">#A3A3AB</color>
+    <color name="midnight_accent">#C9A86A</color>
+    <color name="midnight_accent2">#3A7D7A</color>
+    <color name="midnight_border">#2E323D</color>
+    <color name="midnight_error_bg">#3A2323</color>
+    <color name="midnight_error_text">#F5C9C2</color>
+    <color name="midnight_error_border">#6B3A34</color>
+    <color name="midnight_wx_sun">#F6C453</color>
+    <color name="midnight_wx_moon">#CBD0DC</color>
+    <color name="midnight_wx_cloud">#9AA3B5</color>
+    <color name="midnight_wx_rain">#5B9BD9</color>
+    <color name="midnight_wx_snow">#DBE9F7</color>
+
+    <!-- Ivory (light) -->
+    <color name="ivory_bg">#FFFDF9</color>
+    <color name="ivory_surface">#FFFFFF</color>
+    <color name="ivory_text">#151316</color>
+    <color name="ivory_text_muted">#6B6570</color>
+    <color name="ivory_accent">#E01050</color>
+    <color name="ivory_accent2">#00D4B5</color>
+    <color name="ivory_border">#E5E1E6</color>
+    <color name="ivory_error_bg">#FFE3E8</color>
+    <color name="ivory_error_text">#7A0930</color>
+    <color name="ivory_error_border">#FFB3C2</color>
+    <color name="ivory_wx_sun">#C78A1F</color>
+    <color name="ivory_wx_moon">#7D8494</color>
+    <color name="ivory_wx_cloud">#6B7280</color>
+    <color name="ivory_wx_rain">#2F72B8</color>
+    <color name="ivory_wx_snow">#4A90C2</color>
+</resources>

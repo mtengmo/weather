@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icons/characters are looked up by name at runtime (getIdentifier) — keep them from being
+     stripped by resource shrinking in release builds. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/weather_*,@drawable/character_*" />

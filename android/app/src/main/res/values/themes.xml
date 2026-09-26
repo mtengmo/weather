@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme — actual color application happens in Compose (theme/AppTheme.kt, T024)
+         since content is Compose-only; this XML theme only needs to set the system-level
+         window background so the launch screen (FR-015) isn't a flash of white/black. -->
+    <style name="Theme.TengmoVader" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/midnight_bg</item>
+        <item name="android:navigationBarColor">@color/midnight_bg</item>
+        <item name="android:windowBackground">@color/midnight_bg</item>
+    </style>
+
+    <!-- T039: launch screen — app icon over the theme background while loading. -->
+    <style name="Theme.TengmoVader.Launch" parent="Theme.TengmoVader">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T021/T070: small widget — icon, temperature, place name (FR-021). -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable"
+    android:configure="com.tengmo.vader.widget.WidgetConfigureActivity"
+    android:description="@string/widget_smallDescription"
+    android:previewImage="@mipmap/ic_launcher"
+    android:resizeMode="horizontal|vertical" />
