@@ -3,6 +3,8 @@ package com.tengmo.vader.ui.details
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,6 +58,7 @@ private val ROW_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE
  *  windows) with condition icon, temperature, precipitation, wind, and observed/forecast status —
  *  the table counterpart of the Graph (ObservationDetails.tsx). Reuses GraphViewModel's data
  *  loading (same location, same window model) so the two views can never disagree. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DetailsScreen(onHome: () -> Unit, viewModel: GraphViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
@@ -78,7 +81,7 @@ fun DetailsScreen(onHome: () -> Unit, viewModel: GraphViewModel = viewModel()) {
         )
         state.location?.let { Text("${it.displayName} ${stringResource(R.string.observationDetails_headingSuffix)}", fontSize = 18.sp) }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
                 ObservationWindow.Last24Hours to R.string.chart_windowLabel24h,
                 ObservationWindow.Last7Days to R.string.chart_windowLabel7d,
