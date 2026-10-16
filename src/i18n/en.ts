@@ -8,6 +8,14 @@ export const en: Record<string, string> = {
   "app.locationUnavailable":
     "We couldn't determine your current location. Search for a place below, or pick a saved favorite, to see its weather history instead.",
 
+  "subDay.morning": "Morning",
+  "subDay.lunch": "Lunch",
+  "subDay.afternoon": "Afternoon",
+  "subDay.evening": "Evening",
+  "subDay.night": "Night",
+  "noLocation.title": "Choose a location",
+  "noLocation.useMyLocation": "Use my location",
+
   "todaySummary.title": "Today",
   "todaySummary.now": "Now",
   "todaySummary.feelsLike": "feels like",
@@ -78,6 +86,8 @@ export const en: Record<string, string> = {
   "timelineRow.wind": "Wind",
   "timelineRow.snow": "Snow",
 
+  "weatherOverview.show48h": "Show 48h",
+  "weatherOverview.show24h": "Show 24h",
   "weatherOverview.windowLabel24h": "24 Hours",
   "weatherOverview.windowLabel3d": "3 Days",
   "weatherOverview.windowLabel7d": "7 Days",

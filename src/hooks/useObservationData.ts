@@ -56,8 +56,8 @@ const REFRESH_INTERVAL_MS = 15 * 60_000;
 interface WindowFetchCache {
   locationKey: string;
   refreshGeneration: number;
-  seriesByWindow: Map<ObservationWindow, ObservationSeries>;
-  multiSourceByWindow: Map<ObservationWindow, MultiSourceForecastEntry[]>;
+  seriesByWindow: Map<string, ObservationSeries>;
+  multiSourceByWindow: Map<string, MultiSourceForecastEntry[]>;
 }
 
 function locationKeyOf(location: { latitude: number; longitude: number }): string {
@@ -71,7 +71,10 @@ export function useObservationData(
   /** True once the Details/graph view has been opened at least once this session — nearby-station
    *  comparison data is only ever rendered there, so it's fetched lazily rather than with every
    *  Overview load (025-reduce-api-requests, research.md §1). */
-  includeNearbyStations: boolean
+  includeNearbyStations: boolean,
+  /** Request 48 (instead of 24) forecast hours for the 24-hour window - the Overview's "Show 48h"
+   *  toggle. Off by default so the default load makes no additional/larger requests. */
+  extendedForecast = false
 ): UseObservationDataResult {
   const [series, setSeries] = useState<ObservationSeries | null>(null);
   const [nearbyStations, setNearbyStations] = useState<NearbyStationSeries[]>([]);
@@ -154,16 +157,23 @@ export function useObservationData(
       };
     }
     const cache = cacheRef.current;
+    // The 48h reach only ever applies to the 24-hour window; every other window keeps its own key.
+    const extended = extendedForecast && window === "last-24-hours";
+    const cacheKey = (forWindow: ObservationWindow) =>
+      forWindow === "last-24-hours" && extended ? "last-24-hours:48" : forWindow;
 
     // Cache writes happen unconditionally (even if this effect run is later superseded by another
     // window/location change) so a request already in flight when the user switches away still
     // populates the cache for next time, rather than being wasted (research.md §3). Only the
     // `setState` calls below are gated on `cancelled`.
     function fetchSeriesCached(forWindow: ObservationWindow): Promise<ObservationSeries> {
-      const cached = cache.seriesByWindow.get(forWindow);
+      const key = cacheKey(forWindow);
+      const cached = cache.seriesByWindow.get(key);
       if (cached) return Promise.resolve(cached);
-      return getObservations(location as Location, forWindow).then((result) => {
-        cache.seriesByWindow.set(forWindow, result);
+      return (extended
+        ? getObservations(location as Location, forWindow, true)
+        : getObservations(location as Location, forWindow)).then((result) => {
+        cache.seriesByWindow.set(key, result);
         return result;
       });
     }
@@ -173,10 +183,11 @@ export function useObservationData(
     // Always fetched now — forecast is always a cross-source average when both have data
     // (020-dashboard-polish-round-five, US2; was previously gated behind a user toggle).
     const multiSourcePromise = (() => {
-      const cached = cache.multiSourceByWindow.get(window);
+      const key = cacheKey(window);
+      const cached = cache.multiSourceByWindow.get(key);
       if (cached) return Promise.resolve(cached);
-      return getMultiSourceForecast(location, window).then((result) => {
-        cache.multiSourceByWindow.set(window, result);
+      return (extended ? getMultiSourceForecast(location, window, true) : getMultiSourceForecast(location, window)).then((result) => {
+        cache.multiSourceByWindow.set(key, result);
         return result;
       });
     })();
@@ -211,7 +222,7 @@ export function useObservationData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location?.latitude, location?.longitude, window, refreshTick]);
+  }, [location?.latitude, location?.longitude, window, refreshTick, extendedForecast]);
 
   // Nearby-station comparison data is fetched independently, only once the Details/graph view has
   // been opened — split into its own effect so flipping `includeNearbyStations` from false to

@@ -7,6 +7,14 @@ export const sv: Record<string, string> = {
   "app.locationUnavailable":
     "Vi kunde inte fastställa din nuvarande plats. Sök efter en plats nedan, eller välj en sparad favorit, för att se dess väderhistorik istället.",
 
+  "subDay.morning": "Morgon",
+  "subDay.lunch": "Lunch",
+  "subDay.afternoon": "Eftermiddag",
+  "subDay.evening": "Kväll",
+  "subDay.night": "Natt",
+  "noLocation.title": "Välj en plats",
+  "noLocation.useMyLocation": "Använd min plats",
+
   "todaySummary.title": "Idag",
   "todaySummary.now": "Nu",
   "todaySummary.feelsLike": "känns som",
@@ -77,6 +85,8 @@ export const sv: Record<string, string> = {
   "timelineRow.wind": "Vind",
   "timelineRow.snow": "Snö",
 
+  "weatherOverview.show48h": "Visa 48 h",
+  "weatherOverview.show24h": "Visa 24 h",
   "weatherOverview.windowLabel24h": "24 timmar",
   "weatherOverview.windowLabel3d": "3 dagar",
   "weatherOverview.windowLabel7d": "7 dagar",

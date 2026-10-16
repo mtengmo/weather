@@ -110,6 +110,12 @@ export interface DailyAggregate {
   /** Set only for a sub-day period bucket (e.g. "Morning"), used as its column label instead
    *  of the weekday name (014-dashboard-usability-fixes, FR-018). */
   subDayLabel?: string;
+  /** Sub-day period id plus its effective local start/end hour (end may exceed 24 when it wraps
+   *  past midnight; the first rendered day's Morning starts at 0) - lets the UI show a time-range
+   *  sub-label derived from the same SUB_DAY_PERIODS constants. */
+  subDayPeriod?: "morning" | "lunch" | "afternoon" | "evening" | "night";
+  subDayStartHour?: number;
+  subDayEndHour?: number;
   /** The bucket's most recent non-null wind direction reading (degrees, 0-360), for the Today
    *  card's compass display (018-dashboard-visual-redesign, research.md §5). */
   windDirection?: number | null;

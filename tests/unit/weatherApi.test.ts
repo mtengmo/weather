@@ -82,7 +82,7 @@ describe("weatherApi.getObservations (provider orchestration)", () => {
     const result = await getObservations(location, "last-24-hours");
 
     expect(result.status).toBe("ready");
-    expect(smhiProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours");
+    expect(smhiProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours", false);
     expect(openMeteoProvider.getObservations).not.toHaveBeenCalled();
   });
 
@@ -93,7 +93,7 @@ describe("weatherApi.getObservations (provider orchestration)", () => {
     await getObservations(location, "last-24-hours");
 
     expect(smhiProvider.getObservations).not.toHaveBeenCalled();
-    expect(openMeteoProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours");
+    expect(openMeteoProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours", false);
   });
 
   it("silently falls back to Open-Meteo when SMHI fails for a covered location", async () => {
@@ -104,7 +104,7 @@ describe("weatherApi.getObservations (provider orchestration)", () => {
     const result = await getObservations(location, "last-24-hours");
 
     expect(result.status).toBe("ready");
-    expect(openMeteoProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours");
+    expect(openMeteoProvider.getObservations).toHaveBeenCalledWith(location, "last-24-hours", false);
   });
 
   it("treats an isCovered failure as not-covered", async () => {
@@ -171,7 +171,7 @@ describe("weatherApi.getObservations forecast-only fallback (006-forecast-now-ma
 
     const result = await getObservations(location, "last-24-hours");
 
-    expect(openMeteoProvider.getForecastOnly).toHaveBeenCalledWith(location, "last-24-hours");
+    expect(openMeteoProvider.getForecastOnly).toHaveBeenCalledWith(location, "last-24-hours", false);
     expect(result.forecastFromFallbackSource).toBe(true);
     expect(result.observations.some((o) => o.isForecast)).toBe(true);
     expect(result.location).toEqual(smhiSeries.location);
@@ -320,7 +320,7 @@ describe("weatherApi.getMultiSourceForecast (014-dashboard-usability-fixes, US7;
     await getMultiSourceForecast(location, "last-24-hours");
 
     expect(smhiProvider.getObservations).not.toHaveBeenCalled();
-    expect(smhiProvider.getForecastOnly).toHaveBeenCalledWith(location, "last-24-hours");
+    expect(smhiProvider.getForecastOnly).toHaveBeenCalledWith(location, "last-24-hours", false);
   });
 
   it("returns both sources when both SMHI and Open-Meteo have forecast data", async () => {
@@ -688,5 +688,20 @@ describe("weatherApi.getUvRisk (027-uv-index-alert)", () => {
 
     expect(result).toBe(risky);
     expect(smhiProvider.getUvIndex).toHaveBeenCalledWith(location, "last-24-hours");
+  });
+});
+
+describe("weatherApi extended 48h forecast", () => {
+  it("forwards the extended flag to the providers only when requested", async () => {
+    const loc = { latitude: 59.33, longitude: 18.06 };
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(false);
+    vi.mocked(openMeteoProvider.getObservations).mockResolvedValue({
+      location: { ...loc, displayName: "", source: "current-position" },
+      window: "last-24-hours",
+      observations: [],
+      status: "ready",
+    });
+    await getObservations(loc, "last-24-hours", true);
+    expect(openMeteoProvider.getObservations).toHaveBeenLastCalledWith(loc, "last-24-hours", true);
   });
 });

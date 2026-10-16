@@ -28,9 +28,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // Registration is done manually in src/registerSW.ts (reloads when a new worker takes over).
+      injectRegister: false,
       // Never cache live weather-provider responses — a reopened offline app must show its
       // shell, never stale forecast data presented as current (016, Constraints).
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [],
       },
       manifest: {

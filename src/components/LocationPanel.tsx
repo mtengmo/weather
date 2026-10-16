@@ -19,6 +19,9 @@ interface LocationPanelProps {
   onDismissFavoritesError: () => void;
   geoStatus: GeolocationStatus;
   onRequestCurrentLocation: () => void;
+  /** Notifies the parent when the panel opens/closes (e.g. so the first-start empty state can
+   *  hide its own duplicate search/favorites while this panel is showing them). */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function candidateToLocation(place: PlaceCandidate): Location {
@@ -50,9 +53,14 @@ export default function LocationPanel({
   onDismissFavoritesError,
   geoStatus,
   onRequestCurrentLocation,
+  onOpenChange,
 }: LocationPanelProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    onOpenChange?.(open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

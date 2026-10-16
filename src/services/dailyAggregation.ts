@@ -198,6 +198,9 @@ function subDayBucketsForDate(
       // of "today" already is in the hourly view (spec Edge Cases).
       ...(endMs > now ? { isForecast: true } : {}),
       subDayLabel: label,
+      subDayPeriod: period,
+      subDayStartHour: effectiveStartHour,
+      subDayEndHour: endHour,
       ...aggregateBucket(bucket),
     };
   });

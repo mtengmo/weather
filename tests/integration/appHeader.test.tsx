@@ -86,7 +86,7 @@ describe("App header consolidation (009-timeline-polish-and-header, US1)", () =>
 describe("Location Panel (013-overview-default-and-layout, US2)", () => {
   beforeEach(() => {
     localStorage.clear();
-    mockGeolocation("unavailable");
+    mockGeolocation("success");
     vi.mocked(getObservations).mockReset();
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,

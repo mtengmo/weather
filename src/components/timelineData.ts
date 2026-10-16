@@ -4,6 +4,7 @@ import type {
   UnitSystem,
   WeatherObservation,
 } from "../models/types";
+import i18next from "i18next";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { deriveDailyCondition, deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { toDailyAggregates, toSubDayBuckets } from "../services/dailyAggregation";
@@ -70,6 +71,8 @@ export function windowAroundToday(days: DailyAggregate[], count: number): DailyA
 export interface TimelinePeriod {
   key: string;
   label: string;
+  /** Small time-range line under the label (3-day view only), e.g. "06–11". */
+  subLabel?: string;
   isForecast: boolean;
   condition: WeatherCondition | null;
   /** True when any hour within this period's span is a UV-risky hour (UV Index >= 6), per
@@ -359,6 +362,14 @@ export function buildHourlyTimelineData(
   };
 }
 
+/** "06\u201311"-style local-hour range for a sub-day bucket, from the bucket's own start/end hours
+ *  (set from SUB_DAY_PERIODS in dailyAggregation.ts, so the first day's Morning reads "00\u201311"). */
+function subDayRangeLabel(day: DailyAggregate): string | undefined {
+  if (day.subDayStartHour === undefined || day.subDayEndHour === undefined) return undefined;
+  const pad = (h: number) => String(h % 24).padStart(2, "0");
+  return `${pad(day.subDayStartHour)}\u2013${pad(day.subDayEndHour)}`;
+}
+
 /**
  * Shared by `buildDailyTimelineData` and `build3DayTimelineData` — both map a `DailyAggregate[]`
  * (one plain-daily, one sub-day) into a `TimelineData` the exact same way; only the function that
@@ -378,8 +389,10 @@ function daysToTimelineData(
       // plain daily bucket (7-day view) never carries subDayLabel, so it always falls through —
       // includes the calendar date, not just the weekday, per 019-dashboard-polish-round-four US7.
       label:
+        (day.subDayPeriod ? i18next.t(`subDay.${day.subDayPeriod}`) : undefined) ??
         day.subDayLabel ??
         new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
+      subLabel: subDayRangeLabel(day),
       isForecast: day.isForecast ?? false,
       // No timestamp passed: a clear day always shows the sun, never the moon (007/008
       // research.md §3) — a whole day inherently spans both. Daytime-weighted the same way the

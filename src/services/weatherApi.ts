@@ -29,11 +29,12 @@ function expectsForecast(window: ObservationWindow): boolean {
 
 export async function getObservations(
   location: Pick<Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<ObservationSeries> {
   if (await isSmhiCovered(location)) {
     try {
-      const smhiResult = await smhiProvider.getObservations(location, window);
+      const smhiResult = await smhiProvider.getObservations(location, window, extendedForecast);
 
       // SMHI's observed data loaded fine, but its forecast (a single grid-point request
       // covering all metrics) came back empty for a window that expects one — try
@@ -41,7 +42,7 @@ export async function getObservations(
       // all. The SMHI-sourced observed points and station identity are left untouched
       // (spec Clarifications: "keep observed, swap forecast only").
       if (expectsForecast(window) && !smhiResult.observations.some((o) => o.isForecast)) {
-        const fallbackForecast = await openMeteoProvider.getForecastOnly(location, window);
+        const fallbackForecast = await openMeteoProvider.getForecastOnly(location, window, extendedForecast);
         if (fallbackForecast.length > 0) {
           return {
             ...smhiResult,
@@ -59,7 +60,7 @@ export async function getObservations(
     }
   }
 
-  return { ...(await openMeteoProvider.getObservations(location, window)), primarySource: "open-meteo" };
+  return { ...(await openMeteoProvider.getObservations(location, window, extendedForecast)), primarySource: "open-meteo" };
 }
 
 /**
@@ -209,7 +210,8 @@ export interface MultiSourceForecastEntry {
  */
 export async function getMultiSourceForecast(
   location: Pick<Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<MultiSourceForecastEntry[]> {
   const [smhiResult, openMeteoResult, metNoResult] = await Promise.allSettled([
     (async () => {
@@ -217,10 +219,10 @@ export async function getMultiSourceForecast(
       // Forecast-only path (025-reduce-api-requests, US2) — avoids re-fetching all six
       // observation parameters (which the primary series's own getObservations call already
       // fetched) just to discard everything except the forecast portion.
-      return smhiProvider.getForecastOnly(location, window);
+      return smhiProvider.getForecastOnly(location, window, extendedForecast);
     })(),
-    openMeteoProvider.getForecastOnly(location, window),
-    metNoProvider.getForecastOnly(location, window),
+    openMeteoProvider.getForecastOnly(location, window, extendedForecast),
+    metNoProvider.getForecastOnly(location, window, extendedForecast),
   ]);
 
   // Read right after the fetches above resolve, from each provider's own already-parsed response

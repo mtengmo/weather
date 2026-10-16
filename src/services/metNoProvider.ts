@@ -1,5 +1,6 @@
 import type { ObservationWindow, WeatherObservation } from "../models/types";
 import type { WeatherCondition } from "./weatherCondition";
+import { forecastHoursFor } from "./forecastHours";
 
 const BASE_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact";
 
@@ -123,9 +124,10 @@ async function fetchTimeSeries(
  */
 export async function getForecastOnly(
   location: { latitude: number; longitude: number },
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<MetNoForecastResult> {
-  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastHoursNeeded = forecastHoursFor(FORECAST_HOURS, window, extendedForecast);
   if (forecastHoursNeeded === 0) return { observations: [], issuedAt: null };
 
   const { timeseries, issuedAt } = await fetchTimeSeries(location);

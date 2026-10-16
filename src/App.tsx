@@ -17,6 +17,7 @@ import NearbyStationCountControl from "./components/NearbyStationCountControl";
 import ThemeToggle from "./components/ThemeToggle";
 import SettingsMenu from "./components/SettingsMenu";
 import LocationPanel from "./components/LocationPanel";
+import NoLocationPrompt from "./components/NoLocationPrompt";
 import Footer from "./components/Footer";
 import DebugPanel from "./components/DebugPanel";
 import MapView from "./components/MapView";
@@ -51,6 +52,9 @@ export default function App() {
   const [metric, setMetric] = useState<WeatherMetric>(DEFAULT_METRIC);
   // Overview is the primary, most digestible view of current conditions — the app opens on it
   // whenever a location resolves, rather than the classic line-graph (013, FR-001).
+  // Optional 48h hourly forecast on the 24 Hours overview; default (off) keeps the 24h requests.
+  const [extendedForecast, setExtendedForecast] = useState(false);
+  const [locationPanelOpen, setLocationPanelOpen] = useState(false);
   const [view, setView] = useState<View>("overview");
   // True once Details/graph has been opened at least once this session — gates nearby-station
   // comparison fetching, which only that view ever renders (025-reduce-api-requests, US1). Never
@@ -64,7 +68,8 @@ export default function App() {
     selected,
     obsWindow,
     nearbyStationCount,
-    hasOpenedDetails
+    hasOpenedDetails,
+    extendedForecast
   );
 
   useEffect(() => {
@@ -153,6 +158,7 @@ export default function App() {
             onDismissFavoritesError={clearError}
             geoStatus={geoStatus}
             onRequestCurrentLocation={requestLocation}
+            onOpenChange={setLocationPanelOpen}
           />
           {selected !== null && (
             <span className="current-location-name">{selected.displayName}</span>
@@ -209,10 +215,17 @@ export default function App() {
 
       {selected && <WarningBanner warnings={warnings.filter((w) => !w.isInformational)} />}
 
-      {locationUnavailable && (
-        <p className="error-banner" role="alert">
-          {t("app.locationUnavailable")}
-        </p>
+      {locationUnavailable && view !== "map" && (
+        <NoLocationPrompt
+          favorites={favorites}
+          favoritesError={favoritesError}
+          onSelect={selectLocation}
+          onAddFavorite={(candidate) => add(candidate)}
+          onRemoveFavorite={remove}
+          onDismissFavoritesError={clearError}
+          onRequestCurrentLocation={requestLocation}
+          compact={locationPanelOpen}
+        />
       )}
 
       {selected && view === "graph" && (
@@ -252,6 +265,8 @@ export default function App() {
           weeklySeries={weeklySeries}
           uvRiskHours={uvRiskHours}
           informationalWarnings={warnings.filter((w) => w.isInformational)}
+          extendedForecast={extendedForecast}
+          onExtendedForecastChange={setExtendedForecast}
         />
       )}
 

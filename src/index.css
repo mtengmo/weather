@@ -1259,3 +1259,18 @@ a {
   color: var(--text-muted);
   margin: 0 0 0.5rem;
 }
+
+.weather-timeline-sublabel {
+  display: block;
+  font-size: 0.7em;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
+.no-location-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+}

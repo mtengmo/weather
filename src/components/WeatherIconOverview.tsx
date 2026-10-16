@@ -47,6 +47,9 @@ interface WeatherIconOverviewProps {
    *  banner — they're a background advisory, not a time-bound weather danger
    *  (048-split-informational-smhi). */
   informationalWarnings?: WeatherWarning[];
+  /** Whether the hourly view is extended from 24 to 48 forecast hours (off by default). */
+  extendedForecast?: boolean;
+  onExtendedForecastChange?: (extended: boolean) => void;
 }
 
 // The overview only supports 24h/3d/7d (007 spec Edge Cases, extended by 015) — 30-day is out
@@ -658,6 +661,8 @@ export default function WeatherIconOverview({
   weeklySeries,
   uvRiskHours,
   informationalWarnings,
+  extendedForecast = false,
+  onExtendedForecastChange,
 }: WeatherIconOverviewProps) {
   const { t } = useTranslation();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -859,6 +864,16 @@ export default function WeatherIconOverview({
             {t(w.label)}
           </button>
         ))}
+        {displayMode === "last-24-hours" && onExtendedForecastChange && (
+          <button
+            type="button"
+            className="extend-forecast-toggle"
+            aria-pressed={extendedForecast}
+            onClick={() => onExtendedForecastChange(!extendedForecast)}
+          >
+            {extendedForecast ? t("weatherOverview.show24h") : t("weatherOverview.show48h")}
+          </button>
+        )}
       </div>
 
       {series === null && <p role="status">{t("weatherOverview.loading")}</p>}
@@ -945,7 +960,12 @@ export default function WeatherIconOverview({
                   periods={timeline.periods}
                   className="weather-timeline-row weather-timeline-row-grid weather-timeline-row-grid-cells"
                 >
-                  {(period) => <span>{period.label}</span>}
+                  {(period) => (
+                    <span>
+                      {period.label}
+                      {period.subLabel && <small className="weather-timeline-sublabel">{period.subLabel}</small>}
+                    </span>
+                  )}
                 </PeriodGrid>
               </div>
 

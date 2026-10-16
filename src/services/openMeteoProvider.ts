@@ -1,4 +1,5 @@
 import type { ObservationSeries, ObservationWindow, WeatherObservation } from "../models/types";
+import { forecastHoursFor } from "./forecastHours";
 
 const BASE_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -51,8 +52,8 @@ function pastDaysFor(window: ObservationWindow): number {
 // How many days of forecast to request, per window (005-add-weather-forecast).
 // last-30-days is out of scope for forecast (spec Assumptions) — request the
 // minimum (1) so today's own hours are still present as before.
-function forecastDaysFor(window: ObservationWindow): number {
-  if (window === "last-24-hours") return 2;
+function forecastDaysFor(window: ObservationWindow, extendedForecast = false): number {
+  if (window === "last-24-hours") return extendedForecast ? 3 : 2;
   if (window === "last-7-days") return 8;
   return 1;
 }
@@ -65,7 +66,8 @@ function forecastDaysFor(window: ObservationWindow): number {
  */
 async function fetchHourlyPoints(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<WeatherObservation[] | null> {
   const params = new URLSearchParams({
     latitude: String(location.latitude),
@@ -74,7 +76,7 @@ async function fetchHourlyPoints(
       "temperature_2m,precipitation,wind_speed_10m,cloud_cover,wind_direction_10m,wind_gusts_10m,relative_humidity_2m,precipitation_probability",
     wind_speed_unit: "ms",
     past_days: String(pastDaysFor(window)),
-    forecast_days: String(forecastDaysFor(window)),
+    forecast_days: String(forecastDaysFor(window, extendedForecast)),
     timezone: "UTC",
   });
 
@@ -129,7 +131,8 @@ async function fetchHourlyPoints(
 
 export async function getObservations(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<ObservationSeries> {
   const baseLocation = {
     latitude: location.latitude,
@@ -138,7 +141,7 @@ export async function getObservations(
     source: "current-position" as const,
   };
 
-  const all = await fetchHourlyPoints(location, window);
+  const all = await fetchHourlyPoints(location, window, extendedForecast);
   if (all === null) {
     return { location: baseLocation, window, observations: [], status: "unavailable" };
   }
@@ -149,7 +152,7 @@ export async function getObservations(
   const hoursNeeded = WINDOW_HOURS[window];
   const observations = elapsed.slice(Math.max(0, elapsed.length - hoursNeeded));
 
-  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastHoursNeeded = forecastHoursFor(FORECAST_HOURS, window, extendedForecast);
   const upcoming = all
     .filter((o) => Date.parse(o.timestamp) > now)
     .map((o) => ({ ...o, isForecast: true as const }));
@@ -170,13 +173,14 @@ export async function getObservations(
  */
 export async function getForecastOnly(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<WeatherObservation[]> {
-  const all = await fetchHourlyPoints(location, window);
+  const all = await fetchHourlyPoints(location, window, extendedForecast);
   if (all === null) return [];
 
   const now = Date.now();
-  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastHoursNeeded = forecastHoursFor(FORECAST_HOURS, window, extendedForecast);
   const upcoming = all
     .filter((o) => Date.parse(o.timestamp) > now)
     .map((o) => ({ ...o, isForecast: true as const }));

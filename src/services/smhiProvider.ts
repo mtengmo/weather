@@ -1,5 +1,6 @@
 import type { ObservationSeries, ObservationWindow, StationInfo, WeatherObservation } from "../models/types";
 import type { WeatherCondition } from "./weatherCondition";
+import { forecastHoursFor } from "./forecastHours";
 
 const BASE_URL = "https://opendata-download-metobs.smhi.se/api/version/1.0";
 const TEMPERATURE_PARAM = 1;
@@ -427,7 +428,8 @@ async function fetchParameterValues(
 
 export async function getObservations(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<ObservationSeries> {
   const nearestTemp = await nearestActiveStations(TEMPERATURE_PARAM, location, 1);
   if (nearestTemp.length === 0) {
@@ -463,7 +465,7 @@ export async function getObservations(
     humidityValues
   );
 
-  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastHoursNeeded = forecastHoursFor(FORECAST_HOURS, window, extendedForecast);
   const { timeSeries: forecastTimeSeries, issuedAt: forecastIssuedAt } =
     forecastHoursNeeded > 0 ? await fetchForecastTimeSeries(location) : { timeSeries: [], issuedAt: null };
   fillTrailingObservationGap(observations, forecastTimeSeries);
@@ -494,9 +496,10 @@ export async function getObservations(
  */
 export async function getForecastOnly(
   location: Pick<import("../models/types").Location, "latitude" | "longitude">,
-  window: ObservationWindow
+  window: ObservationWindow,
+  extendedForecast = false
 ): Promise<{ observations: WeatherObservation[]; issuedAt: string | null }> {
-  const forecastHoursNeeded = FORECAST_HOURS[window];
+  const forecastHoursNeeded = forecastHoursFor(FORECAST_HOURS, window, extendedForecast);
   if (forecastHoursNeeded === 0) return { observations: [], issuedAt: null };
 
   const { timeSeries, issuedAt } = await fetchForecastTimeSeries(location);
