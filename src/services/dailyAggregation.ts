@@ -150,7 +150,52 @@ export function toDailyAggregates(
   return aggregates;
 }
 
-export type SubDayPeriod = "morning" | "lunch" | "afternoon" | "evening" | "night";
+/**
+ * Calendar-day buckets (local midnight to next local midnight) for the 7-day timeline: the
+ * `dayCount - 1` days before today, today, then every following day the data reaches (uncapped;
+ * callers apply `capForecastReach`). `bucketEnd` is the NEXT local midnight, so the column's own
+ * date is the day containing `bucketEnd - 1ms`. Today's column holds both observed and forecast
+ * readings and is NOT marked `isForecast`; only days starting at/after `now` are. Contiguous
+ * buckets (each start == previous bucketEnd). Never fabricates days beyond the data's reach.
+ */
+export function toCalendarDayAggregates(
+  observations: WeatherObservation[],
+  dayCount: number,
+  now: number = Date.now()
+): DailyAggregate[] {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const dayStartAt = (offset: number): number => {
+    const d = new Date(todayStart);
+    d.setDate(d.getDate() + offset);
+    return d.getTime();
+  };
+
+  let lastOffset = 0;
+  for (const o of observations) {
+    const t = Date.parse(o.timestamp);
+    while (t >= dayStartAt(lastOffset + 1)) lastOffset++;
+  }
+
+  const aggregates: DailyAggregate[] = [];
+  for (let offset = -(dayCount - 1); offset <= lastOffset; offset++) {
+    const startMs = dayStartAt(offset);
+    const endMs = dayStartAt(offset + 1);
+    const bucket = observations.filter((o) => {
+      const t = Date.parse(o.timestamp);
+      return t >= startMs && t < endMs;
+    });
+    aggregates.push({
+      bucketEnd: new Date(endMs).toISOString(),
+      ...(startMs >= now ? { isForecast: true } : {}),
+      ...aggregateBucket(bucket),
+      ...daytimeAggregateFields(bucket),
+    });
+  }
+  return aggregates;
+}
+
+export type SubDayPeriod ="morning" | "lunch" | "afternoon" | "evening" | "night";
 
 interface SubDayBoundary {
   period: SubDayPeriod;

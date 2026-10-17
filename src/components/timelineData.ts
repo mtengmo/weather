@@ -7,7 +7,7 @@ import type {
 import i18next from "i18next";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { deriveDailyCondition, deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
-import { toDailyAggregates, toSubDayBuckets } from "../services/dailyAggregation";
+import { toCalendarDayAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
   convertTemperature,
@@ -145,6 +145,10 @@ export interface TimelineData {
    * when there's no forecast to divide (006's forecastBoundaryValue concept, reused).
    */
   nowBoundaryIndex: number | null;
+  /** 7-day calendar view only: index of the column containing "now" (today). */
+  nowColumnIndex?: number;
+  /** 7-day calendar view only: "now" as a 0-1 fraction of the full timeline width. */
+  nowPosition?: number;
   temperature: TimelineRow;
   precipitation: TimelineRow;
   wind: TimelineRow;
@@ -391,7 +395,8 @@ function daysToTimelineData(
       label:
         (day.subDayPeriod ? i18next.t(`subDay.${day.subDayPeriod}`) : undefined) ??
         day.subDayLabel ??
-        new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short", day: "numeric" }),
+        // bucketEnd is the next local midnight, so the column's own date is 1 ms earlier.
+        new Date(Date.parse(day.bucketEnd) - 1).toLocaleDateString([], { weekday: "short", day: "numeric" }),
       subLabel: subDayRangeLabel(day),
       isForecast: day.isForecast ?? false,
       // No timestamp passed: a clear day always shows the sun, never the moon (007/008
@@ -446,11 +451,25 @@ export function buildDailyTimelineData(
   unit: UnitSystem,
   uvRiskHours: Set<number> = new Set()
 ): TimelineData {
-  return daysToTimelineData(
-    capForecastReach(toDailyAggregates(series.observations, DAILY_BUCKET_COUNT), DAILY_BUCKET_COUNT),
-    unit,
-    uvRiskHours
+  const now = Date.now();
+  // Calendar-day columns: today's column (the last non-forecast one) holds both observed and
+  // forecast readings; capForecastReach then caps the following forecast-only days.
+  const days = capForecastReach(
+    toCalendarDayAggregates(series.observations, DAILY_BUCKET_COUNT, now),
+    DAILY_BUCKET_COUNT
   );
+  const data = daysToTimelineData(days, unit, uvRiskHours);
+  const todayIndex = days.findIndex((d) => Date.parse(d.bucketEnd) > now);
+  if (todayIndex === -1) return data;
+  const startMs = todayIndex > 0 ? Date.parse(days[todayIndex - 1].bucketEnd) : Date.parse(days[0].bucketEnd) - 24 * 3600_000;
+  const endMs = Date.parse(days[todayIndex].bucketEnd);
+  const fraction = Math.min(1, Math.max(0, (now - startMs) / (endMs - startMs)));
+  return {
+    ...data,
+    nowBoundaryIndex: todayIndex, // today's column counts as the last "observed" one
+    nowColumnIndex: todayIndex,
+    nowPosition: (todayIndex + fraction) / days.length,
+  };
 }
 
 const SUB_DAY_VIEW_DAY_COUNT = 3;

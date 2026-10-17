@@ -713,9 +713,19 @@ export default function WeatherIconOverview({
   }
 
   const nowLeftPercent =
-    timeline !== null && timeline.nowBoundaryIndex !== null
-      ? ((timeline.nowBoundaryIndex + 1) / timeline.periods.length) * 100
-      : null;
+    timeline !== null && timeline.nowPosition !== undefined
+      ? timeline.nowPosition * 100
+      : timeline !== null && timeline.nowBoundaryIndex !== null
+        ? ((timeline.nowBoundaryIndex + 1) / timeline.periods.length) * 100
+        : null;
+  // Column-highlight index: isNowColumn highlights nowBoundaryIndex + 1, so for the calendar view
+  // (where "now" is inside today's column) pass nowColumnIndex - 1.
+  const nowHighlightBoundary =
+    timeline === null
+      ? null
+      : timeline.nowColumnIndex !== undefined
+        ? timeline.nowColumnIndex - 1
+        : timeline.nowBoundaryIndex;
 
   // Left-percent position of each day boundary — only on the 3-day view, where several sub-day
   // columns share a calendar day, making it hard to spot where one day ends and the next begins.
@@ -969,11 +979,11 @@ export default function WeatherIconOverview({
                 </PeriodGrid>
               </div>
 
-              <ConditionRow periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
-              <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} highLowVisible={highLowVisible} />
-              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel={t("weatherOverview.probability")} />
-              <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} subLabel={t("weatherOverview.gusts")} />
-              <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={timeline.nowBoundaryIndex} />
+              <ConditionRow periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} />
+              <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} highLowVisible={highLowVisible} />
+              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.probability")} />
+              <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.gusts")} />
+              <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} />
             </div>
           </div>
         </>

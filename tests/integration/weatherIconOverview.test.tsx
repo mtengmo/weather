@@ -54,6 +54,17 @@ function atLocalHour(hour: number): string {
   return d.toISOString();
 }
 
+// Same local-clock hour, but always on yesterday's calendar date. The 7-day timeline now uses
+// calendar-day columns (local midnight to midnight), so a fixture that mixes "this morning" and
+// "this afternoon" readings splits across today and yesterday depending on the time the test
+// runs at. Pinning every reading to one fully-past day keeps the column under test deterministic.
+function atLocalHourYesterday(hour: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
 function OverviewHarness({
   location,
   highLowVisible = false,
@@ -294,11 +305,11 @@ describe("US2: synchronized 7-day timeline", () => {
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: atLocalHour(8), temperature: 10, precipitation: 0.5, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
-              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
-              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourYesterday(8), temperature: 10, precipitation: 0.5, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourYesterday(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
             ]
           : [],
     }));
@@ -327,10 +338,10 @@ describe("US2: synchronized 7-day timeline", () => {
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: atLocalHour(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
-              { timestamp: atLocalHour(9), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
-              { timestamp: atLocalHour(11), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
-              { timestamp: atLocalHour(18), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 20 },
+              { timestamp: atLocalHourYesterday(7), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHourYesterday(9), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHourYesterday(11), temperature: 10, precipitation: 1, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHourYesterday(18), temperature: 10, precipitation: 0, windSpeed: 1, cloudCoverPercent: 20 },
             ]
           : [],
     }));
@@ -357,10 +368,10 @@ describe("US2: synchronized 7-day timeline", () => {
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: atLocalHour(7), temperature: 10, precipitation: 6, windSpeed: 1, cloudCoverPercent: 90 },
-              { timestamp: atLocalHour(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
-              { timestamp: atLocalHour(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
-              { timestamp: atLocalHour(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(7), temperature: 10, precipitation: 6, windSpeed: 1, cloudCoverPercent: 90 },
+              { timestamp: atLocalHourYesterday(12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(14), temperature: 16, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
+              { timestamp: atLocalHourYesterday(18), temperature: 14, precipitation: 0, windSpeed: 1, cloudCoverPercent: 0 },
             ]
           : [],
     }));
