@@ -17,3 +17,9 @@ Thumbs.db
 # 070-dalle-icon-prompt-tool: scratch output from the icon-generation tool, never committed
 docs/weathericons/generated/
 docs/weathericons/__pycache__/
+
+# Impeccable design skill: the launcher downloads its platform binary on first run; keep it out of git
+.claude/skills/impeccable/scripts/bin/
+.github/skills/impeccable/scripts/bin/
+# Impeccable per-machine settings
+.impeccable/config.local.json
