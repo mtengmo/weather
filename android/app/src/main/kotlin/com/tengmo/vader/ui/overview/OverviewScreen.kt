@@ -70,7 +70,12 @@ fun OverviewScreen(
     LaunchedEffect(stored) {
         val shown = (state.locationState as? LocationLoadState.Ready)?.location
         if (stored != null && stored != shown && shown != null) {
-            viewModel.selectLocation(stored, remember = false)
+            if (stored.latitude == shown.latitude && stored.longitude == shown.longitude && stored.source == shown.source) {
+                // Only the name changed (background re-resolution): relabel, never reload or re-persist.
+                viewModel.applyResolvedName(stored)
+            } else {
+                viewModel.selectLocation(stored, remember = false)
+            }
         } else if (stored == null && shown != null) {
             // "Use current location" clears the stored location — re-resolve the device position.
             viewModel.useCurrentLocation(permission.isGranted)

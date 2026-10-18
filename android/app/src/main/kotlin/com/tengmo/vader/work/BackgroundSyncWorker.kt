@@ -18,10 +18,22 @@ import com.tengmo.vader.work.sync.SyncPlanner
 import com.tengmo.vader.work.sync.SyncRole
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import android.util.Log
+import com.tengmo.vader.data.model.Location
+import com.tengmo.vader.data.model.LocationSource
+import com.tengmo.vader.location.BackgroundLocationFollower
+import com.tengmo.vader.location.LastKnownLocationReader
+import com.tengmo.vader.location.LocationFollowPolicy
+import com.tengmo.vader.location.haversineMeters
+import com.tengmo.vader.location.hasBackgroundLocationPermission
 
 /** The single periodic background sync: plans what is stale, fetches it once, caches it and
- *  feeds widget snapshots from the same fetched series. No GPS is used for the selected place. */
+ *  feeds widget snapshots from the same fetched series. When opted in, follows the phone's last-known coarse location (never a new GPS fix). */
 class BackgroundSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    private companion object {
+        const val TAG = "BackgroundSync"
+    }
 
     override suspend fun doWork(): Result {
         val services = ServiceLocator.get(applicationContext)
@@ -30,8 +42,9 @@ class BackgroundSyncWorker(context: Context, params: WorkerParameters) : Corouti
 
         val hasWidgets = updater.hasWidgets()
         val widgets = if (hasWidgets) runCatching { updater.resolveWidgets() }.getOrDefault(emptyList()) else emptyList()
-        val selected = services.preferencesStore.preferences.first().lastViewedLocation
-            ?.let { SyncPlace(it.latitude, it.longitude, it.displayName) }
+        val prefs = services.preferencesStore.preferences.first()
+        val stored = followPhoneLocation(services, prefs.lastViewedLocation, prefs.followLocationInBackground)
+        val selected = stored?.let { SyncPlace(it.latitude, it.longitude, it.displayName) }
         val favorites = services.favoritesStore.favorites.first().map { SyncPlace(it.latitude, it.longitude, it.displayName) }
         val widgetPlaces = widgets.map { SyncPlace(it.location.latitude, it.location.longitude, it.location.displayName) }
 
@@ -52,6 +65,7 @@ class BackgroundSyncWorker(context: Context, params: WorkerParameters) : Corouti
             ),
         )
 
+        Log.d(TAG, "planned ${jobs.size} job(s) for ${candidates.size} place(s), selected=${selected?.key}")
         val engine = SyncEngine(RepositorySeriesFetcher(services.weatherRepository), cache, cache)
         val report = engine.run(
             jobs = jobs,
@@ -68,6 +82,35 @@ class BackgroundSyncWorker(context: Context, params: WorkerParameters) : Corouti
             RetryDecision.RETRY -> Result.retry()
             RetryDecision.SUCCESS -> Result.success()
         }
+    }
+
+    /** Follows the phone's last-known coarse location when opted in, permitted and the selected
+     *  place is the current position. Never requests a fix, so GPS is never started. */
+    private suspend fun followPhoneLocation(
+        services: ServiceLocator,
+        stored: Location?,
+        enabled: Boolean,
+    ): Location? {
+        if (stored == null || stored.source != LocationSource.CurrentPosition) return stored
+        if (!enabled) return stored
+        if (!hasBackgroundLocationPermission(applicationContext)) {
+            Log.d(TAG, "follow: background location not granted, keeping stored place")
+            return stored
+        }
+        val fix = LastKnownLocationReader(applicationContext).read()
+        if (fix == null) {
+            Log.d(TAG, "follow: no last-known location available")
+            return stored
+        }
+        val distance = haversineMeters(stored.latitude, stored.longitude, fix.latitude, fix.longitude)
+        Log.d(TAG, "follow: source=fused-last-known age=${fix.ageMs / 60_000}min accuracy=${fix.accuracyMeters}m moved=${distance.toInt()}m")
+        val follower = BackgroundLocationFollower(
+            resolveLocation = { lat, lon, lang -> services.weatherRepository.resolveCurrentLocationName(lat, lon, lang) },
+            persist = { services.preferencesStore.setLastViewedLocation(it) },
+        )
+        val moved = follower.follow(stored, fix, services.preferencesStore.effectiveLanguage())
+        if (moved != null) Log.d(TAG, "follow: moved >= ${LocationFollowPolicy.MIN_MOVE_M.toInt()}m, now '${moved.displayName}'")
+        return moved ?: stored
     }
 
     private fun isUnmetered(context: Context): Boolean {

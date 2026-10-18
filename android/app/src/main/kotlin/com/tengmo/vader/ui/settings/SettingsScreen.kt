@@ -1,6 +1,21 @@
 package com.tengmo.vader.ui.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.tengmo.vader.location.hasBackgroundLocationPermission
+import com.tengmo.vader.location.rememberBackgroundLocationState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -35,6 +50,73 @@ import com.tengmo.vader.ui.PrivacyNoticeView
 
 @Composable
 private fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+
+/** Opt-in "Follow my location in the background" (default off). Turning it on walks through the
+ *  staged permission flow (foreground, then "Allow all the time"); it only stays on while the
+ *  background permission is actually held. */
+@Composable
+private fun FollowLocationRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    var hasBackground by remember { mutableStateOf(hasBackgroundLocationPermission(context)) }
+    var pendingEnable by remember { mutableStateOf(false) }
+    val permission = rememberBackgroundLocationState { granted ->
+        hasBackground = granted
+        if (granted && pendingEnable) {
+            pendingEnable = false
+            onChange(true)
+        }
+    }
+    // Returning from the system settings screen (Android 11+ "Allow all the time").
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        hasBackground = hasBackgroundLocationPermission(context)
+        if (pendingEnable && hasBackground) {
+            pendingEnable = false
+            onChange(true)
+        }
+    }
+    val checked = enabled && hasBackground
+    val title = stringResource(R.string.settings_followBackground_title)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .toggleable(
+                    value = checked,
+                    role = Role.Switch,
+                    onValueChange = { on ->
+                        if (!on) {
+                            pendingEnable = false
+                            onChange(false)
+                        } else if (hasBackground) {
+                            onChange(true)
+                        } else {
+                            pendingEnable = true
+                            permission.request()
+                        }
+                    },
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Switch(checked = checked, onCheckedChange = null)
+        }
+        Text(
+            stringResource(R.string.settings_followBackground_desc),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (pendingEnable && !hasBackground) {
+            Text(stringResource(R.string.settings_followBackground_needsPermission), style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                )
+            }) { Text(stringResource(R.string.settings_followBackground_openSettings)) }
+        }
+    }
+}
 
 /** T054 — Settings screen (US4): every option the web's SettingsMenu/ThemeToggle/UnitToggle/
  *  LanguageToggle/HighLowToggle/NearbyStationCountControl offers, plus the how-it-works, privacy
@@ -91,6 +173,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
             FilterChip(prefs.highLowVisible, { viewModel.setHighLowVisible(true) }, { Text(stringResource(R.string.highLowToggle_on)) })
             FilterChip(!prefs.highLowVisible, { viewModel.setHighLowVisible(false) }, { Text(stringResource(R.string.highLowToggle_off)) })
         }
+
+        FollowLocationRow(prefs.followLocationInBackground, viewModel::setFollowLocationInBackground)
 
         TextButton(onClick = { showHowItWorks = !showHowItWorks }) { Text(stringResource(R.string.footer_howThisWorks)) }
         if (showHowItWorks) HowItWorksView()

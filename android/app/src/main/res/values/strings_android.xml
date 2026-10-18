@@ -64,4 +64,8 @@
     <string name="timeline_extendedOff">Showing 24 hours</string>
     <string name="timeline_extendedShort">48 h</string>
     <string name="timeline_goToNow">Go to now</string>
+    <string name="settings_followBackground_title">Follow my location in the background</string>
+    <string name="settings_followBackground_desc">Keeps the weather on your current place up to date as you travel. Uses only the last known coarse location of your phone and never turns on GPS.</string>
+    <string name="settings_followBackground_needsPermission">Needs \"Allow all the time\" location access. Open app settings to allow it, then return here.</string>
+    <string name="settings_followBackground_openSettings">Open app settings</string>
 </resources>

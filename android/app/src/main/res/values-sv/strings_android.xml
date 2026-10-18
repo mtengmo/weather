@@ -64,4 +64,8 @@
     <string name="timeline_extendedOff">Visar 24 timmar</string>
     <string name="timeline_extendedShort">48 h</string>
     <string name="timeline_goToNow">Gå till nu</string>
+    <string name="settings_followBackground_title">Följ min plats i bakgrunden</string>
+    <string name="settings_followBackground_desc">Håller vädret för din nuvarande plats uppdaterat när du reser. Använder bara telefonens senast kända ungefärliga plats och slår aldrig på GPS.</string>
+    <string name="settings_followBackground_needsPermission">Kräver platsåtkomst med \"Tillåt hela tiden\". Öppna appens inställningar för att tillåta det och gå sedan tillbaka hit.</string>
+    <string name="settings_followBackground_openSettings">Öppna appinställningar</string>
 </resources>

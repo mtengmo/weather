@@ -25,6 +25,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setNearbyStationCount(count: Int) = viewModelScope.launch { store.setNearbyStationCount(count) }
 
+    fun setFollowLocationInBackground(enabled: Boolean) = viewModelScope.launch { store.setFollowLocationInBackground(enabled) }
+
     fun setHighLowVisible(visible: Boolean) = viewModelScope.launch { store.setHighLowVisible(visible) }
 
     /** Persists the choice and applies it app-wide: Auto follows the device locale (an empty

@@ -1,7 +1,9 @@
 package com.tengmo.vader.data.repository
 
+import com.tengmo.vader.data.local.PlaceNameCache
 import com.tengmo.vader.data.model.DataSource
 import com.tengmo.vader.data.model.Location
+import com.tengmo.vader.data.model.isPlaceholderName
 import com.tengmo.vader.data.model.LocationSource
 import com.tengmo.vader.data.model.NearbyStationSeries
 import com.tengmo.vader.data.model.ObservationSeries
@@ -37,6 +39,8 @@ class WeatherRepository(
     private val openMeteo: OpenMeteoSource,
     private val metNo: MetNoSource,
     private val nominatim: NominatimSource,
+    private val nameCache: PlaceNameCache? = null,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val UPCOMING_WINDOW_MS = 48L * 60 * 60 * 1000
 
@@ -196,23 +200,34 @@ class WeatherRepository(
             entries
         }
 
-    suspend fun reverseGeocodeName(latitude: Double, longitude: Double): String? =
-        nominatim.reverseGeocode(latitude, longitude)
+    /** Cache-first reverse geocoding; a successful network name is cached for ~30 days. */
+    suspend fun reverseGeocodeName(latitude: Double, longitude: Double, language: String = "en"): String? {
+        nameCache?.get(latitude, longitude, language, clock())?.let { return it }
+        val name = nominatim.reverseGeocode(latitude, longitude, language)?.takeIf { it.isNotBlank() }
+        if (name != null) nameCache?.put(latitude, longitude, language, name, clock())
+        return name
+    }
+
+    /** Stores a name resolved elsewhere (favorite / map pick) so it is never looked up again. */
+    fun rememberPlaceName(latitude: Double, longitude: Double, language: String, name: String) {
+        if (!isPlaceholderName(name)) nameCache?.put(latitude, longitude, language, name, clock())
+    }
 
     suspend fun searchPlaces(query: String): List<OpenMeteoSource.PlaceCandidate> = openMeteo.searchPlaces(query)
 
-    /** Resolves a bare coordinate into a [Location] with the best available display name —
-     *  reverse geocoding first (a human place name), else the nearest SMHI station's own name if
-     *  covered (matches useGeolocation.ts on web). */
-    suspend fun resolveCurrentLocationName(latitude: Double, longitude: Double): Location {
-        val stationName = if (isSmhiCovered(latitude, longitude)) {
-            smhi.nearestStations(latitude, longitude, 1).firstOrNull()?.displayName
-        } else {
-            null
-        }
-        val name = reverseGeocodeName(latitude, longitude) ?: stationName ?: "Current location"
-        return Location(latitude, longitude, name, LocationSource.CurrentPosition)
+    /** The best name for a coordinate (cache, then reverse geocoding, then the nearest SMHI
+     *  station's name), or null when nothing could be resolved. Never returns a placeholder. */
+    suspend fun resolvePlaceName(latitude: Double, longitude: Double, language: String = "en"): String? {
+        reverseGeocodeName(latitude, longitude, language)?.let { return it }
+        if (!isSmhiCovered(latitude, longitude)) return null
+        return runCatching { smhi.nearestStations(latitude, longitude, 1).firstOrNull()?.displayName }
+            .getOrNull()?.takeIf { !isPlaceholderName(it) }
     }
+
+    /** Resolves a bare coordinate into a current-position [Location]. When no name can be found the
+     *  displayName is BLANK (the UI shows a localised "My location"); a placeholder is never stored. */
+    suspend fun resolveCurrentLocationName(latitude: Double, longitude: Double, language: String = "en"): Location =
+        Location(latitude, longitude, resolvePlaceName(latitude, longitude, language).orEmpty(), LocationSource.CurrentPosition)
 }
 
 /**

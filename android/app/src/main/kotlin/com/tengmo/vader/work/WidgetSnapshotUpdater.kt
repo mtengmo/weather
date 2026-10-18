@@ -102,7 +102,7 @@ class WidgetSnapshotUpdater(private val context: Context) {
         val moved = last == null ||
             abs(last.latitude - fix.first) > MOVED_DEGREES || abs(last.longitude - fix.second) > MOVED_DEGREES
         val location = if (moved) {
-            services.weatherRepository.resolveCurrentLocationName(fix.first, fix.second)
+            services.weatherRepository.resolveCurrentLocationName(fix.first, fix.second, services.preferencesStore.effectiveLanguage())
         } else {
             last!!
         }

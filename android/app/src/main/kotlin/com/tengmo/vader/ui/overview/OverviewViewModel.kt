@@ -24,7 +24,9 @@ import com.tengmo.vader.data.repository.nearestObservationOf
 import com.tengmo.vader.data.repository.RestOfDayAggregate
 import com.tengmo.vader.data.repository.restOfDayAggregate
 import com.tengmo.vader.data.repository.toDailyAggregates
+import com.tengmo.vader.data.model.needsNameRepair
 import com.tengmo.vader.location.CurrentLocationProvider
+import com.tengmo.vader.location.LocationNameRepair
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -193,13 +195,17 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
      *  position when [permissionGranted] (US1 scenarios 1-4). Safe to call again after the user
      *  grants permission. */
     fun start(permissionGranted: Boolean) {
-        if (started && _uiState.value.locationState is LocationLoadState.Ready) return
+        if (started && _uiState.value.locationState is LocationLoadState.Ready) {
+            repairNameIfNeeded() // warm start: a placeholder may still be stored
+            return
+        }
         started = true
         viewModelScope.launch {
             val prefs: UserPreferences = services.preferencesStore.preferences.first()
             val lastViewed = prefs.lastViewedLocation
             if (lastViewed != null) {
                 selectLocation(lastViewed, remember = false)
+                repairNameIfNeeded()
                 return@launch
             }
             resolveCurrentPosition(permissionGranted)
@@ -221,8 +227,40 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
             _uiState.value = _uiState.value.copy(locationState = LocationLoadState.Unavailable)
             return
         }
-        val resolved = services.weatherRepository.resolveCurrentLocationName(coords.latitude, coords.longitude)
+        val resolved = services.weatherRepository.resolveCurrentLocationName(
+            coords.latitude, coords.longitude, services.preferencesStore.effectiveLanguage(),
+        )
         selectLocation(resolved)
+        if (resolved.needsNameRepair()) repairNameIfNeeded()
+    }
+
+    private var repairJob: Job? = null
+
+    private val nameRepair = LocationNameRepair(
+        resolveName = { lat, lon, language -> services.weatherRepository.resolvePlaceName(lat, lon, language) },
+        readStored = { services.preferencesStore.preferences.first().lastViewedLocation },
+        persist = { services.preferencesStore.setLastViewedLocation(it) },
+    )
+
+    /** Background, non-blocking: if the stored current position has no real name (blank or an old
+     *  "Current location" placeholder), resolve it from its coordinates (name cache first, then the
+     *  rate-limited network lookup) and persist the real name once. Failure keeps the state as is. */
+    private fun repairNameIfNeeded() {
+        if (repairJob?.isActive == true) return
+        repairJob = viewModelScope.launch {
+            val stored = services.preferencesStore.preferences.first().lastViewedLocation ?: return@launch
+            if (!stored.needsNameRepair()) return@launch
+            val fixed = nameRepair.repair(stored, services.preferencesStore.effectiveLanguage()) ?: return@launch
+            applyResolvedName(fixed)
+        }
+    }
+
+    /** Shows [location]'s name on the already-loaded place (same coordinates) without reloading data. */
+    fun applyResolvedName(location: Location) {
+        val shown = (_uiState.value.locationState as? LocationLoadState.Ready)?.location ?: return
+        if (shown.latitude != location.latitude || shown.longitude != location.longitude) return
+        if (shown.displayName == location.displayName) return
+        _uiState.update { it.copy(locationState = LocationLoadState.Ready(shown.copy(displayName = location.displayName))) }
     }
 
     fun selectLocation(location: Location, remember: Boolean = true) {

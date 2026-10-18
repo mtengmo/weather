@@ -31,4 +31,6 @@ data class UserPreferences(
     val nearbyStationCount: NearbyStationCount = DEFAULT_NEARBY_STATION_COUNT,
     val highLowVisible: HighLowVisibility = DEFAULT_HIGH_LOW_VISIBLE,
     val lastViewedLocation: Location? = null,
+    /** Opt-in: background sync follows the phone's last known coarse location (never starts GPS). */
+    val followLocationInBackground: Boolean = false,
 )

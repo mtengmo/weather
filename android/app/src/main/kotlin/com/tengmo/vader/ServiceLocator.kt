@@ -1,6 +1,8 @@
 package com.tengmo.vader
 
 import android.content.Context
+import com.tengmo.vader.data.local.PlaceNameCache
+import java.io.File
 import com.tengmo.vader.data.local.FavoritesStore
 import com.tengmo.vader.data.local.PreferencesStore
 import com.tengmo.vader.data.local.SnapshotStore
@@ -26,7 +28,10 @@ class ServiceLocator private constructor(context: Context) {
     val metNoSource = MetNoSource(httpClient)
     val nominatimSource = NominatimSource(httpClient)
 
-    val weatherRepository = WeatherRepository(smhiSource, openMeteoSource, metNoSource, nominatimSource)
+    val weatherRepository = WeatherRepository(
+        smhiSource, openMeteoSource, metNoSource, nominatimSource,
+        nameCache = PlaceNameCache(File(context.filesDir, "place_names/names.json"), json),
+    )
 
     val favoritesStore = FavoritesStore(context)
     val preferencesStore = PreferencesStore(context)

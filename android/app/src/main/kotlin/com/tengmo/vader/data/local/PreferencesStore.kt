@@ -17,6 +17,8 @@ import com.tengmo.vader.data.model.Theme
 import com.tengmo.vader.data.model.UnitSystem
 import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.data.source.NetworkModule
+import com.tengmo.vader.data.repository.resolveEffectiveLocale
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.preferencesDataStoreInstance by preferencesDataStore(name = "user_preferences")
@@ -34,6 +36,7 @@ class PreferencesStore(context: Context) {
         val nearbyStationCount = intPreferencesKey("nearby_station_count")
         val highLowVisible = booleanPreferencesKey("high_low_visible")
         val lastViewedLocation = stringPreferencesKey("last_viewed_location_json")
+        val followInBackground = booleanPreferencesKey("follow_location_in_background")
     }
 
     val preferences = dataStore.data.map { prefs ->
@@ -47,8 +50,14 @@ class PreferencesStore(context: Context) {
             lastViewedLocation = prefs[Keys.lastViewedLocation]?.let {
                 runCatching { NetworkModule.json.decodeFromString(Location.serializer(), it) }.getOrNull()
             },
+            followLocationInBackground = prefs[Keys.followInBackground] ?: false,
         )
     }
+
+    /** The effective app language code ("sv" / "en") used for place-name lookups and their cache keys. */
+    suspend fun effectiveLanguage(): String = resolveEffectiveLocale(preferences.first().language).language
+
+    suspend fun setFollowLocationInBackground(enabled: Boolean) = dataStore.edit { it[Keys.followInBackground] = enabled }
 
     suspend fun setTheme(theme: Theme) = dataStore.edit { it[Keys.theme] = theme.name }
     suspend fun setUnit(unit: UnitSystem) = dataStore.edit { it[Keys.unit] = unit.name }

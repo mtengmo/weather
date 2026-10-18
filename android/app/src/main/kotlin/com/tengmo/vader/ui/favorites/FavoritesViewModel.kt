@@ -35,6 +35,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun add(place: OpenMeteoSource.PlaceCandidate) {
         viewModelScope.launch {
+            cacheName(place)
             val favorite = Favorite(
                 id = UUID.randomUUID().toString(),
                 latitude = place.latitude,
@@ -62,8 +63,15 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun selectCandidate(place: OpenMeteoSource.PlaceCandidate, then: () -> Unit) =
+    fun selectCandidate(place: OpenMeteoSource.PlaceCandidate, then: () -> Unit) {
+        viewModelScope.launch { cacheName(place) }
         select(Location(place.latitude, place.longitude, place.displayName, LocationSource.Favorite), then)
+    }
+
+    private suspend fun cacheName(place: OpenMeteoSource.PlaceCandidate) =
+        services.weatherRepository.rememberPlaceName(
+            place.latitude, place.longitude, services.preferencesStore.effectiveLanguage(), place.displayName,
+        )
 
     /** "Use current location" — clears the stored place so the Overview re-resolves the device
      *  position (locationSwitcher.useCurrentLocation). */

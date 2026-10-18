@@ -94,7 +94,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
             // Seed the widget with where the phone is right now, if a foreground fix is possible.
             val lastKnown = runCatching {
                 CurrentLocationProvider(this@WidgetConfigureActivity).getCurrentLocation()?.let {
-                    services.weatherRepository.resolveCurrentLocationName(it.latitude, it.longitude)
+                    services.weatherRepository.resolveCurrentLocationName(it.latitude, it.longitude, services.preferencesStore.effectiveLanguage())
                 }
             }.getOrNull()
             complete(
