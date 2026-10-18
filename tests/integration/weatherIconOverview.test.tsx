@@ -65,6 +65,14 @@ function atLocalHourYesterday(hour: number): string {
   return d.toISOString();
 }
 
+// Two readings on the same past calendar day regardless of the clock time the test runs at.
+function atLocalHourDaysAgo(days: number, hour: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+
 function OverviewHarness({
   location,
   highLowVisible = false,
@@ -434,8 +442,8 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: hoursAgo(80), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(73), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourDaysAgo(3, 6), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourDaysAgo(3, 12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
             ]
           : [],
     }));
@@ -457,8 +465,8 @@ describe("High/Low on the Overview (014-dashboard-usability-fixes, US4)", () => 
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: hoursAgo(80), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(73), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourDaysAgo(3, 6), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: atLocalHourDaysAgo(3, 12), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
             ]
           : [],
     }));
