@@ -44,8 +44,6 @@
     <string name="freshness_updating">Uppdaterar vädret…</string>
     <string name="freshness_refresh">Uppdatera vädret</string>
     <string name="todaySummary_a11yNow">Nu %1$s grader, %2$s</string>
-    <string name="todaySummary_more">Mer</string>
-    <string name="todaySummary_less">Mindre</string>
     <string name="todaySummary_noticesBadge">%1$d notiser</string>
     <string name="todaySummary_noticeExpanded">Utfälld</string>
     <string name="todaySummary_noticeCollapsed">Hopfälld</string>

@@ -44,8 +44,6 @@
     <string name="freshness_updating">Updating weather…</string>
     <string name="freshness_refresh">Refresh weather</string>
     <string name="todaySummary_a11yNow">Now %1$s degrees, %2$s</string>
-    <string name="todaySummary_more">More</string>
-    <string name="todaySummary_less">Less</string>
     <string name="todaySummary_noticesBadge">%1$d notices</string>
     <string name="todaySummary_noticeExpanded">Expanded</string>
     <string name="todaySummary_noticeCollapsed">Collapsed</string>

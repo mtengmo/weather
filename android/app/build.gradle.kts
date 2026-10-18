@@ -35,7 +35,7 @@ android {
         targetSdk = 35
         // CI release builds pass -PVERSION_CODE=<run number> so every upload is strictly newer.
         versionCode = (findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
-        versionName = "1.1.0"
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

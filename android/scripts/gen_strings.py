@@ -65,6 +65,38 @@ def render_xml(pairs: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def find_duplicates() -> list[str]:
+    """Names defined in BOTH the generated strings.xml and the hand-written strings_android.xml.
+
+    Android's resource merger rejects duplicate names (mergeDebugResources fails), so Android-only
+    strings must never reuse a key that already comes from src/i18n.
+    """
+    problems: list[str] = []
+    for folder in ("values", "values-sv"):
+        res = ROOT / "android/app/src/main/res" / folder
+        generated = res / "strings.xml"
+        extra = res / "strings_android.xml"
+        if not generated.exists() or not extra.exists():
+            continue
+        pattern = re.compile(r'<string name="([^"]+)"')
+        both = set(pattern.findall(generated.read_text(encoding="utf-8"))) & set(
+            pattern.findall(extra.read_text(encoding="utf-8"))
+        )
+        for name in sorted(both):
+            problems.append(f"{folder}: '{name}' is in strings.xml (from src/i18n) and strings_android.xml")
+    return problems
+
+
+def report_duplicates() -> int:
+    """Prints any clashing names to stderr; returns 1 if there are some, else 0."""
+    duplicates = find_duplicates()
+    if not duplicates:
+        return 0
+    print("\nDuplicate Android string names (remove them from strings_android.xml):", file=sys.stderr)
+    print("\n".join("  " + d for d in duplicates), file=sys.stderr)
+    return 1
+
+
 def main(argv: list[str]) -> int:
     en = parse_ts(ROOT / "src/i18n/en.ts")
     sv = parse_ts(ROOT / "src/i18n/sv.ts")
@@ -96,13 +128,15 @@ def main(argv: list[str]) -> int:
                 file=sys.stderr,
             )
             return 1
+        if report_duplicates():
+            return 1
         print(f"OK: {len(en)} generated strings are up to date.")
         return 0
 
     for path, content in targets.items():
         path.write_text(content, encoding="utf-8")
     print(f"Wrote {len(en)} strings to values/strings.xml and values-sv/strings.xml")
-    return 0
+    return report_duplicates()
 
 
 if __name__ == "__main__":
