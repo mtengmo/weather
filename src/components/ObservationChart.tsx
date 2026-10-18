@@ -43,6 +43,14 @@ import { HIGH_COLOR, LOW_COLOR, seriesColor, seriesDash } from "./seriesColors";
 import { buildGradientStops } from "../services/temperatureColorScale";
 import MetricTabs from "./MetricTabs";
 import { dataSourceNote, formatValue } from "../services/format";
+import {
+  formatClockTime,
+  formatDateMedium,
+  formatDateTime,
+  formatHourLabel,
+  formatMonthDay,
+  formatWeekdayShort,
+} from "../services/timeFormat";
 import { toDailyAggregates } from "../services/dailyAggregation";
 import { convertTemperature } from "../services/units";
 
@@ -286,18 +294,12 @@ export default function ObservationChart({
         <p className="observed-extremes-note">
           {t("chart.highAt", {
             value: `${formatValue(convertTemperature(observedExtremes.high.value, unit), 0)}${tempUnitLabel}`,
-            time: new Date(observedExtremes.high.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            time: formatClockTime(new Date(observedExtremes.high.timestamp)),
           })}
           {" · "}
           {t("chart.lowAt", {
             value: `${formatValue(convertTemperature(observedExtremes.low.value, unit), 0)}${tempUnitLabel}`,
-            time: new Date(observedExtremes.low.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            time: formatClockTime(new Date(observedExtremes.low.timestamp)),
           })}
         </p>
       )}
@@ -354,7 +356,7 @@ export default function ObservationChart({
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="timestamp"
-              tickFormatter={(t: string) => new Date(t).toLocaleTimeString([], { hour: "2-digit" })}
+              tickFormatter={(t: string) => formatHourLabel(new Date(t))}
             />
             <YAxis yAxisId="temp" label={{ value: tempUnitLabel, angle: -90, position: "insideLeft" }} />
             <YAxis
@@ -363,7 +365,7 @@ export default function ObservationChart({
               label={{ value: precipUnitLabel, angle: 90, position: "insideRight" }}
             />
             <Tooltip
-              labelFormatter={(t) => new Date(String(t)).toLocaleString()}
+              labelFormatter={(t) => formatDateTime(new Date(String(t)))}
               formatter={tooltipFormatter}
               contentStyle={TOOLTIP_CONTENT_STYLE}
               itemStyle={TOOLTIP_ITEM_STYLE}
@@ -491,10 +493,7 @@ export default function ObservationChart({
             <XAxis
               dataKey="bucketEnd"
               tickFormatter={(t: string) =>
-                new Date(t).toLocaleDateString(
-                  [],
-                  window === "last-30-days" ? { month: "short", day: "numeric" } : { weekday: "short" }
-                )
+                window === "last-30-days" ? formatMonthDay(new Date(t)) : formatWeekdayShort(new Date(t))
               }
             />
             <YAxis yAxisId="temp" label={{ value: tempUnitLabel, angle: -90, position: "insideLeft" }} />
@@ -504,7 +503,7 @@ export default function ObservationChart({
               label={{ value: precipUnitLabel, angle: 90, position: "insideRight" }}
             />
             <Tooltip
-              labelFormatter={(t) => new Date(String(t)).toLocaleDateString()}
+              labelFormatter={(t) => formatDateMedium(new Date(String(t)))}
               formatter={tooltipFormatter}
               contentStyle={TOOLTIP_CONTENT_STYLE}
               itemStyle={TOOLTIP_ITEM_STYLE}
@@ -674,11 +673,8 @@ export default function ObservationChart({
               dataKey={window === "last-24-hours" ? "timestamp" : "bucketEnd"}
               tickFormatter={(t: string) =>
                 window === "last-24-hours"
-                  ? new Date(t).toLocaleTimeString([], { hour: "2-digit" })
-                  : new Date(t).toLocaleDateString(
-                      [],
-                      window === "last-30-days" ? { month: "short", day: "numeric" } : { weekday: "short" }
-                    )
+                  ? formatHourLabel(new Date(t))
+                  : window === "last-30-days" ? formatMonthDay(new Date(t)) : formatWeekdayShort(new Date(t))
               }
             />
             <YAxis label={{ value: precipUnitLabel, angle: -90, position: "insideLeft" }} />
@@ -765,11 +761,8 @@ export default function ObservationChart({
               dataKey={window === "last-24-hours" ? "timestamp" : "bucketEnd"}
               tickFormatter={(t: string) =>
                 window === "last-24-hours"
-                  ? new Date(t).toLocaleTimeString([], { hour: "2-digit" })
-                  : new Date(t).toLocaleDateString(
-                      [],
-                      window === "last-30-days" ? { month: "short", day: "numeric" } : { weekday: "short" }
-                    )
+                  ? formatHourLabel(new Date(t))
+                  : window === "last-30-days" ? formatMonthDay(new Date(t)) : formatWeekdayShort(new Date(t))
               }
             />
             <YAxis
@@ -869,10 +862,7 @@ export default function ObservationChart({
             <XAxis
               dataKey="bucketEnd"
               tickFormatter={(t: string) =>
-                new Date(t).toLocaleDateString(
-                  [],
-                  window === "last-30-days" ? { month: "short", day: "numeric" } : { weekday: "short" }
-                )
+                window === "last-30-days" ? formatMonthDay(new Date(t)) : formatWeekdayShort(new Date(t))
               }
             />
             <YAxis
@@ -885,7 +875,7 @@ export default function ObservationChart({
               label={{ value: METRIC_LABELS.wind.unit(unit), angle: 90, position: "insideRight" }}
             />
             <Tooltip
-              labelFormatter={(t) => new Date(String(t)).toLocaleDateString()}
+              labelFormatter={(t) => formatDateMedium(new Date(String(t)))}
               formatter={tooltipFormatter}
               contentStyle={TOOLTIP_CONTENT_STYLE}
               itemStyle={TOOLTIP_ITEM_STYLE}

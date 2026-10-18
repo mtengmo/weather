@@ -25,6 +25,8 @@ object AppColors {
     val midnightBorder = Color(0xFF2E323D)
     val midnightErrorBg = Color(0xFF3A2323)
     val midnightErrorText = Color(0xFFF5C9C2)
+    val midnightPrimaryContainer = Color(0xFF4A3F26)
+    val midnightTertiary = Color(0xFF6FA8D6)
 
     // Ivory
     val ivoryBg = Color(0xFFFFFDF9)
@@ -36,6 +38,9 @@ object AppColors {
     val ivoryBorder = Color(0xFFE5E1E6)
     val ivoryErrorBg = Color(0xFFFFE3E8)
     val ivoryErrorText = Color(0xFF7A0930)
+    val ivoryPrimaryContainer = Color(0xFFFFD9E2)
+    val ivoryTertiary = Color(0xFF1F6FB2)
+    val ivoryTint = Color(0xFFF3EEF1)
 
     // Weather-metric accent colors (temperature/rain/wind/cloud rows), shared across themes
     // where the web app itself keeps them theme-invariant (src/index.css row-* tokens).
@@ -49,9 +54,15 @@ private val MidnightColorScheme = darkColorScheme(
     onSurface = AppColors.midnightText,
     primary = AppColors.midnightAccent,
     secondary = AppColors.midnightAccent2,
+    onSurfaceVariant = AppColors.midnightTextMuted,
     outline = AppColors.midnightBorder,
+    outlineVariant = AppColors.midnightBorder,
     error = AppColors.midnightErrorText,
     errorContainer = AppColors.midnightErrorBg,
+    primaryContainer = AppColors.midnightPrimaryContainer,
+    onPrimaryContainer = AppColors.midnightText,
+    tertiary = AppColors.midnightTertiary,
+    surfaceContainerHigh = AppColors.midnightSurface,
 )
 
 private val IvoryColorScheme = lightColorScheme(
@@ -61,9 +72,15 @@ private val IvoryColorScheme = lightColorScheme(
     onSurface = AppColors.ivoryText,
     primary = AppColors.ivoryAccent,
     secondary = AppColors.ivoryAccent2,
+    onSurfaceVariant = AppColors.ivoryTextMuted,
     outline = AppColors.ivoryBorder,
+    outlineVariant = AppColors.ivoryBorder,
     error = AppColors.ivoryErrorText,
     errorContainer = AppColors.ivoryErrorBg,
+    primaryContainer = AppColors.ivoryPrimaryContainer,
+    onPrimaryContainer = AppColors.ivoryErrorText,
+    tertiary = AppColors.ivoryTertiary,
+    surfaceContainerHigh = AppColors.ivoryTint,
 )
 
 @Composable
@@ -72,7 +89,7 @@ fun TengmoVaderTheme(theme: Theme, content: @Composable () -> Unit) {
         Theme.Midnight -> MidnightColorScheme
         Theme.Ivory -> IvoryColorScheme
     }
-    MaterialTheme(colorScheme = colorScheme) {
+    MaterialTheme(colorScheme = colorScheme, typography = appTypography(darkBoost = theme == Theme.Midnight)) {
         // A Surface provides LocalContentColor (onBackground) for every plain Text below it —
         // without one, Material 3 text defaults to black and vanishes on the dark Midnight theme.
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, content = content)

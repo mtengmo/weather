@@ -1,6 +1,5 @@
 package com.tengmo.vader.ui
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,18 +11,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Pure description of the freshness status line (JVM-testable). */
@@ -36,21 +32,19 @@ sealed class FreshnessText {
 }
 
 /** Formats [updatedAtMillis] relative to [nowMillis]: time only when same local day, else
- *  "d MMM time". 12h/24h follows [is24h]. */
+ *  "date time". The clock style follows the app language ([TimeFormat]). */
 fun formatFreshness(
     updatedAtMillis: Long?,
     nowMillis: Long,
-    is24h: Boolean,
     zone: ZoneId,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale,
 ): FreshnessText {
     if (updatedAtMillis == null) return FreshnessText.NoData
     val updated = Instant.ofEpochMilli(updatedAtMillis).atZone(zone)
     val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
     val isToday = updated.toLocalDate() == today
-    val timePattern = if (is24h) "HH:mm" else "h:mm a"
-    val pattern = if (isToday) timePattern else "d MMM $timePattern"
-    return FreshnessText.Updated(DateTimeFormatter.ofPattern(pattern, locale).format(updated), isToday)
+    val formatted = if (isToday) TimeFormat.clock(updated, locale) else TimeFormat.monthDayClock(updated, locale)
+    return FreshnessText.Updated(formatted, isToday)
 }
 
 /**
@@ -66,9 +60,7 @@ fun DataFreshnessIndicator(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val is24h = DateFormat.is24HourFormat(context)
-    val freshness = formatFreshness(lastUpdatedEpochMillis, System.currentTimeMillis(), is24h, ZoneId.systemDefault())
+    val freshness = formatFreshness(lastUpdatedEpochMillis, System.currentTimeMillis(), ZoneId.systemDefault(), appLocale())
     val offline = showingCachedData && !isUpdating
 
     Row(
@@ -91,7 +83,7 @@ fun DataFreshnessIndicator(
             }
             Text(
                 text,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

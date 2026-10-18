@@ -3,10 +3,16 @@
  *  checked against (tests/unit/i18n.test.ts requires both files to have identical key sets). */
 export const en: Record<string, string> = {
   "app.detailsButton": "Details",
-  "app.homeButton": "Home",
+  "app.homeButton": "Show overview",
+  "app.showOverview": "Show overview",
+  "app.showDetails": "Show details",
+  "app.showMap": "Show map",
   "app.mapButton": "Map",
+  "app.menu": "Menu",
   "app.locationUnavailable":
-    "We couldn't determine your current location. Search for a place below, or pick a saved favorite, to see its weather history instead.",
+    "We couldn't find your location. Choose Use my location to try again, or search for a place or pick a favorite.",
+  "app.locationDenied":
+    "Location access is blocked for this site. Allow it in your browser's site settings, then choose Use my location. Or search for a place or pick a favorite.",
 
   "subDay.morning": "Morning",
   "subDay.lunch": "Lunch",
@@ -86,8 +92,8 @@ export const en: Record<string, string> = {
   "timelineRow.wind": "Wind",
   "timelineRow.snow": "Snow",
 
-  "weatherOverview.show48h": "Show 48h",
-  "weatherOverview.show24h": "Show 24h",
+  "weatherOverview.show48h": "Show next 48 hours",
+  "weatherOverview.show24h": "Show next 24 hours",
   "weatherOverview.windowLabel24h": "24 Hours",
   "weatherOverview.windowLabel3d": "3 Days",
   "weatherOverview.windowLabel7d": "7 Days",
@@ -95,9 +101,9 @@ export const en: Record<string, string> = {
   "weatherOverview.ariaLabel": "Weather overview for {{location}}",
   "weatherOverview.windowGroupLabel": "Overview window",
   "weatherOverview.now": "Now",
-  "weatherOverview.loading": "Loading weather overview…",
+  "weatherOverview.loading": "Fetching weather data…",
   "weatherOverview.unavailable":
-    "Weather data is unavailable for this location right now. Please try again later.",
+    "Couldn't load weather for this place. Try again in a few minutes.",
   "weatherOverview.observed": "Observed",
   "weatherOverview.forecast": "Forecast",
   "weatherOverview.forecastParenthetical": " (forecast)",
@@ -113,7 +119,7 @@ export const en: Record<string, string> = {
 
   "observationDetails.ariaLabel": "Observation details for {{location}}",
   "observationDetails.headingSuffix": "— details",
-  "observationDetails.loading": "Loading observed weather…",
+  "observationDetails.loading": "Fetching observed weather…",
   "observationDetails.time": "Time",
   "observationDetails.status": "Status",
   "observationDetails.condition": "Condition",
@@ -131,23 +137,24 @@ export const en: Record<string, string> = {
   "location.unnamedStation": "Unnamed station",
 
   "locationSwitcher.ariaLabel": "Select location",
-  "locationSwitcher.currentLocation": "Current Location",
-  "locationSwitcher.useCurrentLocation": "Use current location",
+  "locationSwitcher.currentLocation": "My location",
+  "locationSwitcher.useCurrentLocation": "Use my location",
 
-  "placeSearch.searchError": "Couldn't search for places. Please try again.",
+  "placeSearch.searchError": "Couldn't search for places. Check your connection and try again.",
   "placeSearch.label": "Search for a place",
   "placeSearch.placeholder": "e.g. Stockholm",
-  "placeSearch.noResults": "No places found.",
-  "placeSearch.view": "View",
+  "placeSearch.noResults": "No places match your search. Check the spelling or try a nearby town.",
+  "placeSearch.view": "Show weather",
   "placeSearch.addToFavorites": "Add to favorites",
 
   "favoritesError.duplicate": "This place is already saved as a favorite.",
   "favoritesError.limitReached": "You can only save up to {{limit}} favorite places.",
-  "favoritesError.storageUnavailable": "Favorites can't be saved in this browser session.",
+  "favoritesError.storageUnavailable":
+    "Favorites can't be saved because this browser is blocking local storage.",
 
   "favoritesList.title": "Favorite places",
-  "favoritesList.dismiss": "Dismiss",
-  "favoritesList.empty": "No favorite places saved yet.",
+  "favoritesList.dismiss": "Close message",
+  "favoritesList.empty": "No favorites yet. Search for a place and choose Add to favorites.",
   "favoritesList.remove": "Remove",
   "favoritesList.removeAriaLabel": "Remove {{place}}",
 
@@ -161,12 +168,15 @@ export const en: Record<string, string> = {
 
   "themeToggle.dark": "Dark",
   "themeToggle.light": "Light",
+  "themeToggle.current": "Theme: {{theme}}",
+  "themeToggle.switchToDark": "Switch to dark theme",
+  "themeToggle.switchToLight": "Switch to light theme",
 
   "unitToggle.ariaLabel": "Unit system",
 
   "highLowToggle.ariaLabel": "High/low lines",
-  "highLowToggle.on": "High/Low on",
-  "highLowToggle.off": "High/Low off",
+  "highLowToggle.on": "Show high/low lines",
+  "highLowToggle.off": "Hide high/low lines",
 
   "nearbyStationCount.label": "Nearby stations",
 
@@ -180,23 +190,25 @@ export const en: Record<string, string> = {
 
   "warningBanner.ariaLabel": "Weather warnings",
   "warningBanner.startsWithinHour": "starts within the hour",
-  "warningBanner.startsInHours": "starts in {{hours}}h",
+  "warningBanner.startsInHours": "starts in {{hours}} h",
   "warningBanner.startsTomorrow": "starts tomorrow",
   "warningBanner.startsInDays": "starts in {{days}} days",
   "warningBanner.moreCount": "+{{count}} more",
   "warningBanner.since": "Since",
   "warningBanner.from": "From",
   "warningBanner.until": "until {{date}}",
+  "warningBanner.onlyInEnglish": "This warning is only available in English.",
+  "warningBanner.onlyInSwedish": "This warning is only available in Swedish.",
 
   "mapView.ariaLabel": "Map",
   "mapView.empty":
-    "No locations to show yet. Search for a place and add it to favorites, or view one, to see it here.",
+    "No places on the map yet. Search for a place and add it to favorites, or show its weather, and it will appear here.",
   "mapView.overlayAriaLabel": "Map overlay",
   "mapView.overlayRain": "Rain",
   "mapView.overlayTemperature": "Temperature",
   "mapView.overlayWind": "Wind",
   "mapView.overlayNone": "None",
-  "mapView.view": "View",
+  "mapView.view": "Show weather",
 
   "footer.howThisWorks": "How this works",
   "footer.privacy": "Privacy",
@@ -222,6 +234,8 @@ export const en: Record<string, string> = {
     "badge appears on the weather icon for any already-happened hour whose UV index was high enough to matter — it only ever reflects real measurements, never a forecast guess.",
   "howItWorks.warnings":
     "If Sweden's weather service has an official warning active for a saved location — storms, flooding, water shortage, and similar — a banner appears near the top of the page summarizing it, expandable for the full details.",
+  "howItWorks.characters":
+    "The two characters on the Today card are not weather data. They dress for the current temperature and conditions, so you can tell at a glance whether to bring a coat or an umbrella.",
 
   "privacyNotice.ariaLabel": "Privacy notice",
   "privacyNotice.close": "Close",
@@ -247,7 +261,7 @@ export const en: Record<string, string> = {
   "chart.windowLabel30d": "Last 30 days",
   "chart.ariaLabel": "Observed weather for {{location}}",
   "chart.windowGroupLabel": "Observation window",
-  "chart.loading": "Loading observed weather…",
+  "chart.loading": "Fetching observed weather…",
   "chart.metricUnavailable": "{{metric}} data is not available for this location.",
   "chart.forecastUnavailable": "A forecast isn't available for this location right now.",
   "chart.forecastSuffix": "(forecast)",

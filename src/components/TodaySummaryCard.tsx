@@ -5,6 +5,7 @@ import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { resolveCharacterIcon } from "./weatherCharacterIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
 import { directionToCompass, formatValue } from "../services/format";
+import { formatClockTime } from "../services/timeFormat";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
 import type { DailyAggregate, Location, UnitSystem, WeatherWarning } from "../models/types";
 
@@ -101,69 +102,86 @@ export default function TodaySummaryCard({
   const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
   const { sunrise, sunset } = getSunTimes(location, new Date());
   const moonPhase = getMoonPhase(new Date());
-  const timeFormat: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+  const formatClock = (iso: string | null | undefined) => (iso ? formatClockTime(new Date(iso)) : "—");
+  const conditionLabel = iconInfo ? t(iconInfo.label) : "—";
+
+  const details: Array<{ key: string; label: string; value: string }> = [
+    {
+      key: "rain",
+      label: t("todaySummary.rain"),
+      value: `${formatValue(convertPrecipitation(rainTotal, unit), 1)}${unit === "imperial" ? " in" : " mm"}`,
+    },
+    {
+      key: "wind",
+      label: t("todaySummary.wind"),
+      value: `${formatValue(convertWindSpeed(today.windAverage, unit), 0)}${unit === "imperial" ? " mph" : " m/s"}${
+        today.windDirection != null ? ` ${directionToCompass(today.windDirection)}` : ""
+      }`,
+    },
+    { key: "sunrise", label: t("todaySummary.sunrise"), value: formatClock(sunrise) },
+    { key: "sunset", label: t("todaySummary.sunset"), value: formatClock(sunset) },
+    { key: "moon", label: t("todaySummary.moon"), value: t(`moonPhase.${moonPhase}`) },
+  ];
+  if (currentHumidity != null) {
+    details.push({
+      key: "humidity",
+      label: t("todaySummary.humidity"),
+      value: t(humidityLevelKey(currentHumidity)),
+    });
+  }
 
   return (
     <section className="today-summary-card" aria-label={t("todaySummary.title")}>
-      <div
-        className={["today-summary-icon", condition !== null ? `weather-condition-${condition}` : null]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        {iconInfo ? (
-          iconInfo.kind === "smhi-symbol" ? (
-            <img src={iconInfo.src} alt="" aria-hidden="true" width={64} height={64} />
-          ) : (
-            <iconInfo.Icon aria-hidden="true" size={64} />
-          )
-        ) : null}
-        {characterIcon ? (
-          <img src={characterIcon} alt="" aria-hidden="true" className="today-summary-character" />
-        ) : null}
+      <div className="today-summary-top">
+        <div
+          className={["today-summary-icon", condition !== null ? `weather-condition-${condition}` : null]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {iconInfo ? (
+            iconInfo.kind === "smhi-symbol" ? (
+              <img src={iconInfo.src} alt="" aria-hidden="true" width={64} height={64} />
+            ) : (
+              <iconInfo.Icon aria-hidden="true" size={64} />
+            )
+          ) : null}
+          {characterIcon ? (
+            <img src={characterIcon} alt="" aria-hidden="true" className="today-summary-character" />
+          ) : null}
+        </div>
+        <div className="today-summary-now-block">
+          {currentTemperature != null && (
+            <span className="today-summary-now">
+              <span className="visually-hidden">{t("todaySummary.now")} </span>
+              {formatValue(convertTemperature(currentTemperature, unit), 0)}°
+            </span>
+          )}
+          <span className="today-summary-condition">{conditionLabel}</span>
+          {currentTemperature != null && currentFeelsLike != null && (
+            <span className="today-summary-feels">
+              {t("todaySummary.feelsLike")} {formatValue(convertTemperature(currentFeelsLike, unit), 0)}°
+            </span>
+          )}
+        </div>
       </div>
       <div className="today-summary-highlow">
-        {currentTemperature != null && (
-          <span className="today-summary-now">
-            {t("todaySummary.now")} {formatValue(convertTemperature(currentTemperature, unit), 0)}°
-            {currentFeelsLike != null &&
-              ` (${t("todaySummary.feelsLike")} ${formatValue(convertTemperature(currentFeelsLike, unit), 0)}°)`}
-          </span>
-        )}
         <span className="today-summary-high">
-          {t("todaySummary.high")} {formatValue(convertTemperature(today.high, unit), 0)}°
+          <span className="today-summary-label">{t("todaySummary.high")}</span>{" "}
+          <span className="today-summary-value">{formatValue(convertTemperature(today.high, unit), 0)}°</span>
         </span>
         <span className="today-summary-low">
-          {t("todaySummary.low")} {formatValue(convertTemperature(today.low, unit), 0)}°
+          <span className="today-summary-label">{t("todaySummary.low")}</span>{" "}
+          <span className="today-summary-value">{formatValue(convertTemperature(today.low, unit), 0)}°</span>
         </span>
       </div>
-      <p className="today-summary-description">{iconInfo ? `${t(iconInfo.label)}.` : "—"}</p>
-      <div className="today-summary-detail">
-        <span>
-          {t("todaySummary.rain")} {formatValue(convertPrecipitation(rainTotal, unit), 1)}
-          {unit === "imperial" ? " in" : " mm"}
-        </span>
-        <span>
-          {t("todaySummary.wind")} {formatValue(convertWindSpeed(today.windAverage, unit), 0)}
-          {unit === "imperial" ? " mph" : " m/s"}
-          {today.windDirection != null && ` ${directionToCompass(today.windDirection)}`}
-        </span>
-      </div>
-      <div className="today-summary-detail">
-        <span>
-          {t("todaySummary.sunrise")} {sunrise ? new Date(sunrise).toLocaleTimeString([], timeFormat) : "—"}
-        </span>
-        <span>
-          {t("todaySummary.sunset")} {sunset ? new Date(sunset).toLocaleTimeString([], timeFormat) : "—"}
-        </span>
-        <span>
-          {t("todaySummary.moon")} {t(`moonPhase.${moonPhase}`)}
-        </span>
-        {currentHumidity != null && (
-          <span>
-            {t("todaySummary.humidity")} {t(humidityLevelKey(currentHumidity))}
-          </span>
-        )}
-      </div>
+      <dl className="today-summary-grid">
+        {details.map((d) => (
+          <div key={d.key} className="today-summary-pair">
+            <dt className="today-summary-label">{d.label}</dt>
+            <dd className="today-summary-value">{d.value}</dd>
+          </div>
+        ))}
+      </dl>
       {informationalWarnings && informationalWarnings.length > 0 && (
         <div className="today-summary-notices">
           {informationalWarnings.map((warning) => {
@@ -176,7 +194,10 @@ export default function TodaySummaryCard({
                   aria-expanded={expanded}
                   onClick={() => toggleNoticeExpanded(warning.id)}
                 >
-                  {warning.title}
+                  <span className="today-summary-notice-title">{warning.title}</span>
+                  <svg className="chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+                    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
                 {expanded && <p className="today-summary-notice-detail">{warning.description}</p>}
               </div>

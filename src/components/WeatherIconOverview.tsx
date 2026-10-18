@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatWeekdayShort } from "../services/timeFormat";
 import { useTranslation } from "react-i18next";
 import type {
   DailyAggregate,
@@ -956,7 +957,7 @@ export default function WeatherIconOverview({
                           className="weather-timeline-weekday-label"
                           style={{ gridColumn: "span 5" }}
                         >
-                          {new Date(period.key).toLocaleDateString([], { weekday: "short" })}
+                          {formatWeekdayShort(new Date(period.key))}
                         </span>
                       ) : null
                     )}

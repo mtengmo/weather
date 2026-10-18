@@ -705,3 +705,43 @@ describe("weatherApi extended 48h forecast", () => {
     expect(openMeteoProvider.getObservations).toHaveBeenLastCalledWith(loc, "last-24-hours", true);
   });
 });
+
+describe("weatherApi.getWarningsForLocation text language (clarify pass)", () => {
+  const location = { latitude: 59.3, longitude: 18.0 };
+  const warning = (event: { sv?: string; en?: string }) => ({
+    id: 77,
+    event: { ...event, code: "WATER" },
+    warningAreas: [
+      {
+        id: 1,
+        approximateStart: new Date(Date.now() - 3600_000).toISOString(),
+        areaName: { sv: "Stockholms län", en: "Stockholm County" },
+        warningLevel: { sv: "Gul varning", en: "Yellow warning", code: "YELLOW" },
+        descriptions: [{ title: { sv: "Rubrik", en: "Title" }, text: { sv: "Text på svenska", en: "English text" } }],
+        area: { type: "Feature" as const, geometry: { type: "Polygon" as const, coordinates: [[[17, 58], [19, 58], [19, 60], [17, 60], [17, 58]]] } },
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    vi.mocked(smhiProvider.getActiveWarnings).mockReset();
+    vi.mocked(smhiProvider.isCovered).mockResolvedValue(true);
+  });
+
+  it("uses the Swedish text when the app language is Swedish", async () => {
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([warning({ sv: "Risk för vattenbrist", en: "Risk for water shortage" })] as never);
+    const [w] = await getWarningsForLocation(location, "sv");
+    expect(w.title).toBe("Risk för vattenbrist");
+    expect(w.severityLabel).toBe("Gul varning");
+    expect(w.areaName).toBe("Stockholms län");
+    expect(w.description).toBe("Rubrik: Text på svenska");
+    expect(w.textLanguage).toBe("sv");
+  });
+
+  it("falls back to English and flags it when SMHI published no Swedish headline", async () => {
+    vi.mocked(smhiProvider.getActiveWarnings).mockResolvedValue([warning({ en: "Risk for water shortage" })] as never);
+    const [w] = await getWarningsForLocation(location, "sv");
+    expect(w.title).toBe("Risk for water shortage");
+    expect(w.textLanguage).toBe("en");
+  });
+});

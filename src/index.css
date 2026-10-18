@@ -66,7 +66,23 @@
 
 :root {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Type roles (rem, so browser zoom and user font settings still apply). One family; hierarchy
+     comes from size + weight + tone together. Floor: 1rem ordinary text, 0.8125rem dense data,
+     0.75rem absolute minimum. */
+  --type-display: 2.5rem;    /* current temperature, 600 */
+  --type-title: 1.125rem;    /* condition word, 600 */
+  --type-body: 1rem;         /* ordinary text, 400 */
+  --type-label: 0.875rem;    /* secondary text, notes, labels, 500 */
+  --type-data: 0.8125rem;    /* dense timeline data */
+  --type-micro: 0.75rem;     /* timeline hour/weekday, ticks, badges: never smaller */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  font-variant-numeric: tabular-nums;
 }
+
+/* Light-on-dark text reads tighter; open leading slightly in Midnight. */
+[data-theme="midnight"] body { line-height: 1.55; }
 
 body {
   margin: 0;
@@ -98,79 +114,154 @@ body {
   flex-wrap: wrap;
 }
 
-.header-controls {
-  display: flex;
+/* Header: logo + place name (the location switcher) on the left, one overflow menu on the right. */
+.app-header {
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
 }
 
-/* Groups view-switching actions (e.g. "Details") with "Change location" at the header's right
-   edge — repositioned here from the Overview's own local header row so every navigation control
-   lives in one place (016-dashboard-polish-round-two, FR-005/FR-006). */
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* Current-conditions summary (018-dashboard-visual-redesign, US1): location switcher plus an
-   inline temperature/condition/feels-like reading, replacing the old plain title row. */
 .current-conditions {
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-/* Brand logo, top-left of the header, visible on every view (035-fix-temp-scale-logo). Sits
-   inside .current-conditions so it wraps along with the rest of that group at narrow widths
-   instead of needing its own mobile handling. */
 .app-logo {
   height: 2rem;
   width: 2rem;
   object-fit: contain;
-  align-self: center;
   flex-shrink: 0;
 }
 
-/* Selected location's name, shown inline in the header (019-dashboard-polish-round-four, US1)
-   — the header previously had nowhere visible showing which location is on screen. */
-.current-location-name {
-  font-weight: 600;
-}
-
-/* Settings menu (037-header-controls-and-chart-fixes, US2): consolidates Unit/High-Low behind
-   one dropdown (theme now lives in its own .theme-toggle button above), same anchored-panel
-   treatment as .location-panel below. Was .display-menu (018-dashboard-visual-redesign, US1)
-   before theme moved out of it. */
-.settings-menu {
+.location-panel {
   position: relative;
+  min-width: 0;
 }
 
-.settings-menu-content {
+.location-panel-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  max-width: 100%;
+  background: none;
+  border-color: transparent;
+  font-weight: 600;
+  font-size: var(--type-body);
+}
+
+.location-panel-trigger-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.location-panel-trigger .chevron {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.header-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.header-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.header-menu-trigger:focus-visible,
+.header-menu-item:focus-visible,
+.header-menu-back:focus-visible,
+.location-panel-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.header-menu-content {
   position: absolute;
   top: calc(100% + 0.5rem);
-  /* left, not right: on a narrow viewport the Display button sits near the header's left edge
-     (especially once the header wraps to multiple rows), so anchoring the panel's *right* edge
-     to the button pushed its content off the left of the screen entirely — same anchor
-     convention .location-panel-content already uses correctly (020-dashboard-polish-round-five,
-     US8, found via live mobile-viewport testing). */
-  left: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
+  right: 0;
+  z-index: 20;
+  width: min(86vw, 320px);
+  padding: 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  /* Two layers: the original dark elevation shadow, plus a subtle light 1px ring so the panel's
-     edge stays visible against a near-black page background regardless of how close --border and
-     --surface sit to each other in a given theme (021-dashboard-polish-round-six, research.md §4). */
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.35),
     0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.header-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.header-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  background: none;
+  border-color: transparent;
+}
+
+.header-menu-item:hover,
+.header-menu-item:focus-visible {
+  background: var(--bg);
+}
+
+.header-menu-hint {
+  font-size: var(--type-label);
+  color: var(--text-muted);
+}
+
+.header-menu-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  background: none;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.header-menu-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Settings panel inside the header menu. */
+.settings-menu-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.settings-menu-content button {
+  min-height: 44px;
+}
+
+.settings-menu-content select {
+  min-height: 44px;
 }
 
 /* Location Panel (013-overview-default-and-layout): consolidates current-location/favorites/
@@ -226,7 +317,7 @@ body {
    treatment. */
 .data-source-note {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--type-label);
   margin: 0.5rem 0;
 }
 
@@ -234,7 +325,7 @@ body {
    FR-018/FR-019). */
 .observed-extremes-note {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--type-label);
   margin: 0.5rem 0;
 }
 
@@ -255,7 +346,7 @@ body {
   width: 100%;
   min-width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--type-label);
   color: var(--text);
 }
 
@@ -370,7 +461,7 @@ h2[tabindex="-1"]:focus {
 
 .observation-window-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--type-body);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -430,11 +521,6 @@ a {
 }
 
 @media (max-width: 480px) {
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .location-panel-content {
     width: 90vw;
   }
@@ -495,7 +581,7 @@ a {
   justify-content: center;
   padding: 0.35rem 0.15rem;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--type-data);
   min-height: 2rem;
 }
 
@@ -509,9 +595,9 @@ a {
    (026-fix-3-day follow-up). Centered within its group and in the foreground text color so
    it stays readable over the muted band labels it shares the row with. */
 .weather-timeline-weekday-label {
-  font-weight: 700;
-  font-size: 0.7rem;
-  color: var(--text);
+  font-weight: var(--weight-medium);
+  font-size: var(--type-micro);
+  color: var(--text-muted);
   text-align: center;
   letter-spacing: 0.02em;
 }
@@ -569,14 +655,14 @@ a {
 }
 
 .weather-timeline-condition-label {
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
 /* Small UV-risk badge on the existing condition icon — never a separate row/section
    (027-uv-index-alert, FR-001). Reuses the sun color token rather than a new palette entry. */
 .weather-timeline-uv-badge {
-  font-size: 0.55rem;
+  font-size: var(--type-micro);
   font-weight: 700;
   line-height: 1;
   padding: 0.1rem 0.3rem;
@@ -591,7 +677,7 @@ a {
 }
 
 .weather-timeline-row-title {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   font-weight: 600;
   color: var(--text-muted);
   padding: 0 0.35rem;
@@ -639,7 +725,7 @@ a {
   position: absolute;
   left: 0;
   transform: translateY(-50%);
-  font-size: 0.65rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -742,7 +828,7 @@ a {
 }
 
 .weather-timeline-bar-value {
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -760,7 +846,7 @@ a {
    rather than a stacked sibling line, in the now-separate values row beneath the bars
    (032-dashboard-polish-round-seven, US6). */
 .weather-timeline-bar-chance {
-  font-size: 0.65rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
   opacity: 0.8;
 }
@@ -770,7 +856,7 @@ a {
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
 }
 
 .weather-timeline-wind-arrow {
@@ -809,7 +895,7 @@ a {
   position: absolute;
   top: -0.1rem;
   left: 0.25rem;
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   white-space: nowrap;
   background: var(--now-accent);
   color: var(--surface);
@@ -827,7 +913,7 @@ a {
      labels can stack in the SAME row/cell instead of the weekday needing a row of its own
      (026-fix-3-day follow-up). */
   display: grid;
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -889,7 +975,7 @@ a {
 
 .weather-timeline-row-sublabel {
   display: block;
-  font-size: 0.65rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -918,12 +1004,12 @@ a {
   gap: 0.75rem;
   justify-content: space-between;
   padding: 1rem 0 0.5rem;
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
 .app-footer button {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   padding: 0.15rem 0.5rem;
 }
 
@@ -939,7 +1025,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   color: var(--text-muted);
 }
 
@@ -954,7 +1040,7 @@ a {
 
 .debug-panel-source-title {
   margin: 0 0 0.25rem;
-  font-size: 0.8rem;
+  font-size: var(--type-data);
 }
 
 .debug-panel-raw {
@@ -965,7 +1051,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 6px;
   font-family: monospace;
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -977,10 +1063,9 @@ a {
 /* Today summary card (018-dashboard-visual-redesign, US4) — persistent across all three
    overview tabs. */
 .today-summary-card {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
-  gap: 0.35rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   padding: 1rem;
   margin: 0.75rem 0;
   background: var(--surface);
@@ -988,11 +1073,17 @@ a {
   border-radius: 10px;
 }
 
+.today-summary-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .today-summary-icon {
-  grid-row: 1 / 3;
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  flex: 0 0 auto;
 }
 
 /* Cartoon companion beside the weather icon (061-cartoon-weather-companion, FR-001/FR-006) — capped
@@ -1002,64 +1093,135 @@ a {
   width: auto;
 }
 
+.today-summary-now-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.today-summary-now {
+  font-size: var(--type-display);
+  line-height: 1;
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+}
+
+.today-summary-condition {
+  font-size: var(--type-title);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.today-summary-feels {
+  font-size: var(--type-label);
+  color: var(--text-muted);
+}
+
+/* High and Low carry equal weight: same colour and weight, label small/muted, value normal. */
 .today-summary-highlow {
   display: flex;
-  gap: 0.5rem;
-  font-size: 1.5rem;
-  font-weight: 700;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
 }
 
-/* High/low labels (019-dashboard-polish-round-four, US6) — the paired reading was previously
-   two bare numbers with no indication of which was which. */
-.today-summary-low {
-  color: var(--text-muted);
+.today-summary-highlow > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
 }
 
-.today-summary-description {
-  grid-column: 2 / 4;
+.today-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
   margin: 0;
+}
+
+.today-summary-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.today-summary-pair dd {
+  margin: 0;
+}
+
+.today-summary-label {
+  font-size: var(--type-data);
   color: var(--text-muted);
 }
 
-.today-summary-detail {
-  grid-column: 1 / 4;
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.today-summary-value {
+  font-size: var(--type-body);
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .today-summary-notices {
-  grid-column: 1 / 4;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
+  gap: 0.25rem;
   border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
 }
 
 .today-summary-notice {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--type-label);
 }
 
 .today-summary-notice-toggle {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   width: 100%;
+  min-height: 44px;
   text-align: left;
   background: none;
   border: none;
-  padding: 0;
+  border-radius: 6px;
+  padding: 0.25rem;
   font: inherit;
-  font-size: 0.8rem;
   color: var(--text);
   cursor: pointer;
 }
 
-.today-summary-notice-detail {
-  margin: 0.2rem 0 0;
+.today-summary-notice-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.today-summary-notice-toggle .chevron {
+  flex: 0 0 auto;
   color: var(--text-muted);
+  transition: transform 150ms ease;
+}
+
+.today-summary-notice-toggle[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.today-summary-notice-detail {
+  margin: 0.2rem 0 0.25rem;
+  padding: 0 0.25rem;
+  color: var(--text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* 7-day forecast strip (018-dashboard-visual-redesign, US5) — persistent across all three
@@ -1081,7 +1243,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: var(--type-data);
 }
 
 .weekly-forecast-weekday {
@@ -1160,7 +1322,7 @@ a {
 .warning-banner-severity {
   font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
 }
 
 .warning-banner-title {
@@ -1168,7 +1330,7 @@ a {
 }
 
 .warning-banner-more {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   opacity: 0.85;
 }
 
@@ -1186,20 +1348,27 @@ a {
 
 .warning-banner-item-title {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--type-label);
   color: var(--error-text);
 }
 
 .warning-banner-item-area,
 .warning-banner-item-validity {
   margin: 0.15rem 0;
-  font-size: 0.8rem;
+  font-size: var(--type-data);
+  color: var(--text-muted);
+}
+
+.warning-banner-item-note {
+  margin: 0.25rem 0 0;
+  font-size: var(--type-data);
+  font-style: italic;
   color: var(--text-muted);
 }
 
 .warning-banner-item-description {
   margin: 0.35rem 0 0;
-  font-size: 0.85rem;
+  font-size: var(--type-label);
   color: var(--text);
   white-space: pre-line;
 }
@@ -1248,21 +1417,21 @@ a {
 }
 
 .warning-banner-upcoming-label {
-  font-size: 0.75rem;
+  font-size: var(--type-micro);
   font-weight: 600;
   font-style: italic;
   opacity: 0.85;
 }
 
 .map-precipitation-legend {
-  font-size: 0.8rem;
+  font-size: var(--type-data);
   color: var(--text-muted);
   margin: 0 0 0.5rem;
 }
 
 .weather-timeline-sublabel {
   display: block;
-  font-size: 0.7em;
+  font-size: var(--type-micro);
   opacity: 0.7;
   font-weight: normal;
 }
@@ -1273,4 +1442,34 @@ a {
   gap: 0.75rem;
   align-items: flex-start;
   padding: 1rem;
+}
+
+/* Overview window tabs and the 48h toggle share one row; the toggle sits at the right edge. */
+.weather-overview .window-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.weather-overview .window-toggle button {
+  margin-right: 0;
+  min-height: 44px;
+}
+
+.weather-overview .window-toggle .extend-forecast-toggle {
+  margin-left: auto;
+  font-size: var(--type-label);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .weather-overview .window-toggle {
+    gap: 0.35rem;
+  }
+
+  .weather-overview .window-toggle button {
+    padding: 0.35rem 0.5rem;
+    font-size: var(--type-label);
+  }
 }

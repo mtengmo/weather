@@ -3,24 +3,23 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Settings menu doesn't overflow off-screen on narrow viewports (020-dashboard-polish-round-five, US8; renamed from Display in 037-header-controls-and-chart-fixes)", () => {
-  it("anchors the panel's left edge to the button, not the right edge", () => {
+  it("anchors the header menu to the right edge (where its trigger now lives) and caps its width to the viewport", () => {
     const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
-    const ruleMatch = css.match(/\.settings-menu-content\s*\{[^}]*\}/);
+    const ruleMatch = css.match(/\.header-menu-content\s*\{[^}]*\}/);
 
     expect(ruleMatch).not.toBeNull();
     const rule = ruleMatch![0];
-    // Anchoring the *right* edge (right: 0) pushed the panel's content off the left of the
-    // screen when the Settings button sits near the header's left edge on a narrow viewport —
-    // found via live mobile-viewport testing, not something jsdom can otherwise catch.
-    expect(rule).toContain("left: 0");
-    expect(rule).not.toMatch(/[^-]right:\s*0/);
+    // The trigger is the header's right-most element, so right: 0 keeps the panel on screen as
+    // long as its width can never exceed the viewport.
+    expect(rule).toMatch(/[^-]right:\s*0/);
+    expect(rule).toContain("min(86vw");
   });
 });
 
 describe("Location panel and Settings menu contrast against dark backgrounds (021-dashboard-polish-round-six, US4; renamed from Display in 037-header-controls-and-chart-fixes)", () => {
-  it("gives .settings-menu-content a two-layer box-shadow with a light contrast ring", () => {
+  it("gives .header-menu-content a two-layer box-shadow with a light contrast ring", () => {
     const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
-    const ruleMatch = css.match(/\.settings-menu-content\s*\{[^}]*\}/);
+    const ruleMatch = css.match(/\.header-menu-content\s*\{[^}]*\}/);
 
     expect(ruleMatch).not.toBeNull();
     const rule = ruleMatch![0];

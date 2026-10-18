@@ -52,7 +52,7 @@ describe("US3: LocationSwitcher — switching between current location and favor
       expect.objectContaining({ displayName: "Paris", source: "favorite" })
     );
 
-    await user.click(screen.getByRole("button", { name: "Current Location" }));
+    await user.click(screen.getByRole("button", { name: "My location" }));
     expect(onSelect).toHaveBeenCalledWith(currentLocation);
   });
 

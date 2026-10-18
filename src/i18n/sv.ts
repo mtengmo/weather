@@ -2,10 +2,16 @@
  *  tests/unit/i18n.test.ts. */
 export const sv: Record<string, string> = {
   "app.detailsButton": "Detaljer",
-  "app.homeButton": "Hem",
+  "app.homeButton": "Visa översikt",
+  "app.showOverview": "Visa översikt",
+  "app.showDetails": "Visa detaljer",
+  "app.showMap": "Visa karta",
   "app.mapButton": "Karta",
+  "app.menu": "Meny",
   "app.locationUnavailable":
-    "Vi kunde inte fastställa din nuvarande plats. Sök efter en plats nedan, eller välj en sparad favorit, för att se dess väderhistorik istället.",
+    "Vi kunde inte hitta din plats. Välj Använd min plats för att försöka igen, eller sök efter en plats eller välj en favorit.",
+  "app.locationDenied":
+    "Platsåtkomst är blockerad för den här webbplatsen. Tillåt den i webbläsarens webbplatsinställningar och välj sedan Använd min plats. Eller sök efter en plats eller välj en favorit.",
 
   "subDay.morning": "Morgon",
   "subDay.lunch": "Lunch",
@@ -18,8 +24,8 @@ export const sv: Record<string, string> = {
   "todaySummary.title": "Idag",
   "todaySummary.now": "Nu",
   "todaySummary.feelsLike": "känns som",
-  "todaySummary.high": "Hög",
-  "todaySummary.low": "Låg",
+  "todaySummary.high": "Högsta",
+  "todaySummary.low": "Lägsta",
   "todaySummary.rain": "Regn",
   "todaySummary.wind": "Vind",
   "todaySummary.sunrise": "Soluppgång",
@@ -85,8 +91,8 @@ export const sv: Record<string, string> = {
   "timelineRow.wind": "Vind",
   "timelineRow.snow": "Snö",
 
-  "weatherOverview.show48h": "Visa 48 h",
-  "weatherOverview.show24h": "Visa 24 h",
+  "weatherOverview.show48h": "Visa 48 timmar framåt",
+  "weatherOverview.show24h": "Visa 24 timmar framåt",
   "weatherOverview.windowLabel24h": "24 timmar",
   "weatherOverview.windowLabel3d": "3 dagar",
   "weatherOverview.windowLabel7d": "7 dagar",
@@ -94,9 +100,9 @@ export const sv: Record<string, string> = {
   "weatherOverview.ariaLabel": "Väderöversikt för {{location}}",
   "weatherOverview.windowGroupLabel": "Översiktsfönster",
   "weatherOverview.now": "Nu",
-  "weatherOverview.loading": "Laddar väderöversikt…",
+  "weatherOverview.loading": "Hämtar väderdata…",
   "weatherOverview.unavailable":
-    "Väderdata är inte tillgänglig för den här platsen just nu. Försök igen senare.",
+    "Det gick inte att hämta väder för den här platsen. Försök igen om en stund.",
   "weatherOverview.observed": "Observerat",
   "weatherOverview.forecast": "Prognos",
   "weatherOverview.forecastParenthetical": " (prognos)",
@@ -112,13 +118,13 @@ export const sv: Record<string, string> = {
 
   "observationDetails.ariaLabel": "Observationsdetaljer för {{location}}",
   "observationDetails.headingSuffix": "— detaljer",
-  "observationDetails.loading": "Laddar observerat väder…",
+  "observationDetails.loading": "Hämtar observerat väder…",
   "observationDetails.time": "Tid",
   "observationDetails.status": "Status",
   "observationDetails.condition": "Väder",
   "observationDetails.temperatureSuffix": "temperatur",
   "observationDetails.precipitationSuffix": "nederbörd",
-  "observationDetails.dayEnding": "Dag slutar",
+  "observationDetails.dayEnding": "Dagens slut",
   "observationDetails.highSuffix": "högsta",
   "observationDetails.lowSuffix": "lägsta",
   "observationDetails.averageSuffix": "medel",
@@ -130,23 +136,26 @@ export const sv: Record<string, string> = {
   "location.unnamedStation": "Namnlös station",
 
   "locationSwitcher.ariaLabel": "Välj plats",
-  "locationSwitcher.currentLocation": "Nuvarande plats",
-  "locationSwitcher.useCurrentLocation": "Använd nuvarande plats",
+  "locationSwitcher.currentLocation": "Min plats",
+  "locationSwitcher.useCurrentLocation": "Använd min plats",
 
-  "placeSearch.searchError": "Det gick inte att söka efter platser. Försök igen.",
+  "placeSearch.searchError":
+    "Det gick inte att söka efter platser. Kontrollera anslutningen och försök igen.",
   "placeSearch.label": "Sök efter en plats",
   "placeSearch.placeholder": "t.ex. Stockholm",
-  "placeSearch.noResults": "Inga platser hittades.",
-  "placeSearch.view": "Visa",
-  "placeSearch.addToFavorites": "Lägg till favorit",
+  "placeSearch.noResults":
+    "Inga platser matchar sökningen. Kontrollera stavningen eller prova en närliggande ort.",
+  "placeSearch.view": "Visa väder",
+  "placeSearch.addToFavorites": "Lägg till som favorit",
 
   "favoritesError.duplicate": "Den här platsen är redan sparad som favorit.",
   "favoritesError.limitReached": "Du kan bara spara upp till {{limit}} favoritplatser.",
-  "favoritesError.storageUnavailable": "Favoriter kan inte sparas i den här webbläsarsessionen.",
+  "favoritesError.storageUnavailable":
+    "Favoriter kan inte sparas eftersom webbläsaren blockerar lokal lagring.",
 
   "favoritesList.title": "Favoritplatser",
-  "favoritesList.dismiss": "Avfärda",
-  "favoritesList.empty": "Inga favoritplatser sparade än.",
+  "favoritesList.dismiss": "Stäng meddelandet",
+  "favoritesList.empty": "Inga favoriter än. Sök efter en plats och välj Lägg till som favorit.",
   "favoritesList.remove": "Ta bort",
   "favoritesList.removeAriaLabel": "Ta bort {{place}}",
 
@@ -155,17 +164,20 @@ export const sv: Record<string, string> = {
 
   "languageToggle.ariaLabel": "Språk",
   "languageToggle.auto": "Automatiskt",
-  "languageToggle.english": "Engelska",
+  "languageToggle.english": "English",
   "languageToggle.swedish": "Svenska",
 
   "themeToggle.dark": "Mörkt",
   "themeToggle.light": "Ljust",
+  "themeToggle.current": "Tema: {{theme}}",
+  "themeToggle.switchToDark": "Byt till mörkt tema",
+  "themeToggle.switchToLight": "Byt till ljust tema",
 
   "unitToggle.ariaLabel": "Enhetssystem",
 
   "highLowToggle.ariaLabel": "Högsta/lägsta-linjer",
-  "highLowToggle.on": "Högsta/lägsta på",
-  "highLowToggle.off": "Högsta/lägsta av",
+  "highLowToggle.on": "Visa högsta/lägsta-linjer",
+  "highLowToggle.off": "Dölj högsta/lägsta-linjer",
 
   "nearbyStationCount.label": "Närliggande stationer",
 
@@ -179,23 +191,25 @@ export const sv: Record<string, string> = {
 
   "warningBanner.ariaLabel": "Vädervarningar",
   "warningBanner.startsWithinHour": "börjar inom en timme",
-  "warningBanner.startsInHours": "börjar om {{hours}}h",
-  "warningBanner.startsTomorrow": "börjar imorgon",
+  "warningBanner.startsInHours": "börjar om {{hours}} h",
+  "warningBanner.startsTomorrow": "börjar i morgon",
   "warningBanner.startsInDays": "börjar om {{days}} dagar",
   "warningBanner.moreCount": "+{{count}} till",
   "warningBanner.since": "Sedan",
   "warningBanner.from": "Från",
   "warningBanner.until": "till {{date}}",
+  "warningBanner.onlyInEnglish": "Den här varningen finns bara på engelska.",
+  "warningBanner.onlyInSwedish": "Den här varningen finns bara på svenska.",
 
   "mapView.ariaLabel": "Karta",
   "mapView.empty":
-    "Inga platser att visa än. Sök efter en plats och lägg till den som favorit, eller visa en, för att se den här.",
+    "Inga platser på kartan än. Sök efter en plats och lägg till den som favorit, eller visa dess väder, så visas den här.",
   "mapView.overlayAriaLabel": "Kartlager",
   "mapView.overlayRain": "Regn",
   "mapView.overlayTemperature": "Temperatur",
   "mapView.overlayWind": "Vind",
   "mapView.overlayNone": "Inget",
-  "mapView.view": "Visa",
+  "mapView.view": "Visa väder",
 
   "footer.howThisWorks": "Hur det här fungerar",
   "footer.privacy": "Integritet",
@@ -221,6 +235,8 @@ export const sv: Record<string, string> = {
     "märkning visas på väderikonen för varje redan passerad timme vars UV-index var tillräckligt högt för att spela roll — den speglar bara verkliga mätningar, aldrig en prognosgissning.",
   "howItWorks.warnings":
     "Om SMHI har en officiell varning aktiv för en sparad plats — stormar, översvämning, vattenbrist och liknande — visas en banner högst upp på sidan som sammanfattar den, expanderbar för fullständiga detaljer.",
+  "howItWorks.characters":
+    "De två figurerna på kortet Idag är inte väderdata. De är klädda efter aktuell temperatur och väderlek, så att du snabbt ser om det är dags för jacka eller paraply.",
 
   "privacyNotice.ariaLabel": "Integritetsmeddelande",
   "privacyNotice.close": "Stäng",
@@ -246,13 +262,13 @@ export const sv: Record<string, string> = {
   "chart.windowLabel30d": "Senaste 30 dagarna",
   "chart.ariaLabel": "Observerat väder för {{location}}",
   "chart.windowGroupLabel": "Observationsfönster",
-  "chart.loading": "Laddar observerat väder…",
+  "chart.loading": "Hämtar observerat väder…",
   "chart.metricUnavailable": "{{metric}}data är inte tillgänglig för den här platsen.",
   "chart.forecastUnavailable": "Ingen prognos är tillgänglig för den här platsen just nu.",
   "chart.forecastSuffix": "(prognos)",
   "chart.forecastAltSourceSuffix": "(prognos, alt. källa)",
   "chart.sourceForecast": "{{source}}-prognos",
   "chart.combinedAverageForecast": "Kombinerad genomsnittsprognos",
-  "chart.highAt": "Högst: {{value}} kl. {{time}}",
-  "chart.lowAt": "Lägst: {{value}} kl. {{time}}",
+  "chart.highAt": "Högsta: {{value}} kl. {{time}}",
+  "chart.lowAt": "Lägsta: {{value}} kl. {{time}}",
 };

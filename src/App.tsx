@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { DEFAULT_METRIC, type Location, type ObservationWindow, type WeatherMetric } from "./models/types";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useFavorites } from "./hooks/useFavorites";
@@ -13,9 +12,7 @@ import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
 import WeatherIconOverview from "./components/WeatherIconOverview";
 import WarningBanner from "./components/WarningBanner";
-import NearbyStationCountControl from "./components/NearbyStationCountControl";
-import ThemeToggle from "./components/ThemeToggle";
-import SettingsMenu from "./components/SettingsMenu";
+import HeaderMenu from "./components/HeaderMenu";
 import LocationPanel from "./components/LocationPanel";
 import NoLocationPrompt from "./components/NoLocationPrompt";
 import Footer from "./components/Footer";
@@ -35,7 +32,6 @@ const SOURCE_DISPLAY_NAMES: Record<MultiSourceForecastEntry["source"], string> =
 };
 
 export default function App() {
-  const { t } = useTranslation();
   const { location: currentLocation, status: geoStatus, request: requestLocation } =
     useGeolocation();
   const { favorites, error: favoritesError, add, remove, clearError } = useFavorites();
@@ -133,12 +129,6 @@ export default function App() {
     setView("map");
   }
 
-  function closeMap() {
-    // "Home" always means the Overview, everywhere it appears (032-dashboard-polish-round-seven,
-    // US3) — no longer "whatever view was open before the Map."
-    viewOverview();
-  }
-
   const locationUnavailable =
     (geoStatus === "denied" || geoStatus === "unavailable") && selected === null;
 
@@ -160,57 +150,27 @@ export default function App() {
             onRequestCurrentLocation={requestLocation}
             onOpenChange={setLocationPanelOpen}
           />
-          {selected !== null && (
-            <span className="current-location-name">{selected.displayName}</span>
-          )}
         </div>
 
-        <div className="header-actions">
-          <ThemeToggle theme={theme} onThemeChange={setTheme} />
-          <SettingsMenu
-            unit={unit}
-            onUnitChange={setUnit}
-            highLowVisible={highLowVisible}
-            onHighLowChange={setHighLowVisible}
-            language={language}
-            onLanguageChange={setLanguage}
-          />
-          {view !== "overview" && (
-            <NearbyStationCountControl count={nearbyStationCount} onChange={setNearbyStationCount} />
-          )}
-          {/* "Home" always means "go to the Overview," everywhere in the app; "Details" always
-              means "go to the Details table" — one consistent navigation vocabulary across
-              Overview, graph, details, and map (032-dashboard-polish-round-seven, US3). */}
-          {view === "overview" && (
-            <button type="button" onClick={() => setView("graph")}>
-              {t("app.detailsButton")}
-            </button>
-          )}
-          {view === "graph" && (
-            <>
-              <button type="button" onClick={() => setView("details")}>
-                {t("app.detailsButton")}
-              </button>
-              <button type="button" onClick={viewOverview}>
-                {t("app.homeButton")}
-              </button>
-            </>
-          )}
-          {view === "details" && (
-            <button type="button" onClick={viewOverview}>
-              {t("app.homeButton")}
-            </button>
-          )}
-          {view === "map" ? (
-            <button type="button" onClick={closeMap}>
-              {t("app.homeButton")}
-            </button>
-          ) : (
-            <button type="button" onClick={openMap}>
-              {t("app.mapButton")}
-            </button>
-          )}
-        </div>
+        {/* One overflow menu instead of a row of buttons. "Home" always means "go to the
+            Overview"; "Details" always means "go one step deeper" (Overview -> graph, graph ->
+            details table), same navigation vocabulary as before (032, US3). */}
+        <HeaderMenu
+          view={view}
+          onHome={viewOverview}
+          onDetails={() => setView(view === "overview" ? "graph" : "details")}
+          onMap={openMap}
+          theme={theme}
+          onThemeChange={setTheme}
+          unit={unit}
+          onUnitChange={setUnit}
+          highLowVisible={highLowVisible}
+          onHighLowChange={setHighLowVisible}
+          language={language}
+          onLanguageChange={setLanguage}
+          nearbyStationCount={nearbyStationCount}
+          onNearbyStationCountChange={setNearbyStationCount}
+        />
       </header>
 
       {selected && <WarningBanner warnings={warnings.filter((w) => !w.isInformational)} />}
@@ -224,6 +184,7 @@ export default function App() {
           onRemoveFavorite={remove}
           onDismissFavoritesError={clearError}
           onRequestCurrentLocation={requestLocation}
+          reason={geoStatus === "denied" ? "denied" : "unavailable"}
           compact={locationPanelOpen}
         />
       )}

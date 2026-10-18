@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { appLanguage, formatDateTime } from "../services/timeFormat";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { WeatherWarning } from "../models/types";
@@ -51,7 +52,9 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
           aria-expanded={expanded}
         >
           <span className="warning-banner-severity">{leading.severityLabel}</span>
-          <span className="warning-banner-title">{leading.title}</span>
+          <span className="warning-banner-title" lang={leading.textLanguage}>
+            {leading.title}
+          </span>
           {!leading.isActive && (
             <span className="warning-banner-upcoming-label">{startsInLabel(t, leading.validFrom)}</span>
           )}
@@ -67,7 +70,7 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
               key={warning.id}
               className={`warning-banner-item warning-level-${warning.severityCode.toLowerCase()}${warning.isActive ? "" : " warning-upcoming"}`}
             >
-              <h3 className="warning-banner-item-title">
+              <h3 className="warning-banner-item-title" lang={warning.textLanguage}>
                 {warning.severityLabel}: {warning.title}
                 {!warning.isActive && (
                   <span className="warning-banner-upcoming-label"> — {startsInLabel(t, warning.validFrom)}</span>
@@ -76,11 +79,18 @@ export default function WarningBanner({ warnings }: WarningBannerProps) {
               <p className="warning-banner-item-area">{warning.areaName}</p>
               <p className="warning-banner-item-validity">
                 {warning.isActive ? t("warningBanner.since") : t("warningBanner.from")}{" "}
-                {new Date(warning.validFrom).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+                {formatDateTime(new Date(warning.validFrom))}
                 {warning.validUntil &&
-                  ` ${t("warningBanner.until", { date: new Date(warning.validUntil).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) })}`}
+                  ` ${t("warningBanner.until", { date: formatDateTime(new Date(warning.validUntil)) })}`}
               </p>
-              <p className="warning-banner-item-description">{warning.description}</p>
+              <p className="warning-banner-item-description" lang={warning.textLanguage}>
+                {warning.description}
+              </p>
+              {warning.textLanguage !== undefined && warning.textLanguage !== appLanguage() && (
+                <p className="warning-banner-item-note">
+                  {t(warning.textLanguage === "en" ? "warningBanner.onlyInEnglish" : "warningBanner.onlyInSwedish")}
+                </p>
+              )}
             </article>
           ))}
         </div>

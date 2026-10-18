@@ -12,18 +12,20 @@ const OTHER_THEME: Record<Theme, Theme> = {
 };
 
 // Translation KEYS, not display text — translated at render via `t(...)` (064-swedish-translation).
+const SWITCH_TO_KEY: Record<Theme, string> = {
+  midnight: "themeToggle.switchToDark",
+  ivory: "themeToggle.switchToLight",
+};
+
 const THEME_LABEL: Record<Theme, string> = {
   midnight: "themeToggle.dark",
   ivory: "themeToggle.light",
 };
 
 /**
- * A single always-visible header button that flips the whole app's look between Dark and
- * Light in one tap — no dropdown step (037-header-controls-and-chart-fixes, US1). Replaces
- * the old three-option "Display" menu's theme picker; "Glass" has been removed entirely.
- *
- * Labeled with the theme you'll switch *to*, not the current one — e.g. while the app looks
- * dark, the button reads "Light" (037 follow-up: "the Light/Dark switch should be opposite").
+ * Menu item (inside HeaderMenu) that flips the whole app between Dark and Light. The label states
+ * the CURRENT theme ("Theme: Light") and the trailing hint names the action, so it is never
+ * ambiguous which one the text describes.
  */
 export default function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) {
   const { t } = useTranslation();
@@ -31,10 +33,12 @@ export default function ThemeToggle({ theme, onThemeChange }: ThemeToggleProps) 
   return (
     <button
       type="button"
-      className="theme-toggle"
+      role="menuitem"
+      className="theme-toggle header-menu-item"
       onClick={() => onThemeChange(nextTheme)}
     >
-      {t(THEME_LABEL[nextTheme])}
+      <span>{t("themeToggle.current", { theme: t(THEME_LABEL[theme]) })}</span>
+      <span className="header-menu-hint">{t(SWITCH_TO_KEY[nextTheme])}</span>
     </button>
   );
 }

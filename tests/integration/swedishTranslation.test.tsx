@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import App from "../../src/App";
+import userEvent from "@testing-library/user-event";
+import { menuItemNames } from "../helpers/headerMenu";
 import i18n from "../../src/i18n";
 
 vi.mock("../../src/services/weatherApi", () => ({
@@ -52,10 +54,10 @@ describe("Swedish translation rendering (064-swedish-translation)", () => {
     mockGeolocationUnavailable("sv-SE");
     render(<App />);
 
-    expect(await screen.findByRole("button", { name: "Karta" })).toBeInTheDocument();
+    expect(await menuItemNames(userEvent.setup())).toContain("Visa karta");
     expect(
       screen.getByText(
-        "Vi kunde inte fastställa din nuvarande plats. Sök efter en plats nedan, eller välj en sparad favorit, för att se dess väderhistorik istället."
+        "Vi kunde inte hitta din plats. Välj Använd min plats för att försöka igen, eller sök efter en plats eller välj en favorit."
       )
     ).toBeInTheDocument();
   });
@@ -64,10 +66,10 @@ describe("Swedish translation rendering (064-swedish-translation)", () => {
     mockGeolocationUnavailable("en-US");
     render(<App />);
 
-    expect(await screen.findByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(userEvent.setup())).toContain("Show map");
     expect(
       screen.getByText(
-        "We couldn't determine your current location. Search for a place below, or pick a saved favorite, to see its weather history instead."
+        "We couldn't find your location. Choose Use my location to try again, or search for a place or pick a favorite."
       )
     ).toBeInTheDocument();
   });

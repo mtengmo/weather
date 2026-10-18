@@ -109,7 +109,8 @@ const UPCOMING_WINDOW_MS = 48 * 60 * 60 * 1000;
  * 028-severe-weather-warnings, data-model.md; window widened in 045-show-upcoming-smhi).
  */
 export async function getWarningsForLocation(
-  location: Pick<Location, "latitude" | "longitude">
+  location: Pick<Location, "latitude" | "longitude">,
+  language: "en" | "sv" = "en"
 ): Promise<WeatherWarning[]> {
   if (!(await isSmhiCovered(location))) {
     return [];
@@ -127,15 +128,19 @@ export async function getWarningsForLocation(
       if (validUntil !== null && validUntil <= now) continue;
       if (!pointInPolygon(location, area.area.geometry)) continue;
 
+      // SMHI publishes `sv` and `en` for each text field. Prefer the app language; when the
+      // headline only exists in the other language, flag it so the UI can say so instead of
+      // silently mixing languages.
+      const other = language === "sv" ? "en" : "sv";
+      const pick = (text?: { sv?: string; en?: string }) => text?.[language] ?? text?.[other] ?? "";
       warnings.push({
         id: `${warning.id}-${area.id}`,
         severityCode: area.warningLevel.code ?? "",
-        severityLabel: area.warningLevel.en ?? area.warningLevel.sv ?? "",
-        title: warning.event.en ?? warning.event.sv ?? "",
-        areaName: area.areaName?.en ?? area.areaName?.sv ?? "",
-        description: area.descriptions
-          .map((d) => `${d.title.en ?? d.title.sv ?? ""}: ${d.text.en ?? d.text.sv ?? ""}`)
-          .join("\n\n"),
+        severityLabel: pick(area.warningLevel),
+        title: pick(warning.event),
+        textLanguage: warning.event[language] ? language : other,
+        areaName: pick(area.areaName),
+        description: area.descriptions.map((d) => `${pick(d.title)}: ${pick(d.text)}`).join("\n\n"),
         validFrom: area.approximateStart,
         validUntil: area.approximateEnd ?? null,
         isActive: validFrom <= now,

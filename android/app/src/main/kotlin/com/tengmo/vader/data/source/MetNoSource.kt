@@ -83,16 +83,21 @@ class MetNoSource(private val client: HttpClient) {
         else -> null
     }
 
-    private fun forecastHours(window: ObservationWindow) = when (window) {
-        ObservationWindow.Last24Hours -> 24
+    private fun forecastHours(window: ObservationWindow, extendedForecast: Boolean = false) = when (window) {
+        ObservationWindow.Last24Hours -> if (extendedForecast) SmhiSource.EXTENDED_FORECAST_HOURS else 24
         ObservationWindow.Last7Days -> 24 * 7
         ObservationWindow.Last30Days -> 0
     }
 
     /** Forecast-only observations after "now", capped per window (metNoProvider.ts
      *  `getForecastOnly`). MET Norway covers any lat/lon, so there is no coverage gate. */
-    suspend fun getForecast(latitude: Double, longitude: Double, window: ObservationWindow): ForecastResult {
-        val hours = forecastHours(window)
+    suspend fun getForecast(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): ForecastResult {
+        val hours = forecastHours(window, extendedForecast)
         if (hours == 0) return ForecastResult(emptyList(), null)
         return runCatching {
             val response: MetNoResponse = client.get(BASE_URL) {

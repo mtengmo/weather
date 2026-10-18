@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { formatWeekdayShort } from "../services/timeFormat";
 import { deriveDailyCondition } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
@@ -37,7 +38,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             key={day.bucketEnd}
           >
             <span className="weekly-forecast-weekday">
-              {new Date(day.bucketEnd).toLocaleDateString([], { weekday: "short" })}
+              {formatWeekdayShort(new Date(day.bucketEnd))}
             </span>
             {iconInfo ? (
               iconInfo.kind === "smhi-symbol" ? (

@@ -43,7 +43,7 @@ fun PlaceSearchView(
             modifier = Modifier.fillMaxWidth(),
         )
         Button(onClick = onSearch, enabled = state.query.isNotBlank() && !state.isSearching) {
-            Text(stringResource(R.string.placeSearch_label))
+            Text(stringResource(R.string.placeSearch_searchAction))
         }
 
         if (state.error) Text(stringResource(R.string.placeSearch_searchError), color = MaterialTheme.colorScheme.error)

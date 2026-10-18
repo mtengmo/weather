@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import i18next from "i18next";
+import "../../src/i18n";
 import {
   build3DayTimelineData,
   buildDailyTimelineData,
@@ -172,14 +174,27 @@ describe("buildHourlyTimelineData", () => {
     });
   });
 
-  describe("locale-independent hour label (009-timeline-polish-and-header, FR-010)", () => {
-    it("renders a plain 2-digit 24-hour label with no AM/PM marker", () => {
+  describe("hour label follows the app language (clarify pass; see services/timeFormat.ts)", () => {
+    afterEach(async () => {
+      await i18next.changeLanguage("en");
+    });
+
+    it("renders a 24-hour 'HH:00' label with no AM/PM marker in Swedish", async () => {
+      await i18next.changeLanguage("sv");
       const data = buildHourlyTimelineData(
         series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]),
         "metric"
       );
-      expect(data.periods[0].label).toMatch(/^\d{2}$/);
-      expect(data.periods[0].label).not.toMatch(/AM|PM/i);
+      expect(data.periods[0].label).toMatch(/^\d{2}:00$/);
+    });
+
+    it("renders a 12-hour 'h AM/PM' label in English", async () => {
+      await i18next.changeLanguage("en");
+      const data = buildHourlyTimelineData(
+        series([obs({ timestamp: hoursFromNow(-1), temperature: 5 })]),
+        "metric"
+      );
+      expect(data.periods[0].label).toMatch(/^\d{1,2} (AM|PM)$/);
     });
   });
 

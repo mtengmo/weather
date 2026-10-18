@@ -16,4 +16,7 @@ data class WeatherWarning(
     val validUntil: String?, // null = "no stated end — still active per the feed's presence"
     val isActive: Boolean, // true when validFrom <= now
     val isInformational: Boolean, // true for SMHI's lowest "Message" severity
+    /** Language the title/description are actually written in ("sv"/"en"); empty = unknown
+     *  (older cached data). Differs from the app language only when SMHI published no text in it. */
+    val textLanguage: String = "",
 )

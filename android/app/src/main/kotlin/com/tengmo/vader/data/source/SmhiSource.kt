@@ -67,6 +67,8 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
         const val COVERAGE_RADIUS_KM = 50.0
 
         private const val HOUR_MS = 3_600_000L
+        /** Forecast reach when the 24-hour Overview is toggled to "Show next 48 hours". */
+        const val EXTENDED_FORECAST_HOURS = 48
 
         private fun windowHours(window: ObservationWindow) = when (window) {
             ObservationWindow.Last24Hours -> 24
@@ -75,8 +77,8 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
         }
 
         /** How many hours of forecast follow "now" per window (30 days has none). */
-        fun forecastHours(window: ObservationWindow) = when (window) {
-            ObservationWindow.Last24Hours -> 24
+        fun forecastHours(window: ObservationWindow, extendedForecast: Boolean = false) = when (window) {
+            ObservationWindow.Last24Hours -> if (extendedForecast) EXTENDED_FORECAST_HOURS else 24
             ObservationWindow.Last7Days -> 24 * 7
             ObservationWindow.Last30Days -> 0
         }
@@ -230,7 +232,12 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
      * forecast, with trailing observation gaps backfilled from the forecast.
      * @throws Exception when there is no station or the temperature call fails.
      */
-    suspend fun getObservations(latitude: Double, longitude: Double, window: ObservationWindow): ObservationSeries {
+    suspend fun getObservations(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): ObservationSeries {
         val nearestTemp = nearestActiveStations(TEMPERATURE_PARAM, latitude, longitude, 1)
         if (nearestTemp.isEmpty()) throw IllegalStateException("No active SMHI temperature station found")
 
@@ -257,7 +264,7 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
             )
         }.toMutableList()
 
-        val forecastHoursNeeded = forecastHours(window)
+        val forecastHoursNeeded = forecastHours(window, extendedForecast)
         val forecastResult = if (forecastHoursNeeded > 0) fetchForecastTimeSeries(latitude, longitude) else null
         val timeSeries = forecastResult?.timeSeries ?: emptyMap()
         fillTrailingObservationGap(observations, timeSeries)
@@ -343,14 +350,24 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
         for (i in observations.indices.reversed()) {
             if (observations[i].temperature != null) break
             val hourKey = Math.floorDiv(Instant.parse(observations[i].timestamp).toEpochMilli(), HOUR_MS)
-            val data = timeSeries[hourKey] ?: break
+            // Exact hour first; when the forecast starts one hour later than the station grid
+            // (the "—°" current-hour hole) use the nearest forecast hour, preferring the next one.
+            val data = timeSeries[hourKey]
+                ?: timeSeries.keys.filter { it > hourKey }.minOrNull()?.let { timeSeries[it] }
+                ?: timeSeries.keys.filter { it < hourKey }.maxOrNull()?.let { timeSeries[it] }
+                ?: break
             observations[i] = forecastObservationForHour(hourKey, data)
         }
     }
 
     /** Forecast only, without the seven observation-parameter station fetches (025-reduce-api-requests). */
-    suspend fun getForecastOnly(latitude: Double, longitude: Double, window: ObservationWindow): SmhiForecastResult {
-        val hours = forecastHours(window)
+    suspend fun getForecastOnly(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): SmhiForecastResult {
+        val hours = forecastHours(window, extendedForecast)
         if (hours == 0) return SmhiForecastResult(emptyList(), null)
         val fetch = fetchForecastTimeSeries(latitude, longitude)
         val observations = buildForecastHourlySeries(hours, fetch.timeSeries)

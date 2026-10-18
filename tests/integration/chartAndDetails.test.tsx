@@ -123,7 +123,7 @@ describe("US1: ObservationChart + ObservationDetails", () => {
 
     render(<ChartAndDetailsHarness location={stockholm} />);
 
-    expect(screen.getByRole("status")).toHaveTextContent(/loading/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/fetching/i);
     await screen.findByRole("button", { name: "View details" });
     expect(screen.getByRole("button", { name: "Last 24 hours" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Last 7 days" })).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe("US1: ObservationChart + ObservationDetails", () => {
 
     render(<ChartAndDetailsHarness location={stockholm} />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/unavailable/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't load weather/i);
   });
 
   it("opens the details table via 'View details', showing a gap indicator for null points, and 'Back to graph' returns", async () => {

@@ -189,6 +189,9 @@ export interface WeatherWarning {
   severityCode: string;
   severityLabel: string;
   title: string;
+  /** Language the title/description are actually written in (differs from the app language only
+   *  when SMHI published no text in it). */
+  textLanguage?: "en" | "sv";
   areaName: string;
   description: string;
   validFrom: string; // ISO 8601 timestamp

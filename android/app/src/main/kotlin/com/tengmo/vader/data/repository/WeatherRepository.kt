@@ -54,14 +54,28 @@ class WeatherRepository(
 
     /** Faithful port of weatherApi.ts's `getObservations` — see
      *  contracts/weather-data-sources.md's "Source-selection contract". */
-    suspend fun getObservations(latitude: Double, longitude: Double, window: ObservationWindow): ObservationSeries {
+    suspend fun getObservations(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): ObservationSeries = getObservationsRaw(latitude, longitude, window, extendedForecast).let {
+        it.copy(observations = backfillTrailingObservationGap(it.observations))
+    }
+
+    private suspend fun getObservationsRaw(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean,
+    ): ObservationSeries {
         if (isSmhiCovered(latitude, longitude)) {
-            val smhiResult = runCatching { smhi.getObservations(latitude, longitude, window) }.getOrNull()
+            val smhiResult = runCatching { smhi.getObservations(latitude, longitude, window, extendedForecast) }.getOrNull()
             if (smhiResult != null) {
                 val hasForecast = smhiResult.observations.any { it.isForecast }
                 if (expectsForecast(window) && !hasForecast) {
                     val fallbackForecast = runCatching {
-                        openMeteo.getForecastOnly(latitude, longitude, window)
+                        openMeteo.getForecastOnly(latitude, longitude, window, extendedForecast)
                     }.getOrDefault(emptyList())
                     if (fallbackForecast.isNotEmpty()) {
                         return smhiResult.copy(
@@ -75,7 +89,7 @@ class WeatherRepository(
             }
             // SMHI failed for an in-coverage location — silently fall back to Open-Meteo.
         }
-        return openMeteo.getObservations(latitude, longitude, window).copy(primarySource = DataSource.OpenMeteo)
+        return openMeteo.getObservations(latitude, longitude, window, extendedForecast).copy(primarySource = DataSource.OpenMeteo)
     }
 
     /** UV-risk hour buckets (STRÅNG, SMHI-only) — empty for non-SMHI-covered locations. */
@@ -86,7 +100,7 @@ class WeatherRepository(
 
     /** Active/upcoming warnings for a location — port of weatherApi.ts's
      *  `getWarningsForLocation` including its severity sort and 48h "upcoming" window. */
-    suspend fun getWarningsForLocation(latitude: Double, longitude: Double): List<WeatherWarning> {
+    suspend fun getWarningsForLocation(latitude: Double, longitude: Double, language: String = "en"): List<WeatherWarning> {
         if (!isSmhiCovered(latitude, longitude)) return emptyList()
         val raw = smhi.getActiveWarningsRaw()
         val now = System.currentTimeMillis()
@@ -104,14 +118,20 @@ class WeatherRepository(
                 val geometry = parseGeoGeometry(area.area.geometry.type, area.area.geometry.coordinates) ?: continue
                 if (!pointInPolygon(latitude, longitude, geometry)) continue
 
+                // SMHI publishes `sv` and `en` for each text field: prefer the app language and flag
+                // the fallback (textLanguage) so the UI can say so instead of silently mixing.
+                val sv = language == "sv"
                 warnings += WeatherWarning(
                     id = "${warning.id}-${area.id}",
                     severityCode = area.warningLevel.code ?: "",
-                    severityLabel = area.warningLevel.en ?: area.warningLevel.sv ?: "",
-                    title = warning.event.en ?: warning.event.sv ?: "",
-                    areaName = area.areaName.en ?: area.areaName.sv ?: "",
+                    severityLabel = (if (sv) area.warningLevel.sv ?: area.warningLevel.en else area.warningLevel.en ?: area.warningLevel.sv) ?: "",
+                    title = (if (sv) warning.event.sv ?: warning.event.en else warning.event.en ?: warning.event.sv) ?: "",
+                    textLanguage = if (sv) (if (warning.event.sv != null) "sv" else "en") else (if (warning.event.en != null) "en" else "sv"),
+                    areaName = (if (sv) area.areaName.sv ?: area.areaName.en else area.areaName.en ?: area.areaName.sv) ?: "",
                     description = area.descriptions.joinToString("\n\n") { d ->
-                        "${d.title.en ?: d.title.sv ?: ""}: ${d.text.en ?: d.text.sv ?: ""}"
+                        val title = (if (sv) d.title.sv ?: d.title.en else d.title.en ?: d.title.sv) ?: ""
+                        val text = (if (sv) d.text.sv ?: d.text.en else d.text.en ?: d.text.sv) ?: ""
+                        "$title: $text"
                     },
                     validFrom = area.approximateStart,
                     validUntil = area.approximateEnd,
@@ -152,15 +172,20 @@ class WeatherRepository(
 
     /** Every source's own forecast-only observations, fetched independently
      *  (port of weatherApi.ts's `getMultiSourceForecast`). */
-    suspend fun getMultiSourceForecast(latitude: Double, longitude: Double, window: ObservationWindow): List<MultiSourceForecastEntry> =
+    suspend fun getMultiSourceForecast(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): List<MultiSourceForecastEntry> =
         coroutineScope {
             val smhiDeferred = async {
                 if (!isSmhiCovered(latitude, longitude)) return@async null
                 // Forecast-only path — avoids re-fetching all seven observation parameters (025).
-                runCatching { smhi.getForecastOnly(latitude, longitude, window) }.getOrNull()
+                runCatching { smhi.getForecastOnly(latitude, longitude, window, extendedForecast) }.getOrNull()
             }
-            val openMeteoDeferred = async { runCatching { openMeteo.getForecastOnly(latitude, longitude, window) }.getOrNull() }
-            val metNoDeferred = async { runCatching { metNo.getForecast(latitude, longitude, window) }.getOrNull() }
+            val openMeteoDeferred = async { runCatching { openMeteo.getForecastOnly(latitude, longitude, window, extendedForecast) }.getOrNull() }
+            val metNoDeferred = async { runCatching { metNo.getForecast(latitude, longitude, window, extendedForecast) }.getOrNull() }
 
             val entries = mutableListOf<MultiSourceForecastEntry>()
             smhiDeferred.await()?.takeIf { it.observations.isNotEmpty() }
@@ -188,4 +213,23 @@ class WeatherRepository(
         val name = reverseGeocodeName(latitude, longitude) ?: stationName ?: "Current location"
         return Location(latitude, longitude, name, LocationSource.CurrentPosition)
     }
+}
+
+/**
+ * Source-agnostic safety net for the empty "current hour" slot ("—°", no icon): when the series'
+ * trailing observed (non-forecast) entries carry no temperature, they are replaced by the nearest
+ * forecast hour's values (timestamp kept, marked as forecast). Older mid-series gaps are left alone.
+ * No-op without a forecast entry. Complements SmhiSource's exact-hour `fillTrailingObservationGap`.
+ */
+fun backfillTrailingObservationGap(observations: List<WeatherObservation>): List<WeatherObservation> {
+    val firstForecast = observations.indexOfFirst { it.isForecast }
+    if (firstForecast <= 0) return observations
+    val donor = observations.subList(firstForecast, observations.size).firstOrNull { it.temperature != null }
+        ?: return observations
+    val result = observations.toMutableList()
+    for (i in firstForecast - 1 downTo 0) {
+        if (result[i].temperature != null) break
+        result[i] = donor.copy(timestamp = result[i].timestamp, isForecast = true)
+    }
+    return result
 }

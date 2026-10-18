@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { formatWeekdayDay } from "../../src/services/timeFormat";
 import { buildDailyTimelineData } from "../../src/components/timelineData";
 import { toCalendarDayAggregates } from "../../src/services/dailyAggregation";
 import type { ObservationSeries, WeatherObservation } from "../../src/models/types";
@@ -172,10 +173,7 @@ describe("buildDailyTimelineData now-position fields (fixed clock 2026-10-17 08:
   it("labels each column by its own calendar date", () => {
     const data = buildDailyTimelineData(FORECAST_SERIES, "metric");
     const expectedLabel = (dayOffset: number) =>
-      new Date(localMidnight(dayOffset) + 12 * 3600_000).toLocaleDateString([], {
-        weekday: "short",
-        day: "numeric",
-      });
+      formatWeekdayDay(new Date(localMidnight(dayOffset) + 12 * 3600_000));
 
     expect(data.periods[6].label).toBe(expectedLabel(0));
     expect(data.periods[7].label).toBe(expectedLabel(1));

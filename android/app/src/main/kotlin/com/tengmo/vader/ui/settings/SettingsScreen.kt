@@ -22,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tengmo.vader.R
 import com.tengmo.vader.data.model.LanguagePreference
@@ -35,7 +34,7 @@ import com.tengmo.vader.ui.HowItWorksView
 import com.tengmo.vader.ui.PrivacyNoticeView
 
 @Composable
-private fun SectionTitle(text: String) = Text(text, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+private fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
 
 /** T054 — Settings screen (US4): every option the web's SettingsMenu/ThemeToggle/UnitToggle/
  *  LanguageToggle/HighLowToggle/NearbyStationCountControl offers, plus the how-it-works, privacy
@@ -57,6 +56,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Theme.
+        SectionTitle(stringResource(R.string.settings_theme))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(prefs.theme == Theme.Midnight, { viewModel.setTheme(Theme.Midnight) }, { Text(stringResource(R.string.themeToggle_dark)) })
             FilterChip(prefs.theme == Theme.Ivory, { viewModel.setTheme(Theme.Ivory) }, { Text(stringResource(R.string.themeToggle_light)) })

@@ -229,10 +229,10 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
 
     const banner = await screen.findByRole("region", { name: "Weather warnings" });
     expect(banner).toHaveTextContent("Cloudburst");
-    expect(banner).toHaveTextContent(/starts in 3h/i);
+    expect(banner).toHaveTextContent(/starts in 3 h/i);
 
     await user.click(within(banner).getByRole("button", { expanded: false }));
-    expect(banner).toHaveTextContent(/starts in 3h/i);
+    expect(banner).toHaveTextContent(/starts in 3 h/i);
   });
 
   it("lists an active warning ahead of an upcoming one regardless of severity, each clearly labeled", async () => {
@@ -260,7 +260,7 @@ describe("WarningBanner (028-severe-weather-warnings)", () => {
     const items = within(banner).getAllByRole("heading", { level: 3 });
     expect(items[0]).toHaveTextContent("Water shortage");
     expect(items[1]).toHaveTextContent("Cloudburst");
-    expect(items[1]).toHaveTextContent(/starts in 20h/i);
+    expect(items[1]).toHaveTextContent(/starts in 20 h/i);
     expect(items[0]).not.toHaveTextContent(/starts in/i);
   });
 });

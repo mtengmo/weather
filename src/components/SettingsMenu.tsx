@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
 import type { HighLowVisibility, LanguagePreference, UnitSystem } from "../models/types";
 import UnitToggle from "./UnitToggle";
 import HighLowToggle from "./HighLowToggle";
@@ -12,13 +11,13 @@ interface SettingsMenuProps {
   onHighLowChange: (visible: HighLowVisibility) => void;
   language: LanguagePreference;
   onLanguageChange: (language: LanguagePreference) => void;
+  /** Extra controls rendered after the standard ones (e.g. nearby-station count on Details). */
+  children?: ReactNode;
 }
 
 /**
- * Holds the display options that aren't theme (now its own header button, ThemeToggle) —
- * units and the high/low toggle — behind a single "Settings" control
- * (037-header-controls-and-chart-fixes, US2). Same dropdown-panel pattern the old DisplayMenu
- * used (018-dashboard-visual-redesign, FR-003), minus the theme picker.
+ * The display options — units, high/low, language — rendered inside the header menu's Settings
+ * panel (the dropdown trigger itself now lives in HeaderMenu).
  */
 export default function SettingsMenu({
   unit,
@@ -27,52 +26,14 @@ export default function SettingsMenu({
   onHighLowChange,
   language,
   onLanguageChange,
+  children,
 }: SettingsMenuProps) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function handlePointerDown(event: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
   return (
-    <div className="settings-menu" ref={panelRef}>
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="settings-menu-content"
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        {t("settingsMenu.settings")}
-      </button>
-
-      {open && (
-        <div id="settings-menu-content" className="settings-menu-content">
-          <UnitToggle unit={unit} onChange={onUnitChange} />
-          <HighLowToggle visible={highLowVisible} onChange={onHighLowChange} />
-          <LanguageToggle language={language} onChange={onLanguageChange} />
-        </div>
-      )}
+    <div id="settings-menu-content" className="settings-menu-content">
+      <UnitToggle unit={unit} onChange={onUnitChange} />
+      <HighLowToggle visible={highLowVisible} onChange={onHighLowChange} />
+      <LanguageToggle language={language} onChange={onLanguageChange} />
+      {children}
     </div>
   );
 }

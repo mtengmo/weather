@@ -38,10 +38,8 @@ import com.tengmo.vader.data.repository.temperatureUnitLabel
 import com.tengmo.vader.ui.overview.resolveWeatherIconRes
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.tengmo.vader.ui.TimeFormat
 
-private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-private val HOUR_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH")
 
 /** Data older than this is called out with an explicit "Updated HH:mm" even on the small widget,
  *  so stale data is recognizable (spec Edge Cases: power-restricted mode). */
@@ -55,7 +53,7 @@ private fun temp(value: Double?, unit: UnitSystem): String =
 private fun updatedText(context: Context, loadedAtIso: String): String =
     context.getString(
         R.string.widget_lastUpdated,
-        Instant.parse(loadedAtIso).atZone(ZoneId.systemDefault()).format(TIME_FORMAT),
+        TimeFormat.clock(Instant.parse(loadedAtIso).atZone(ZoneId.systemDefault()), context.resources.configuration.locales[0]),
     )
 
 private fun isStale(loadedAtIso: String): Boolean =
@@ -222,7 +220,10 @@ private fun HourCell(render: WidgetRender, obs: WeatherObservation, unit: UnitSy
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            Instant.parse(obs.timestamp).atZone(ZoneId.systemDefault()).format(HOUR_FORMAT),
+            TimeFormat.hourCompact(
+                Instant.parse(obs.timestamp).atZone(ZoneId.systemDefault()),
+                render.localizedContext.resources.configuration.locales[0],
+            ),
             style = TextStyle(color = colorProvider(render.mutedColor), fontSize = 10.sp),
         )
         if (res != 0) Image(ImageProvider(res), contentDescription = null, modifier = GlanceModifier.size(24.dp))

@@ -1,4 +1,5 @@
 import i18next from "i18next";
+import { formatClockTime } from "./timeFormat";
 
 export function formatValue(value: number | null, decimals = 1): string {
   if (value === null) return "—";
@@ -58,7 +59,7 @@ export function dataSourceDisclosure(
       : i18next.t("weatherOverview.forecast");
   const freshnessTime = series.forecastIssuedAt ?? lastUpdated;
   const freshness = freshnessTime
-    ? ` · ${forecastLabel} ${i18next.t("format.updatedAt", { time: new Date(freshnessTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}`
+    ? ` · ${forecastLabel} ${i18next.t("format.updatedAt", { time: formatClockTime(new Date(freshnessTime)) })}`
     : "";
   return `${observedLabel}${freshness}`;
 }

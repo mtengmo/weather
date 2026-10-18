@@ -19,13 +19,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 import com.tengmo.vader.data.model.WeatherWarning
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import androidx.compose.ui.text.font.FontStyle
+import com.tengmo.vader.ui.TimeFormat
+import com.tengmo.vader.ui.appLocale
+import java.util.Locale
 
 /** Severity colors matching the web app's warning-level-* classes (yellow/orange/red; the
  *  informational MESSAGE level never reaches this banner — WarningBanner only ever receives
@@ -54,11 +55,8 @@ private fun startsInLabel(validFrom: String): String {
     }
 }
 
-private val DATE_TIME_FORMAT: DateTimeFormatter =
-    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-
-private fun formatDateTime(iso: String): String =
-    Instant.parse(iso).atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMAT)
+private fun formatDateTime(iso: String, locale: Locale): String =
+    TimeFormat.dateTime(Instant.parse(iso).atZone(ZoneId.systemDefault()), locale)
 
 /** T036 — port of src/components/WarningBanner.tsx: persistent, collapsible banner for the
  *  viewed location's active/upcoming official warnings, leading with the most severe (already
@@ -67,6 +65,7 @@ private fun formatDateTime(iso: String): String =
 @Composable
 fun WarningBanner(warnings: List<WeatherWarning>, modifier: Modifier = Modifier) {
     if (warnings.isEmpty()) return
+    val locale = appLocale()
     var expanded by remember { mutableStateOf(false) }
     val leading = warnings.first()
     val moreCount = warnings.size - 1
@@ -80,11 +79,11 @@ fun WarningBanner(warnings: List<WeatherWarning>, modifier: Modifier = Modifier)
                 .clickable { expanded = !expanded }
                 .padding(12.dp),
         ) {
-            Text(leading.severityLabel, color = Color.White, fontSize = 12.sp)
-            Text(leading.title, color = Color.White, fontSize = 16.sp)
-            if (!leading.isActive) Text(startsInLabel(leading.validFrom), color = Color.White, fontSize = 12.sp)
+            Text(leading.severityLabel, color = Color.White, style = MaterialTheme.typography.bodySmall)
+            Text(leading.title, color = Color.White, style = MaterialTheme.typography.titleMedium)
+            if (!leading.isActive) Text(startsInLabel(leading.validFrom), color = Color.White, style = MaterialTheme.typography.bodySmall)
             if (moreCount > 0) {
-                Text(stringResource(R.string.warningBanner_moreCount, moreCount.toString()), color = Color.White, fontSize = 12.sp)
+                Text(stringResource(R.string.warningBanner_moreCount, moreCount.toString()), color = Color.White, style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -100,14 +99,25 @@ fun WarningBanner(warnings: List<WeatherWarning>, modifier: Modifier = Modifier)
                     Text(
                         "${warning.severityLabel}: ${warning.title}" +
                             if (!warning.isActive) " — ${startsInLabel(warning.validFrom)}" else "",
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = severityColor(warning.severityCode),
                     )
-                    Text(warning.areaName, fontSize = 12.sp)
+                    Text(warning.areaName, style = MaterialTheme.typography.bodySmall)
                     val since = if (warning.isActive) stringResource(R.string.warningBanner_since) else stringResource(R.string.warningBanner_from)
-                    val until = warning.validUntil?.let { " " + stringResource(R.string.warningBanner_until, formatDateTime(it)) } ?: ""
-                    Text("$since ${formatDateTime(warning.validFrom)}$until", fontSize = 12.sp)
-                    Text(warning.description, fontSize = 13.sp)
+                    val until = warning.validUntil?.let { " " + stringResource(R.string.warningBanner_until, formatDateTime(it, locale)) } ?: ""
+                    Text("$since ${formatDateTime(warning.validFrom, locale)}$until", style = MaterialTheme.typography.bodySmall)
+                    Text(warning.description, style = MaterialTheme.typography.bodyMedium)
+                    // SMHI sometimes publishes a warning in one language only: say so rather than mixing silently.
+                    if (warning.textLanguage.isNotEmpty() && warning.textLanguage != TimeFormat.language(locale)) {
+                        Text(
+                            stringResource(
+                                if (warning.textLanguage == "en") R.string.warningBanner_onlyInEnglish else R.string.warningBanner_onlyInSwedish,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

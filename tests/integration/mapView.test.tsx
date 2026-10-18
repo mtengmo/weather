@@ -42,7 +42,7 @@ describe("MapView (016-dashboard-polish-round-two, US10)", () => {
   it("shows an empty-state message when there are no favorites and no cached location", () => {
     render(<MapView favorites={[]} cachedLocation={null} onSelectLocation={vi.fn()} />);
 
-    expect(screen.getByText(/no locations to show yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no places on the map yet/i)).toBeInTheDocument();
   });
 
   it("shows a pin for each favorite; opening it and clicking 'View' calls onSelectLocation", async () => {
@@ -61,7 +61,7 @@ describe("MapView (016-dashboard-polish-round-two, US10)", () => {
     fireEvent.click(container.querySelector(".leaflet-marker-icon")!);
 
     expect(await screen.findByText("Stockholm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Show weather" }));
     expect(onSelectLocation).toHaveBeenCalledWith(
       expect.objectContaining({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" })
     );
@@ -145,7 +145,7 @@ describe("Radar layer (032-dashboard-polish-round-seven, US1)", () => {
 
     fireEvent.click(container.querySelector(".leaflet-marker-icon")!);
     expect(await screen.findByText("Stockholm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Show weather" }));
 
     expect(onSelectLocation).toHaveBeenCalledWith(
       expect.objectContaining({ latitude: stockholm.latitude, longitude: stockholm.longitude })
@@ -266,7 +266,7 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
     await user.click(screen.getByRole("button", { name: "Temperature" }));
     fireEvent.click(container.querySelector(".leaflet-marker-icon")!);
     expect(await screen.findByText("Stockholm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Show weather" }));
 
     expect(onSelectLocation).toHaveBeenCalledWith(
       expect.objectContaining({ latitude: stockholm.latitude, longitude: stockholm.longitude })
@@ -283,7 +283,7 @@ describe("Overlay picker guardrails (040-map-temp-wind-overlays, US3)", () => {
     await user.click(screen.getByRole("button", { name: "None" }));
     fireEvent.click(container.querySelector(".leaflet-marker-icon")!);
     expect(await screen.findByText("Stockholm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Show weather" }));
 
     expect(onSelectLocation).toHaveBeenCalledWith(
       expect.objectContaining({ latitude: stockholm.latitude, longitude: stockholm.longitude })

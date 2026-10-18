@@ -153,8 +153,8 @@ describe("US1: synchronized 24h timeline", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
     // Condition row: one icon per column, with a visible text label alongside the icon.
-    expect(await screen.findByText("Clear")).toBeInTheDocument();
-    expect(screen.getByText("Light rain")).toBeInTheDocument();
+    expect((await screen.findAllByText("Clear")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Light rain").length).toBeGreaterThan(0);
     expect(screen.getByText("No data")).toBeInTheDocument();
     expect(screen.getAllByText("Forecast").length).toBeGreaterThan(0);
 
@@ -202,7 +202,7 @@ describe("US1: synchronized 24h timeline", () => {
     // its own sun icon elsewhere on the page for this same clear series.
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("Clear");
+    await screen.findAllByText("Clear");
 
     const conditionCell = container.querySelector(".weather-timeline-condition");
     expect(conditionCell?.querySelector('img[src*="weather_clear_night_mild"]')).toBeInTheDocument();
@@ -1071,7 +1071,7 @@ describe("US2: a leaner set of timeline rows (009-timeline-polish-and-header)", 
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
-    expect(await screen.findByText("12 m/s")).toBeInTheDocument();
+    expect((await screen.findAllByText("12 m/s")).length).toBeGreaterThan(0);
   });
 });
 
@@ -1211,7 +1211,7 @@ describe("chance of rain (011-precipitation-chance)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("2.0 mm");
+    await screen.findAllByText("2.0 mm");
 
     expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
   });
@@ -1235,7 +1235,7 @@ describe("chance of rain (011-precipitation-chance)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("2.0 mm");
+    await screen.findAllByText("2.0 mm");
 
     expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
   });
@@ -1260,7 +1260,7 @@ describe("chance of rain (011-precipitation-chance)", () => {
 
     const { container } = render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await screen.findByText("0.0 mm");
+    await screen.findAllByText("0.0 mm");
 
     expect(container.querySelector(".weather-timeline-bar-chance")).not.toBeInTheDocument();
   });
@@ -1997,7 +1997,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
       await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
       const card = await screen.findByRole("region", { name: "Today" });
-      expect(card).toHaveTextContent(`Humidity ${expectedLevel}`);
+      expect(card).toHaveTextContent(new RegExp(`Humidity\\s*${expectedLevel}`));
     }
   );
 
@@ -2077,7 +2077,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
 
     const expectedMm = sumCalendarDayPrecipitation(weeklyObservations, new Date());
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent(`Rain ${expectedMm !== null ? expectedMm.toFixed(1) : "—"}`);
+    expect(card).toHaveTextContent(new RegExp(`Rain\\s*${expectedMm !== null ? expectedMm.toFixed(1) : "—"}`));
   });
 
   it("shows the gap indicator, not a fabricated value, for missing fields", async () => {
@@ -2137,8 +2137,8 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent("Clear.");
-    expect(card).not.toHaveTextContent("Cloudy.");
+    expect(card).toHaveTextContent("Clear");
+    expect(card).not.toHaveTextContent("Cloudy");
   });
 
   it("still summarizes the most recent observed day when there is no forecast at all (023-fix-today-summary, no-regression check)", async () => {
@@ -2156,7 +2156,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent("Clear.");
+    expect(card).toHaveTextContent("Clear");
   });
 
   it("renders a character illustration beside the weather icon, matching current conditions (061-cartoon-weather-companion, US1)", async () => {

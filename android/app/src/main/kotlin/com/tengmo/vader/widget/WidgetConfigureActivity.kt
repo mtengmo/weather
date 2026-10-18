@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.tengmo.vader.R
 import com.tengmo.vader.ServiceLocator
@@ -162,10 +161,10 @@ private fun ConfigureContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(stringResource(R.string.widget_chooseTarget), fontSize = 22.sp, color = MaterialTheme.colorScheme.onBackground)
+        Text(stringResource(R.string.widget_chooseTarget), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
 
         if (!explainingMyLocation) {
-            Text(stringResource(R.string.widget_targetFavorite), fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.widget_targetFavorite), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             if (favorites.isEmpty()) Text(stringResource(R.string.favoritesList_empty))
             favorites.forEach { favorite ->
                 OutlinedButton(onClick = { onFavoriteChosen(favorite) }, modifier = Modifier.fillMaxWidth()) {
@@ -177,7 +176,7 @@ private fun ConfigureContent(
             }
         } else {
             // FR-027: explain first, ask second.
-            Text(stringResource(R.string.permission_backgroundRationaleTitle), fontSize = 18.sp, color = MaterialTheme.colorScheme.onBackground)
+            Text(stringResource(R.string.permission_backgroundRationaleTitle), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
             Text(stringResource(R.string.permission_backgroundRationale))
             if (deniedNote) Text(stringResource(R.string.permission_backgroundDenied), color = MaterialTheme.colorScheme.error)
             Button(

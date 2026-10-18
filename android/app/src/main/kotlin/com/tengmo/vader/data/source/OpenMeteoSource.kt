@@ -28,8 +28,8 @@ class OpenMeteoSource(private val client: HttpClient) {
             ObservationWindow.Last30Days -> 31
         }
 
-        private fun forecastDaysFor(window: ObservationWindow) = when (window) {
-            ObservationWindow.Last24Hours -> 2
+        private fun forecastDaysFor(window: ObservationWindow, extendedForecast: Boolean = false) = when (window) {
+            ObservationWindow.Last24Hours -> if (extendedForecast) 3 else 2
             ObservationWindow.Last7Days -> 8
             ObservationWindow.Last30Days -> 1
         }
@@ -55,6 +55,7 @@ class OpenMeteoSource(private val client: HttpClient) {
         latitude: Double,
         longitude: Double,
         window: ObservationWindow,
+        extendedForecast: Boolean = false,
     ): List<WeatherObservation>? = runCatching {
         val response: ForecastResponse = client.get(FORECAST_URL) {
             parameter("latitude", latitude)
@@ -66,7 +67,7 @@ class OpenMeteoSource(private val client: HttpClient) {
             )
             parameter("wind_speed_unit", "ms")
             parameter("past_days", pastDaysFor(window))
-            parameter("forecast_days", forecastDaysFor(window))
+            parameter("forecast_days", forecastDaysFor(window, extendedForecast))
             parameter("timezone", "UTC")
         }.body()
         val h = response.hourly ?: return@runCatching null
@@ -94,8 +95,8 @@ class OpenMeteoSource(private val client: HttpClient) {
         ObservationWindow.Last30Days -> 24 * 30
     }
 
-    private fun forecastHours(window: ObservationWindow) = when (window) {
-        ObservationWindow.Last24Hours -> 24
+    private fun forecastHours(window: ObservationWindow, extendedForecast: Boolean = false) = when (window) {
+        ObservationWindow.Last24Hours -> if (extendedForecast) SmhiSource.EXTENDED_FORECAST_HOURS else 24
         ObservationWindow.Last7Days -> 24 * 7
         ObservationWindow.Last30Days -> 0
     }
@@ -104,15 +105,20 @@ class OpenMeteoSource(private val client: HttpClient) {
 
     /** Past `windowHours` of readings followed by the forecast (tagged isForecast), or an
      *  Unavailable empty series when the fetch failed (openMeteoProvider.ts `getObservations`). */
-    suspend fun getObservations(latitude: Double, longitude: Double, window: ObservationWindow): ObservationSeries {
+    suspend fun getObservations(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): ObservationSeries {
         val base = Location(latitude, longitude, "", LocationSource.CurrentPosition)
-        val all = fetchHourlyPoints(latitude, longitude, window)
+        val all = fetchHourlyPoints(latitude, longitude, window, extendedForecast)
             ?: return ObservationSeries(base, window, emptyList(), ObservationStatus.Unavailable, DataSource.OpenMeteo)
 
         val now = System.currentTimeMillis()
         val elapsed = all.filter { epochMillisOf(it) <= now }
         val observations = elapsed.takeLast(windowHours(window))
-        val upcoming = all.filter { epochMillisOf(it) > now }.map { it.copy(isForecast = true) }.take(forecastHours(window))
+        val upcoming = all.filter { epochMillisOf(it) > now }.map { it.copy(isForecast = true) }.take(forecastHours(window, extendedForecast))
 
         return ObservationSeries(
             location = base,
@@ -124,10 +130,15 @@ class OpenMeteoSource(private val client: HttpClient) {
     }
 
     /** Forecast-only points (SMHI's fallback when its own forecast is empty), or empty on failure. */
-    suspend fun getForecastOnly(latitude: Double, longitude: Double, window: ObservationWindow): List<WeatherObservation> {
-        val all = fetchHourlyPoints(latitude, longitude, window) ?: return emptyList()
+    suspend fun getForecastOnly(
+        latitude: Double,
+        longitude: Double,
+        window: ObservationWindow,
+        extendedForecast: Boolean = false,
+    ): List<WeatherObservation> {
+        val all = fetchHourlyPoints(latitude, longitude, window, extendedForecast) ?: return emptyList()
         val now = System.currentTimeMillis()
-        return all.filter { epochMillisOf(it) > now }.map { it.copy(isForecast = true) }.take(forecastHours(window))
+        return all.filter { epochMillisOf(it) > now }.map { it.copy(isForecast = true) }.take(forecastHours(window, extendedForecast))
     }
 
     data class PlaceCandidate(val latitude: Double, val longitude: Double, val displayName: String)

@@ -1,12 +1,12 @@
 package com.tengmo.vader.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.BuildConfig
 import com.tengmo.vader.R
 
@@ -15,15 +15,15 @@ import com.tengmo.vader.R
 @Composable
 fun AttributionView() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(stringResource(R.string.attribution_title), fontSize = 14.sp)
-        Text(stringResource(R.string.attribution_smhi), fontSize = 12.sp)
-        Text(stringResource(R.string.attribution_openMeteo), fontSize = 12.sp)
-        Text(stringResource(R.string.attribution_metNo), fontSize = 12.sp)
-        Text(stringResource(R.string.attribution_osm), fontSize = 12.sp)
-        Text(stringResource(R.string.attribution_rainviewer), fontSize = 12.sp)
+        Text(stringResource(R.string.attribution_title), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.attribution_smhi), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.attribution_openMeteo), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.attribution_metNo), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.attribution_osm), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.attribution_rainviewer), style = MaterialTheme.typography.bodySmall)
         if (BuildConfig.OPENWEATHERMAP_API_KEY.isNotBlank()) {
-            Text(stringResource(R.string.attribution_owm), fontSize = 12.sp)
+            Text(stringResource(R.string.attribution_owm), style = MaterialTheme.typography.bodySmall)
         }
-        Text("v${BuildConfig.VERSION_NAME}", fontSize = 11.sp)
+        Text("v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelSmall)
     }
 }

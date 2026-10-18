@@ -23,10 +23,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.tengmo.vader.ui.TimeFormat
+import com.tengmo.vader.ui.appLocale
 import kotlin.math.abs
 
 /** One plotted point. A null [value] is a gap (line breaks there, matching the web chart's
@@ -42,7 +42,6 @@ data class ChartSeries(
     val secondary: Boolean = false,
 )
 
-private val TOOLTIP_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE HH:mm")
 
 /**
  * T040 — line chart (metric switch and window are chosen by the caller; this only draws).
@@ -57,6 +56,7 @@ fun ObservationChart(
     formatValue: (Double) -> String,
     modifier: Modifier = Modifier,
 ) {
+    val locale = appLocale()
     val allPoints = series.flatMap { it.points }.filter { it.value != null }
     if (allPoints.isEmpty()) return
 
@@ -167,7 +167,7 @@ fun ObservationChart(
         // Y-range labels + the inspected value readout beneath the plot.
         Text(
             "${formatValue(maxY - pad)} – ${formatValue(minY + pad)} $unitLabel",
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = labelColor,
             modifier = Modifier.padding(top = 4.dp),
         )
@@ -178,9 +178,9 @@ fun ObservationChart(
                     abs(it.epochMillis.toDouble() - approximateTimeAt(ix, plotWidthPx, minX, maxX))
                 } ?: return@mapNotNull null
                 "${s.label}: ${formatValue(nearest.value!!)} $unitLabel — " +
-                    Instant.ofEpochMilli(nearest.epochMillis).atZone(ZoneId.systemDefault()).format(TOOLTIP_TIME_FORMAT)
+                    TimeFormat.weekdayClock(Instant.ofEpochMilli(nearest.epochMillis).atZone(ZoneId.systemDefault()), locale)
             }
-            readouts.forEach { Text(it, fontSize = 12.sp, color = labelColor) }
+            readouts.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = labelColor) }
         }
     }
 }

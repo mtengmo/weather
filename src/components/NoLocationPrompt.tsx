@@ -13,6 +13,8 @@ interface NoLocationPromptProps {
   onRemoveFavorite: (id: string) => void;
   onDismissFavoritesError: () => void;
   onRequestCurrentLocation: () => void;
+  /** Why there is no location: the browser denied access vs. it simply could not find one. */
+  reason?: "denied" | "unavailable";
   /** Hides search + favorites (the header's location panel is open and shows them instead). */
   compact?: boolean;
 }
@@ -26,13 +28,14 @@ export default function NoLocationPrompt({
   onRemoveFavorite,
   onDismissFavoritesError,
   onRequestCurrentLocation,
+  reason = "unavailable",
   compact = false,
 }: NoLocationPromptProps) {
   const { t } = useTranslation();
   return (
     <section className="no-location-prompt" aria-labelledby="no-location-title">
       <h2 id="no-location-title">{t("noLocation.title")}</h2>
-      <p role="alert">{t("app.locationUnavailable")}</p>
+      <p role="alert">{t(reason === "denied" ? "app.locationDenied" : "app.locationUnavailable")}</p>
       <button type="button" onClick={onRequestCurrentLocation}>
         {t("noLocation.useMyLocation")}
       </button>

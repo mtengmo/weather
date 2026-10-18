@@ -1,5 +1,6 @@
 package com.tengmo.vader.ui.details
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -20,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 import com.tengmo.vader.ui.OfflineIndicator
 import com.tengmo.vader.ui.overview.RefreshCoordinator
@@ -44,10 +44,9 @@ import com.tengmo.vader.ui.graph.GraphViewModel
 import com.tengmo.vader.ui.overview.WeatherIconImage
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.tengmo.vader.ui.TimeFormat
+import com.tengmo.vader.ui.appLocale
 
-private val ROW_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE HH:mm")
-private val ROW_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
 
 /** T043 — the Details table (US2): one row per hour (24 h window) or per day (7/30-day
  *  windows) with condition icon, temperature, precipitation, wind, and observed/forecast status —
@@ -71,7 +70,7 @@ fun DetailsContent(viewModel: GraphViewModel) {
             lastUpdatedEpochMillis = state.lastUpdatedEpochMillis,
             hasAnyData = state.series != null,
         )
-        state.location?.let { Text("${it.displayName} ${stringResource(R.string.observationDetails_headingSuffix)}", fontSize = 18.sp) }
+        state.location?.let { Text("${it.displayName} ${stringResource(R.string.observationDetails_headingSuffix)}", style = MaterialTheme.typography.titleMedium) }
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(
@@ -103,11 +102,11 @@ fun DetailsContent(viewModel: GraphViewModel) {
 @Composable
 private fun HeaderRow() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.observationDetails_time), Modifier.weight(1.4f), fontSize = 12.sp)
+        Text(stringResource(R.string.observationDetails_time), Modifier.weight(1.4f), style = MaterialTheme.typography.bodySmall)
         Text("", Modifier.size(28.dp))
-        Text(stringResource(R.string.timelineRow_temperature), Modifier.weight(1f), fontSize = 12.sp)
-        Text(stringResource(R.string.timelineRow_precipitation), Modifier.weight(1f), fontSize = 12.sp)
-        Text(stringResource(R.string.timelineRow_wind), Modifier.weight(1f), fontSize = 12.sp)
+        Text(stringResource(R.string.timelineRow_temperature), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.timelineRow_precipitation), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.timelineRow_wind), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -121,15 +120,15 @@ private fun HourlyTable(observations: List<WeatherObservation>, unit: UnitSystem
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    Instant.parse(o.timestamp).atZone(ZoneId.systemDefault()).format(ROW_TIME_FORMAT) +
+                    TimeFormat.weekdayClock(Instant.parse(o.timestamp).atZone(ZoneId.systemDefault()), appLocale()) +
                         if (o.isForecast) " ${stringResource(R.string.chart_forecastSuffix)}" else "",
                     Modifier.weight(1.4f),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 WeatherIconImage(o.smhiSymbolCode, condition, isNight(o.timestamp), o.temperature, null, Modifier.size(28.dp))
-                Text("${formatValue(convertTemperature(o.temperature, unit), 1)}${temperatureUnitLabel(unit)}", Modifier.weight(1f), fontSize = 12.sp)
-                Text("${formatValue(convertPrecipitation(o.precipitation, unit), 1)} ${precipitationUnitLabel(unit)}", Modifier.weight(1f), fontSize = 12.sp)
-                Text("${formatValue(convertWindSpeed(o.windSpeed, unit), 1)} ${windUnitLabel(unit)}", Modifier.weight(1f), fontSize = 12.sp)
+                Text("${formatValue(convertTemperature(o.temperature, unit), 1)}${temperatureUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Text("${formatValue(convertPrecipitation(o.precipitation, unit), 1)} ${precipitationUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Text("${formatValue(convertWindSpeed(o.windSpeed, unit), 1)} ${windUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -142,18 +141,18 @@ private fun DailyTable(days: List<DailyAggregate>, unit: UnitSystem) {
         items(days, key = { it.bucketEnd }) { d ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    Instant.parse(d.bucketEnd).atZone(ZoneId.systemDefault()).format(ROW_DAY_FORMAT) +
+                    TimeFormat.weekdayMonthDay(Instant.parse(d.bucketEnd).atZone(ZoneId.systemDefault()), appLocale()) +
                         if (d.isForecast) " ${stringResource(R.string.chart_forecastSuffix)}" else "",
                     Modifier.weight(1.4f),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                 )
                 WeatherIconImage(null, deriveDailyCondition(d), false, d.average, null, Modifier.size(28.dp))
                 Text(
                     "${formatValue(convertTemperature(d.high, unit), 0)}° / ${formatValue(convertTemperature(d.low, unit), 0)}°",
-                    Modifier.weight(1f), fontSize = 12.sp,
+                    Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,
                 )
-                Text("${formatValue(convertPrecipitation(d.totalPrecipitation, unit), 1)} ${precipitationUnitLabel(unit)}", Modifier.weight(1f), fontSize = 12.sp)
-                Text("${formatValue(convertWindSpeed(d.windAverage, unit), 1)} ${windUnitLabel(unit)}", Modifier.weight(1f), fontSize = 12.sp)
+                Text("${formatValue(convertPrecipitation(d.totalPrecipitation, unit), 1)} ${precipitationUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                Text("${formatValue(convertWindSpeed(d.windAverage, unit), 1)} ${windUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

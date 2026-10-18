@@ -16,12 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private fun ConnectivityManager.isCurrentlyOnline(): Boolean {
     val caps = getNetworkCapabilities(activeNetwork) ?: return false
@@ -53,8 +50,6 @@ fun rememberIsOnline(): Boolean {
     return online
 }
 
-private val LAST_UPDATED_FORMAT: DateTimeFormatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
-
 /**
  * T058 / FR-020 — shown when the displayed data is from the on-device cache (offline or the
  * fetch failed): "Offline — showing data from <time>", or "No data yet" when there is nothing to
@@ -68,10 +63,10 @@ fun OfflineIndicator(showingCachedData: Boolean, lastUpdatedEpochMillis: Long?, 
     val text = if (hasAnyData && lastUpdatedEpochMillis != null) {
         stringResource(
             R.string.offline_indicator,
-            Instant.ofEpochMilli(lastUpdatedEpochMillis).atZone(ZoneId.systemDefault()).format(LAST_UPDATED_FORMAT),
+            (formatFreshness(lastUpdatedEpochMillis, System.currentTimeMillis(), ZoneId.systemDefault(), appLocale()) as FreshnessText.Updated).formatted,
         )
     } else {
         stringResource(R.string.offline_noData)
     }
-    Text(text, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = modifier)
+    Text(text, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, modifier = modifier)
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { formatDateMedium, formatDateTime } from "../services/timeFormat";
 import { useTranslation } from "react-i18next";
 import type {
   Location,
@@ -107,7 +108,7 @@ export default function ObservationDetails({
                       obs.isForecast ? "forecast-row" : isGap ? "gap-point" : undefined
                     }
                   >
-                    <td>{new Date(obs.timestamp).toLocaleString()}</td>
+                    <td>{formatDateTime(new Date(obs.timestamp))}</td>
                     <td>{obs.isForecast ? t("weatherOverview.forecast") : t("weatherOverview.observed")}</td>
                     <td>
                       {iconInfo ? (
@@ -187,7 +188,7 @@ export default function ObservationDetails({
                         day.isForecast ? "forecast-row" : isGap ? "gap-point" : undefined
                       }
                     >
-                      <td>{new Date(day.bucketEnd).toLocaleDateString()}</td>
+                      <td>{formatDateMedium(new Date(day.bucketEnd))}</td>
                       {window === "last-7-days" && (
                         <td>{day.isForecast ? t("weatherOverview.forecast") : t("weatherOverview.observed")}</td>
                       )}

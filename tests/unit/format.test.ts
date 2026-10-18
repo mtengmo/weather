@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatClockTime } from "../../src/services/timeFormat";
 import { dataSourceDisclosure, directionToCompass, formatValue } from "../../src/services/format";
 
 describe("formatValue", () => {
@@ -69,19 +70,13 @@ describe("dataSourceDisclosure (020-dashboard-polish-round-five, US6 — names o
       "2026-09-05T06:47:00.000Z",
       []
     );
-    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const expectedTime = formatClockTime(new Date("2026-09-05T06:00:00.000Z"), "en");
     expect(result).toBe(`SMHI observations · Forecast updated ${expectedTime}`);
   });
 
   it("falls back to lastUpdated when forecastIssuedAt is absent", () => {
     const result = dataSourceDisclosure({ primarySource: "smhi" }, "2026-09-05T06:47:00.000Z", []);
-    const expectedTime = new Date("2026-09-05T06:47:00.000Z").toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const expectedTime = formatClockTime(new Date("2026-09-05T06:47:00.000Z"), "en");
     expect(result).toBe(`SMHI observations · Forecast updated ${expectedTime}`);
   });
 
@@ -98,10 +93,7 @@ describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-r
       null,
       ["SMHI", "Open-Meteo"]
     );
-    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const expectedTime = formatClockTime(new Date("2026-09-05T06:00:00.000Z"), "en");
     expect(result).toBe(`SMHI observations · SMHI + Open-Meteo forecast updated ${expectedTime}`);
   });
 
@@ -111,10 +103,7 @@ describe("dataSourceDisclosure combined-forecast wording (021-dashboard-polish-r
       null,
       ["SMHI", "Open-Meteo", "MET Norway"]
     );
-    const expectedTime = new Date("2026-09-05T06:00:00.000Z").toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const expectedTime = formatClockTime(new Date("2026-09-05T06:00:00.000Z"), "en");
     expect(result).toBe(`SMHI observations · SMHI + Open-Meteo + MET Norway forecast updated ${expectedTime}`);
   });
 

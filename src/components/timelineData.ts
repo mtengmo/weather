@@ -5,6 +5,7 @@ import type {
   WeatherObservation,
 } from "../models/types";
 import i18next from "i18next";
+import { formatHourLabel, formatWeekdayDay } from "../services/timeFormat";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { deriveDailyCondition, deriveWeatherCondition, type WeatherCondition } from "../services/weatherCondition";
 import { toCalendarDayAggregates, toSubDayBuckets } from "../services/dailyAggregation";
@@ -314,10 +315,8 @@ export function buildHourlyTimelineData(
     const periodEndMs = Date.parse(obs.timestamp);
     return {
       key: obs.timestamp,
-      // Fixed 24-hour format regardless of the runtime's default locale — the previous
-      // locale-driven format rendered differently across devices for the same underlying hour
-      // (009-timeline-polish-and-header, FR-010, research.md §1).
-      label: new Date(obs.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", hourCycle: "h23" }),
+      // Follows the APP language, not the device locale (see services/timeFormat.ts).
+      label: formatHourLabel(new Date(obs.timestamp)),
       isForecast: obs.isForecast ?? false,
       condition: deriveWeatherCondition({
         temperature: obs.temperature,
@@ -396,7 +395,7 @@ function daysToTimelineData(
         (day.subDayPeriod ? i18next.t(`subDay.${day.subDayPeriod}`) : undefined) ??
         day.subDayLabel ??
         // bucketEnd is the next local midnight, so the column's own date is 1 ms earlier.
-        new Date(Date.parse(day.bucketEnd) - 1).toLocaleDateString([], { weekday: "short", day: "numeric" }),
+        formatWeekdayDay(new Date(Date.parse(day.bucketEnd) - 1)),
       subLabel: subDayRangeLabel(day),
       isForecast: day.isForecast ?? false,
       // No timestamp passed: a clear day always shows the sun, never the moon (007/008

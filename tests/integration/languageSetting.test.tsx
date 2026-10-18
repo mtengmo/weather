@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App";
 import i18n from "../../src/i18n";
+import { menuItemNames, openSettings as openSettingsPanel } from "../helpers/headerMenu";
 
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
@@ -36,7 +37,7 @@ function mockGeolocationUnavailable() {
 
 async function openSettings() {
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Settings" }));
+  await openSettingsPanel(user);
   return user;
 }
 
@@ -57,7 +58,7 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     await openSettings();
 
     expect(screen.getByRole("button", { name: "Automatic" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(userEvent.setup())).toContain("Show map");
   });
 
   it("switches all rendered text to Swedish immediately when Svenska is selected, with no reload", async () => {
@@ -66,8 +67,9 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
 
     await user.click(screen.getByRole("button", { name: "Svenska" }));
 
-    expect(screen.getByRole("button", { name: "Karta" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Inställningar" })).toBeInTheDocument();
+    const names = await menuItemNames(user);
+    expect(names).toContain("Visa karta");
+    expect(names).toContain("Inställningar");
   });
 
   it("switches back to English when English is selected", async () => {
@@ -76,21 +78,21 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
 
     await user.click(screen.getByRole("button", { name: "Svenska" }));
     // The language toggle's own labels are translated too — the English option now reads
-    // "Engelska" until it's selected. Panel stays open after a selection, so no need to reopen.
-    await user.click(screen.getByRole("button", { name: "Engelska" }));
+    // "English" until it's selected. Panel stays open after a selection, so no need to reopen.
+    await user.click(screen.getByRole("button", { name: "English" }));
 
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(user)).toContain("Show map");
   });
 
   it("persists the chosen language across a fresh render (reload)", async () => {
     const user1 = userEvent.setup();
     const { unmount } = render(<App />);
-    await user1.click(screen.getByRole("button", { name: "Settings" }));
+    await openSettingsPanel(user1);
     await user1.click(screen.getByRole("button", { name: "Svenska" }));
     unmount();
 
     render(<App />);
-    expect(await screen.findByRole("button", { name: "Karta" })).toBeInTheDocument();
+    expect(await menuItemNames(userEvent.setup())).toContain("Visa karta");
   });
 
   it("reverts to the browser-detected language when switched back to Automatic", async () => {
@@ -101,6 +103,6 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     // Panel stays open after a selection — no need to reopen it before the next click.
     await user.click(screen.getByRole("button", { name: "Automatiskt" }));
 
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(user)).toContain("Show map");
   });
 });

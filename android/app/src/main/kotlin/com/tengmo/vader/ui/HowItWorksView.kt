@@ -1,12 +1,12 @@
 package com.tengmo.vader.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 
 /** "How this works" (FR-004) — the web HowItWorks.tsx text, assembled from the same i18n pieces
@@ -23,11 +23,12 @@ fun HowItWorksView() {
         stringResource(R.string.howItWorks_uvSuffix)
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.howItWorks_intro), fontSize = 13.sp)
-        Text(windows, fontSize = 13.sp)
-        Text(chart, fontSize = 13.sp)
-        Text(stringResource(R.string.howItWorks_dataSources), fontSize = 13.sp)
-        Text(uv, fontSize = 13.sp)
-        Text(stringResource(R.string.howItWorks_warnings), fontSize = 13.sp)
+        Text(stringResource(R.string.howItWorks_intro), style = MaterialTheme.typography.bodyMedium)
+        Text(windows, style = MaterialTheme.typography.bodyMedium)
+        Text(chart, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.howItWorks_dataSources), style = MaterialTheme.typography.bodyMedium)
+        Text(uv, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.howItWorks_warnings), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.howItWorks_characters), style = MaterialTheme.typography.bodyMedium)
     }
 }

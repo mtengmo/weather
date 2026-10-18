@@ -20,10 +20,10 @@ describe("ThemeToggle + useThemePreference", () => {
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("defaults to dark (midnight) and labels the button with the destination, 'Light'", () => {
+  it("defaults to dark (midnight) and labels the item with the current theme, 'Theme: Dark'", () => {
     render(<ThemeHarness />);
 
-    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^Theme: Dark/ })).toBeInTheDocument();
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
   });
 
@@ -31,28 +31,28 @@ describe("ThemeToggle + useThemePreference", () => {
     render(<ThemeHarness />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Light" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Theme: Dark/ }));
 
     expect(screen.getByTestId("active-theme")).toHaveTextContent("ivory");
     expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
-    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^Theme: Light/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Dark" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Theme: Light/ }));
 
     expect(screen.getByTestId("active-theme")).toHaveTextContent("midnight");
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
-    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^Theme: Dark/ })).toBeInTheDocument();
   });
 
   it("persists the selected theme across a fresh render (reload)", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<ThemeHarness />);
 
-    await user.click(screen.getByRole("button", { name: "Light" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Theme: Dark/ }));
     unmount();
 
     render(<ThemeHarness />);
     expect(screen.getByTestId("active-theme")).toHaveTextContent("ivory");
-    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^Theme: Light/ })).toBeInTheDocument();
   });
 });

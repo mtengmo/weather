@@ -1,12 +1,12 @@
 package com.tengmo.vader.ui
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 
 /** T071 — privacy notice (FR-018/FR-019): what is stored on-device, where location goes, and that
@@ -16,8 +16,8 @@ import com.tengmo.vader.R
 @Composable
 fun PrivacyNoticeView() {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.privacy_storage), fontSize = 13.sp)
-        Text(stringResource(R.string.privacy_location), fontSize = 13.sp)
-        Text(stringResource(R.string.privacy_noTracking), fontSize = 13.sp)
+        Text(stringResource(R.string.privacy_storage), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.privacy_location), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.privacy_noTracking), style = MaterialTheme.typography.bodyMedium)
     }
 }

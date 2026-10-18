@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tengmo.vader.R
 import com.tengmo.vader.data.model.FAVORITES_LIMIT
 import com.tengmo.vader.data.model.Favorite
@@ -29,7 +28,7 @@ fun FavoritesList(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.favoritesList_title), fontSize = 18.sp)
+        Text(stringResource(R.string.favoritesList_title), style = MaterialTheme.typography.titleMedium)
 
         error?.let {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

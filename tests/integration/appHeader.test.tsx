@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../../src/App";
 import type { Location } from "../../src/models/types";
+import { clickMenuItem, menuItemNames, openSettings } from "../helpers/headerMenu";
 
 vi.mock("../../src/services/weatherApi", () => ({
   getObservations: vi.fn(),
@@ -108,7 +109,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     render(<App />);
 
     const header = screen.getByRole("banner");
-    expect(header).toContainElement(screen.getByRole("button", { name: "Change location" }));
+    expect(header).toContainElement(screen.getByRole("button", { name: /Change location/ }));
     expect(screen.queryByLabelText("Search for a place")).not.toBeInTheDocument();
     expect(screen.queryByText("Favorite places")).not.toBeInTheDocument();
   });
@@ -117,7 +118,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
 
     expect(screen.getByLabelText("Search for a place")).toBeInTheDocument();
     expect(screen.getByText("Favorite places")).toBeInTheDocument();
@@ -129,7 +130,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.click(screen.getByRole("button", { name: "Stockholm" }));
 
     expect(await screen.findByRole("heading", { name: /Stockholm/ })).toBeInTheDocument();
@@ -145,7 +146,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.type(screen.getByLabelText("Search for a place"), "Paris");
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
@@ -159,7 +160,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.click(screen.getByRole("button", { name: "Remove Stockholm" }));
 
     expect(screen.queryByText("Stockholm")).not.toBeInTheDocument();
@@ -172,7 +173,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     expect(screen.getByLabelText("Search for a place")).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
@@ -187,7 +188,7 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     expect(screen.getByLabelText("Search for a place")).toBeInTheDocument();
 
     await user.click(document.body);
@@ -201,9 +202,9 @@ describe("Location Panel (013-overview-default-and-layout, US2)", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.click(screen.getByRole("button", { name: "Stockholm" }));
-    await user.click(await screen.findByRole("button", { name: "Change location" }));
+    await user.click(await screen.findByRole("button", { name: /Change location/ }));
 
     expect(screen.getByRole("button", { name: "Stockholm" })).toHaveAttribute("aria-pressed", "true");
   });
@@ -247,13 +248,14 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Details" }));
+    await clickMenuItem(user, "Show details");
 
     expect(await screen.findByRole("heading", { name: "Stockholm" })).toBeInTheDocument();
-    // From the graph view, "Details" (→ the details table) and "Home" (→ Overview) both remain
+    // From the graph view, "Show details" (→ the details table) and "Show overview" (→ Overview) both remain
     // available (020-dashboard-polish-round-five, US4 — replaces the old "View details" button).
-    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(await menuItemNames(user)).toEqual(
+      expect.arrayContaining(["Show details", "Show overview", "Show map"])
+    );
   });
 
   it("shows a 'Details' button in the persistent header on the Overview and the graph view, and a 'Back' button once past the Overview (020-dashboard-polish-round-five, US4)", async () => {
@@ -263,14 +265,16 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     const user = userEvent.setup();
     render(<App />);
 
-    const detailsButton = await screen.findByRole("button", { name: "Details" });
-    expect(screen.getByRole("banner")).toContainElement(detailsButton);
-    expect(screen.queryByRole("button", { name: "Home" })).not.toBeInTheDocument();
+    await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    const overviewItems = await menuItemNames(user);
+    expect(overviewItems).toContain("Show details");
+    expect(overviewItems).not.toContain("Show overview");
 
-    await user.click(detailsButton);
-    // Now on the graph view: "Details" (→ the details table) and "Home" (→ Overview) both show.
-    expect(screen.getByRole("button", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    await clickMenuItem(user, "Show details");
+    // Now on the graph view: "Show details" (→ the details table) and "Show overview" (→ Overview) both show.
+    const graphItems = await menuItemNames(user);
+    expect(graphItems).toContain("Show details");
+    expect(graphItems).toContain("Show overview");
   });
 });
 
@@ -307,7 +311,7 @@ describe("Cached location restore (009-timeline-polish-and-header, US4)", () => 
   it("falls back to default behavior when no location is cached", async () => {
     render(<App />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't determine your current location/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't find your location/i);
     expect(screen.queryByRole("heading", { name: /Stockholm/ })).not.toBeInTheDocument();
   });
 
@@ -317,7 +321,7 @@ describe("Cached location restore (009-timeline-polish-and-header, US4)", () => 
 
     render(<App />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't determine your current location/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't find your location/i);
     expect(screen.queryByRole("heading", { name: /Stockholm/ })).not.toBeInTheDocument();
   });
 });
@@ -352,15 +356,15 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.type(screen.getByLabelText("Search for a place"), "Paris");
-    await user.click(await screen.findByRole("button", { name: "View" }));
+    await user.click(await screen.findByRole("button", { name: "Show weather" }));
 
     expect(await screen.findByRole("heading", { name: /Paris.*overview/i })).toBeInTheDocument();
     // Viewing must not implicitly favorite it (FR-002) — reopen the panel and confirm it's
     // absent from the favorites list specifically (scoped since 019's header now also shows
     // the current location's name, which is the same text and would otherwise false-positive).
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     const favoritesList = document.querySelector(".favorites-list");
     expect(favoritesList).not.toHaveTextContent("Paris, France");
   });
@@ -374,14 +378,14 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     // The search-results dropdown itself keeps the full disambiguating name (FR-002).
     await user.type(screen.getByLabelText("Search for a place"), "Uppsala");
     expect(await screen.findByText("Uppsala, Uppsala County, Sweden")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "View" }));
+    await user.click(screen.getByRole("button", { name: "Show weather" }));
 
-    const header = document.querySelector(".current-location-name");
+    const header = screen.getByRole("button", { name: /Change location/ });
     expect(header).toHaveTextContent("Uppsala");
     expect(header).not.toHaveTextContent("Uppsala County");
     expect(header).not.toHaveTextContent("Sweden");
@@ -396,7 +400,7 @@ describe("View a search result without favoriting (014-dashboard-usability-fixes
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Change location" }));
+    await user.click(screen.getByRole("button", { name: /Change location/ }));
     await user.type(screen.getByLabelText("Search for a place"), "Paris");
     await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
 
@@ -431,9 +435,9 @@ describe("Retry current location after denial (014-dashboard-usability-fixes, US
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Change location" }));
+    await user.click(await screen.findByRole("button", { name: /Change location/ }));
 
-    expect(screen.getByRole("button", { name: "Use current location" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Use my location" })[0]).toBeInTheDocument();
   });
 
   it("retrying current location shows that location's weather once granted", async () => {
@@ -441,14 +445,14 @@ describe("Retry current location after denial (014-dashboard-usability-fixes, US
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Change location" }));
-    await user.click(screen.getByRole("button", { name: "Use current location" }));
+    await user.click(await screen.findByRole("button", { name: /Change location/ }));
+    await user.click(screen.getAllByRole("button", { name: "Use my location" })[0]);
 
     // Second request behaves like the first — switch the mock to "success" and re-fire it.
     mockGeolocation("success");
-    await user.click(screen.getByRole("button", { name: "Use current location" }));
+    await user.click(screen.getAllByRole("button", { name: "Use my location" })[0]);
 
-    expect(await screen.findByRole("button", { name: "Current Location" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "My location" })).toBeInTheDocument();
   });
 });
 
@@ -481,9 +485,12 @@ describe("Nearby-stations control hidden on the Overview (014-dashboard-usabilit
     render(<App />);
 
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
+    await openSettings(user);
     expect(screen.queryByLabelText(/nearby stations/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Details" }));
+    await user.keyboard("{Escape}");
+    await clickMenuItem(user, "Show details");
+    await openSettings(user);
     expect(screen.getByLabelText(/nearby stations/i)).toBeInTheDocument();
   });
 });
@@ -517,21 +524,21 @@ describe("Change location reachable from every screen (016-dashboard-polish-roun
     render(<App />);
 
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
-    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Change location/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Details" }));
-    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+    await clickMenuItem(user, "Show details");
+    expect(screen.getByRole("button", { name: /Change location/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Details" }));
-    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+    await clickMenuItem(user, "Show details");
+    expect(screen.getByRole("button", { name: /Change location/ })).toBeInTheDocument();
   });
 
   it("shows 'Change location' on the map view (016-dashboard-polish-round-two, US10)", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    expect(screen.getByRole("button", { name: "Change location" })).toBeInTheDocument();
+    await clickMenuItem(user, "Show map");
+    expect(screen.getByRole("button", { name: /Change location/ })).toBeInTheDocument();
   });
 });
 
@@ -566,11 +573,11 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     render(<App />);
 
     const todayCard = await screen.findByRole("region", { name: "Today" });
-    await waitFor(() => expect(todayCard).toHaveTextContent("Now 12°"));
-    expect(todayCard).toHaveTextContent(/feels like/);
+    await waitFor(() => expect(todayCard).toHaveTextContent("12°"));
+    expect(todayCard).toHaveTextContent(/feels like \d+°/);
 
     const header = screen.getByRole("banner");
-    expect(header).not.toHaveTextContent("Now 12°");
+    expect(header).not.toHaveTextContent("12°");
     expect(header).not.toHaveTextContent(/feels like/i);
   });
 
@@ -584,25 +591,25 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     const user = userEvent.setup();
     render(<App />);
 
-    const themeButton = screen.getByRole("button", { name: "Light" });
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
+    // The menu item states the CURRENT theme, so it is never ambiguous whether it is a state or an action.
+    expect(await menuItemNames(user)).toContainEqual(expect.stringMatching(/^Theme: Dark/));
 
-    await user.click(themeButton);
+    await clickMenuItem(user, /^Theme: Dark/);
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("ivory");
-    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Light" })).not.toBeInTheDocument();
+    expect(await menuItemNames(user)).toContainEqual(expect.stringMatching(/^Theme: Light/));
   });
 
   it("opens the Settings menu to reveal only unit and high/low controls, and toggles the unit (US2)", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await openSettings(user);
 
     const settingsPanel = screen.getByRole("button", { name: /Fahrenheit|°F/i }).closest(".settings-menu-content");
     expect(settingsPanel).not.toBeNull();
-    expect(settingsPanel).toHaveTextContent(/High\/Low/);
+    expect(settingsPanel).toHaveTextContent(/high\/low/i);
     expect(settingsPanel!.querySelector(".theme-toggle")).toBeNull();
   });
 
@@ -610,9 +617,9 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await openSettings(user);
 
-    expect(screen.getByRole("button", { name: "High/Low off" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Hide high/low lines" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("preserves a previously saved high/low preference (US2)", async () => {
@@ -620,9 +627,9 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await openSettings(user);
 
-    expect(screen.getByRole("button", { name: "High/Low on" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Show high/low lines" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("no longer offers a Forecast sources control (020-dashboard-polish-round-five, US2)", () => {
@@ -635,10 +642,12 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
     addFavorite({ latitude: stockholm.latitude, longitude: stockholm.longitude, displayName: "Stockholm" });
     localStorage.setItem("weather-app:last-location:v1", JSON.stringify(stockholm));
 
+    const user = userEvent.setup();
     render(<App />);
 
-    expect(await screen.findByRole("button", { name: "Details" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    const names = await menuItemNames(user);
+    expect(names).toContain("Show details");
+    expect(names).toContain("Show map");
   });
 });
 
@@ -673,13 +682,13 @@ describe("Location name visible in the header (019-dashboard-polish-round-four, 
     const header = screen.getByRole("banner");
     await waitFor(() => expect(header).toHaveTextContent("Stockholm"));
 
-    await user.click(await screen.findByRole("button", { name: "Details" }));
+    await clickMenuItem(user, "Show details");
     expect(header).toHaveTextContent("Stockholm");
 
-    await user.click(screen.getByRole("button", { name: "Details" }));
+    await clickMenuItem(user, "Show details");
     expect(header).toHaveTextContent("Stockholm");
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
+    await clickMenuItem(user, "Show map");
     expect(header).toHaveTextContent("Stockholm");
   });
 });
@@ -713,12 +722,12 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     render(<App />);
 
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    expect(screen.queryByRole("button", { name: "Map" })).not.toBeInTheDocument();
+    await clickMenuItem(user, "Show map");
+    expect(await menuItemNames(user)).not.toContain("Show map");
 
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await clickMenuItem(user, "Show overview");
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(user)).toContain("Show map");
   });
 
   it("returns to the Overview — not the graph view — even when the map was opened from there (032-dashboard-polish-round-seven, US3)", async () => {
@@ -728,15 +737,15 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Details" }));
+    await clickMenuItem(user, "Show details");
     await screen.findByRole("heading", { name: "Stockholm" });
 
-    await user.click(screen.getByRole("button", { name: "Map" }));
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Show overview");
 
-    // "Home" always means the Overview — not back to whichever view was open before the Map.
+    // "Show overview" always means the Overview — not back to whichever view was open before the Map.
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Map" })).toBeInTheDocument();
+    expect(await menuItemNames(user)).toContain("Show map");
   });
 });
 
@@ -781,12 +790,12 @@ describe("Nearby-station data is deferred until Details/graph is opened (025-red
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
     expect(getNearbyStationSeries).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Details" }));
+    await clickMenuItem(user, "Show details");
 
     await waitFor(() => expect(getNearbyStationSeries).toHaveBeenCalledTimes(1));
 
     // Returning to the Overview must not clear or re-fetch nearby-station data.
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await clickMenuItem(user, "Show overview");
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
     expect(getNearbyStationSeries).toHaveBeenCalledTimes(1);
   });

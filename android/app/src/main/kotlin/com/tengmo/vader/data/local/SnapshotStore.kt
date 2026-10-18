@@ -77,6 +77,25 @@ class SnapshotStore(context: Context) {
     /** Drops cached series for every location not in [keep] (latitude to longitude). */
     suspend fun pruneSeries(keep: Collection<Pair<Double, Double>>) {
         val keys = keep.map { SeriesFileCache.keyFor(it.first, it.second) }.toSet()
-        withContext(Dispatchers.IO) { seriesCache.prune(keys) }
+        withContext(Dispatchers.IO) {
+            seriesCache.prune(keys)
+            hourlyCache24.prune(keys)
+            hourlyCache48.prune(keys)
+        }
     }
+
+    // --- hourly (Last24Hours) series for the Overview timeline ----------------------------------
+    // Separate directories per forecast reach so a 24h and a 48h series never mix.
+
+    private val hourlyCache24 = SeriesFileCache(File(context.cacheDir, "series_hourly24"), NetworkModule.json)
+    private val hourlyCache48 = SeriesFileCache(File(context.cacheDir, "series_hourly48"), NetworkModule.json)
+
+    private fun hourlyCache(extended: Boolean) = if (extended) hourlyCache48 else hourlyCache24
+
+    suspend fun saveHourlySeries(series: ObservationSeries, loadedAtEpochMillis: Long, extended: Boolean) {
+        withContext(Dispatchers.IO) { hourlyCache(extended).save(series, loadedAtEpochMillis) }
+    }
+
+    suspend fun loadHourlySeries(latitude: Double, longitude: Double, extended: Boolean): Pair<ObservationSeries, Long>? =
+        withContext(Dispatchers.IO) { hourlyCache(extended).load(latitude, longitude) }
 }

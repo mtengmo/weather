@@ -95,11 +95,20 @@ export default function LocationPanel({
     <div className="location-panel" ref={panelRef}>
       <button
         type="button"
+        className="location-panel-trigger"
         aria-expanded={open}
         aria-controls="location-panel-content"
+        aria-label={
+          selected ? `${t("locationPanel.changeLocation")}: ${selected.displayName}` : undefined
+        }
         onClick={() => setOpen((prev) => !prev)}
       >
-        {t("locationPanel.changeLocation")}
+        <span className="location-panel-trigger-name">
+          {selected ? selected.displayName : t("locationPanel.changeLocation")}
+        </span>
+        <svg className="chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+          <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
 
       {open && (
@@ -115,7 +124,7 @@ export default function LocationPanel({
 
           {/* Favorites are already listed by FavoritesList below (with select + remove) — pass
               an empty favorites array here so LocationSwitcher only contributes the
-              "Current Location" button, avoiding a duplicate favorites list in the panel. */}
+              "My location" button, avoiding a duplicate favorites list in the panel. */}
           <LocationSwitcher
             currentLocation={currentLocation}
             favorites={[]}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   Location,
   NearbyStationCount,
@@ -76,6 +77,9 @@ export function useObservationData(
    *  toggle. Off by default so the default load makes no additional/larger requests. */
   extendedForecast = false
 ): UseObservationDataResult {
+  // Re-fetch warning text when the app language changes (SMHI publishes both languages).
+  const { i18n } = useTranslation();
+  const language = i18n.language.toLowerCase().startsWith("sv") ? "sv" : "en";
   const [series, setSeries] = useState<ObservationSeries | null>(null);
   const [nearbyStations, setNearbyStations] = useState<NearbyStationSeries[]>([]);
   const [multiSourceForecast, setMultiSourceForecast] = useState<MultiSourceForecastEntry[]>([]);
@@ -278,7 +282,7 @@ export function useObservationData(
       return;
     }
 
-    getWarningsForLocation(location).then((result) => {
+    getWarningsForLocation(location, language).then((result) => {
       if (!cancelled) setWarnings(result);
     });
 
@@ -286,7 +290,7 @@ export function useObservationData(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location?.latitude, location?.longitude]);
+  }, [location?.latitude, location?.longitude, language]);
 
   return {
     series,

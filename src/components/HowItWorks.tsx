@@ -28,6 +28,7 @@ export default function HowItWorks({ onClose }: HowItWorksProps) {
         {t("howItWorks.uvPrefix")} <strong>UV</strong> {t("howItWorks.uvSuffix")}
       </p>
       <p>{t("howItWorks.warnings")}</p>
+      <p>{t("howItWorks.characters")}</p>
     </div>
   );
 }

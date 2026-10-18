@@ -26,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tengmo.vader.R
 import com.tengmo.vader.ui.OfflineIndicator
@@ -84,7 +83,7 @@ private fun GraphContent(viewModel: GraphViewModel) {
             lastUpdatedEpochMillis = state.lastUpdatedEpochMillis,
             hasAnyData = state.series != null,
         )
-        state.location?.let { Text(it.displayName, fontSize = 20.sp, color = MaterialTheme.colorScheme.onBackground) }
+        state.location?.let { Text(it.displayName, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground) }
 
         // Metric tabs (MetricTabs.tsx).
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -138,7 +137,7 @@ private fun GraphContent(viewModel: GraphViewModel) {
                 )
                 // Legend.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    chartSeries.forEach { s -> Text(s.label, color = s.color, fontSize = 12.sp) }
+                    chartSeries.forEach { s -> Text(s.label, color = s.color, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }
