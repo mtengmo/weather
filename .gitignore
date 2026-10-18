@@ -23,3 +23,6 @@ docs/weathericons/__pycache__/
 .github/skills/impeccable/scripts/bin/
 # Impeccable per-machine settings
 .impeccable/config.local.json
+
+# Auto-generated progress dashboard
+.dashboard/
