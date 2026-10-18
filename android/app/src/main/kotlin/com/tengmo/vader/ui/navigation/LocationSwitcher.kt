@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.unit.dp
 import com.tengmo.vader.R
 import com.tengmo.vader.data.model.Favorite
@@ -51,6 +52,7 @@ fun LocationSwitcher(
     Box(modifier) {
         Row(
             Modifier
+                .heightIn(min = 48.dp)
                 .clickable(role = Role.Button) { expanded = true }
                 .semantics { contentDescription = description },
             verticalAlignment = Alignment.CenterVertically,

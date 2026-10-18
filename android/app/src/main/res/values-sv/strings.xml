@@ -21,6 +21,7 @@
     <string name="todaySummary_feelsLike">känns som</string>
     <string name="todaySummary_high">Högsta</string>
     <string name="todaySummary_low">Lägsta</string>
+    <string name="todaySummary_restOfDay">Resten av dagen</string>
     <string name="todaySummary_rain">Regn</string>
     <string name="todaySummary_wind">Vind</string>
     <string name="todaySummary_sunrise">Soluppgång</string>

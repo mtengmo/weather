@@ -27,6 +27,7 @@ export const en: Record<string, string> = {
   "todaySummary.feelsLike": "feels like",
   "todaySummary.high": "High",
   "todaySummary.low": "Low",
+  "todaySummary.restOfDay": "Rest of today",
   "todaySummary.rain": "Rain",
   "todaySummary.wind": "Wind",
   "todaySummary.sunrise": "Sunrise",

@@ -848,7 +848,6 @@ a {
 .weather-timeline-bar-chance {
   font-size: var(--type-micro);
   color: var(--text-muted);
-  opacity: 0.8;
 }
 
 .weather-timeline-wind-cell {
@@ -1131,9 +1130,18 @@ a {
   gap: 0.4rem;
 }
 
+/* Caption stating the window shared by High/Low/Rain/Wind; sits inline at the end of the High/Low row. */
+.today-summary-window {
+  margin-inline-start: auto;
+  align-self: baseline;
+  font-size: var(--type-label);
+  color: var(--text-muted);
+}
+
 .today-summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Two columns normally; collapses to one at large text sizes so values never break mid-word. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
   gap: 0.75rem 1rem;
   margin: 0;
 }
@@ -1331,7 +1339,6 @@ a {
 
 .warning-banner-more {
   font-size: var(--type-micro);
-  opacity: 0.85;
 }
 
 .warning-banner-details {
@@ -1420,7 +1427,6 @@ a {
   font-size: var(--type-micro);
   font-weight: 600;
   font-style: italic;
-  opacity: 0.85;
 }
 
 .map-precipitation-legend {
@@ -1432,7 +1438,6 @@ a {
 .weather-timeline-sublabel {
   display: block;
   font-size: var(--type-micro);
-  opacity: 0.7;
   font-weight: normal;
 }
 
@@ -1468,8 +1473,38 @@ a {
     gap: 0.35rem;
   }
 
+  .weather-overview .window-toggle {
+    flex-wrap: wrap;
+  }
+
   .weather-overview .window-toggle button {
     padding: 0.35rem 0.5rem;
     font-size: var(--type-label);
+    white-space: nowrap;
+  }
+
+  /* Phone: tighter card rhythm so the timeline starts higher; headline and facts keep their size. */
+  .today-summary-card {
+    gap: 0.6rem;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+  }
+
+  .today-summary-grid {
+    gap: 0.5rem 1rem;
+  }
+
+  .today-summary-character {
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -7,6 +7,7 @@ import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../s
 import { directionToCompass, formatValue } from "../services/format";
 import { formatClockTime } from "../services/timeFormat";
 import { getMoonPhase, getSunTimes } from "../services/sunMoon";
+import type { RestOfDayAggregate } from "../services/dailyAggregation";
 import type { DailyAggregate, Location, UnitSystem, WeatherWarning } from "../models/types";
 
 interface TodaySummaryCardProps {
@@ -26,11 +27,10 @@ interface TodaySummaryCardProps {
   currentTemperature?: number | null;
   /** Feels-like companion to `currentTemperature`, same "Now" line. */
   currentFeelsLike?: number | null;
-  /** Precipitation summed over today's local calendar day (midnight to midnight) — used for the
-   *  rain figure instead of `today.totalPrecipitation`'s own rolling next-24h window, which can
-   *  include part of tomorrow (033-todays-rain-total). `null` renders the same "—" gap treatment
-   *  a missing value already gets. */
-  todaysRainTotalMm?: number | null;
+  /** High / Low / Rain / Wind over the rest of today (start of the current hour to the next local
+   *  midnight) — one shared window for all four. When omitted, falls back to `today`'s own
+   *  rolling-bucket values. */
+  restOfDay?: RestOfDayAggregate | null;
   /** Active SMHI Message-level warnings for this location — a background advisory (e.g. "risk of
    *  water shortage"), not a time-bound weather danger, so it lives here as everyday context
    *  rather than in the standalone alert banner, and isn't individually dismissible
@@ -62,7 +62,7 @@ export default function TodaySummaryCard({
   currentCondition,
   currentTemperature,
   currentFeelsLike,
-  todaysRainTotalMm,
+  restOfDay,
   informationalWarnings,
   currentHumidity,
 }: TodaySummaryCardProps) {
@@ -99,7 +99,12 @@ export default function TodaySummaryCard({
     characterTemperature
   );
   const characterIcon = resolveCharacterIcon(condition, characterTemperature);
-  const rainTotal = todaysRainTotalMm !== undefined ? todaysRainTotalMm : today.totalPrecipitation;
+  const win = restOfDay ?? null;
+  const high = win ? win.high : today.high;
+  const low = win ? win.low : today.low;
+  const rainTotal = win ? win.totalPrecipitation : today.totalPrecipitation;
+  const windAverage = win ? win.windAverage : today.windAverage;
+  const windDirection = win ? win.windDirection : today.windDirection;
   const { sunrise, sunset } = getSunTimes(location, new Date());
   const moonPhase = getMoonPhase(new Date());
   const formatClock = (iso: string | null | undefined) => (iso ? formatClockTime(new Date(iso)) : "—");
@@ -114,8 +119,8 @@ export default function TodaySummaryCard({
     {
       key: "wind",
       label: t("todaySummary.wind"),
-      value: `${formatValue(convertWindSpeed(today.windAverage, unit), 0)}${unit === "imperial" ? " mph" : " m/s"}${
-        today.windDirection != null ? ` ${directionToCompass(today.windDirection)}` : ""
+      value: `${formatValue(convertWindSpeed(windAverage, unit), 0)}${unit === "imperial" ? " mph" : " m/s"}${
+        windDirection != null ? ` ${directionToCompass(windDirection)}` : ""
       }`,
     },
     { key: "sunrise", label: t("todaySummary.sunrise"), value: formatClock(sunrise) },
@@ -167,12 +172,13 @@ export default function TodaySummaryCard({
       <div className="today-summary-highlow">
         <span className="today-summary-high">
           <span className="today-summary-label">{t("todaySummary.high")}</span>{" "}
-          <span className="today-summary-value">{formatValue(convertTemperature(today.high, unit), 0)}°</span>
+          <span className="today-summary-value">{formatValue(convertTemperature(high, unit), 0)}°</span>
         </span>
         <span className="today-summary-low">
           <span className="today-summary-label">{t("todaySummary.low")}</span>{" "}
-          <span className="today-summary-value">{formatValue(convertTemperature(today.low, unit), 0)}°</span>
+          <span className="today-summary-value">{formatValue(convertTemperature(low, unit), 0)}°</span>
         </span>
+        {win && <span className="today-summary-window">{t("todaySummary.restOfDay")}</span>}
       </div>
       <dl className="today-summary-grid">
         {details.map((d) => (

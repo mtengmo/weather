@@ -248,4 +248,16 @@ class TimelineDataTest {
         val series = listOf(obs(last - hour, null, null), obs(last, 9.0), obs(last + hour, 11.0, forecast = true))
         assertEquals(series, backfillTrailingObservationGap(series))
     }
+
+    @Test fun todayCardIconMatchesTimelineColumnForSameObservation() {
+        val o = obs(at(2026, 10, 17, 23), 4.0, forecast = true).copy(smhiSymbolCode = 4)
+        val timeline = buildHourlyTimeline(listOf(obs(at(2026, 10, 17, 22)), o), now, zone)
+        val col = timeline.periods.last()
+        val icon = observationIcon(o, zone)
+        assertEquals(col.smhiSymbolCode, icon.smhiSymbolCode)
+        assertEquals(col.condition, icon.condition)
+        assertEquals(col.isNight, icon.isNight)
+        assertEquals(col.temperature, icon.temperature)
+        assertEquals(true, icon.isNight) // 23:00 local, decided by the observation's own timestamp/zone
+    }
 }

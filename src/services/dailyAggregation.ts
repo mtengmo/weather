@@ -317,3 +317,67 @@ export function sumCalendarDayPrecipitation(
 
   return readings.length > 0 ? readings.reduce((sum, v) => sum + v, 0) : null;
 }
+
+export interface RestOfDayAggregate {
+  /** Max / min temperature over the window; null when no point has a temperature. */
+  high: number | null;
+  low: number | null;
+  /** Sum of non-null precipitation over the window; null when no point has a reading. */
+  totalPrecipitation: number | null;
+  /** Mean of non-null windSpeed over the window; null when none. */
+  windAverage: number | null;
+  /** windDirection of the latest (by timestamp) point that has one; null when none. */
+  windDirection: number | null;
+  /** Max non-null windGust over the window; null when none. */
+  windGustHigh: number | null;
+  /** Number of observations inside the window (0 => every value above is null). */
+  pointCount: number;
+}
+
+/**
+ * The "rest of today" window shared by the Today card's High / Low / Rain / Wind: observations
+ * with timestamp in [start of the current local hour, next local midnight). The end is computed
+ * with local date arithmetic (year, month, day + 1, 00:00), so 23h/25h DST days end at the right
+ * instant. Observed and forecast points are treated alike; null per-point values are ignored; a
+ * window with no points (or no readings of a kind) yields null for that value (UI shows "—") —
+ * never NaN. There is deliberately no padding: with few points left, only those are used.
+ */
+export function restOfDayAggregate(
+  observations: WeatherObservation[],
+  now: Date | number = Date.now()
+): RestOfDayAggregate {
+  const ref = new Date(now);
+  const startMs = new Date(
+    ref.getFullYear(),
+    ref.getMonth(),
+    ref.getDate(),
+    ref.getHours(),
+    0,
+    0,
+    0
+  ).getTime();
+  const endMs = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + 1, 0, 0, 0, 0).getTime();
+
+  const inWindow = observations
+    .filter((o) => {
+      const t = Date.parse(o.timestamp);
+      return t >= startMs && t < endMs;
+    })
+    .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+
+  const temperatures = nonNull(inWindow.map((o) => o.temperature));
+  const precipitations = nonNull(inWindow.map((o) => o.precipitation));
+  const winds = nonNull(inWindow.map((o) => o.windSpeed));
+  const gusts = nonNull(inWindow.map((o) => o.windGust ?? null));
+  const directions = nonNull(inWindow.map((o) => o.windDirection ?? null));
+
+  return {
+    high: temperatures.length > 0 ? Math.max(...temperatures) : null,
+    low: temperatures.length > 0 ? Math.min(...temperatures) : null,
+    totalPrecipitation: precipitations.length > 0 ? precipitations.reduce((s, v) => s + v, 0) : null,
+    windAverage: winds.length > 0 ? mean(winds) : null,
+    windDirection: directions.length > 0 ? directions[directions.length - 1] : null,
+    windGustHigh: gusts.length > 0 ? Math.max(...gusts) : null,
+    pointCount: inWindow.length,
+  };
+}

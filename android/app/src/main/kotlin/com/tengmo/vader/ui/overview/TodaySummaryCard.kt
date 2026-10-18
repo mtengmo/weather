@@ -1,6 +1,12 @@
 package com.tengmo.vader.ui.overview
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -38,7 +45,10 @@ import com.tengmo.vader.data.model.Location
 import com.tengmo.vader.data.model.UnitSystem
 import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.model.WeatherWarning
+import com.tengmo.vader.data.repository.ObservationIcon
+import com.tengmo.vader.data.repository.RestOfDayAggregate
 import com.tengmo.vader.data.repository.WeatherConditionInput
+import com.tengmo.vader.theme.LocalNoticeColors
 import com.tengmo.vader.data.repository.convertPrecipitation
 import com.tengmo.vader.data.repository.convertTemperature
 import com.tengmo.vader.data.repository.convertWindSpeed
@@ -84,15 +94,16 @@ private fun formatTime(instant: Instant?, locale: Locale): String =
 
 /** Persistent "Today" summary: characters + current temp/condition, high/low pair, a 2-column
  *  fact grid (rain, wind+compass, sun, moon, humidity), and expandable informational notices. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TodaySummaryCard(
     today: DailyAggregate?,
     unit: UnitSystem,
     location: Location,
-    currentCondition: WeatherCondition?,
+    currentIcon: ObservationIcon?,
     currentTemperature: Double?,
     currentFeelsLike: Double?,
-    todaysRainTotalMm: Double?,
+    restOfDay: RestOfDayAggregate?,
     informationalWarnings: List<WeatherWarning>,
     currentHumidity: Int?,
     modifier: Modifier = Modifier,
@@ -110,13 +121,12 @@ fun TodaySummaryCard(
             chanceOfRain = today.chanceOfRainMax,
         ),
     )
-    val condition = currentCondition ?: dayCondition
+    val condition = currentIcon?.condition ?: dayCondition
     // Falls back to today's high/low midpoint when there's no current reading, rather than
     // omitting the icon/character outright (061-cartoon-weather-companion, US3).
     val characterTemperature = currentTemperature
         ?: if (today.high != null && today.low != null) (today.high + today.low) / 2 else null
 
-    val rainTotal = todaysRainTotalMm ?: today.totalPrecipitation
     val (sunrise, sunset) = getSunTimes(location.latitude, location.longitude, LocalDate.now())
     val moonPhase = getMoonPhase()
 
@@ -136,15 +146,15 @@ fun TodaySummaryCard(
     }
 
     val locale = appLocale()
-    val compass = today.windDirection?.let { " ${directionToCompass(it)}" } ?: ""
+    val compass = restOfDay?.windDirection?.let { " ${directionToCompass(it)}" } ?: ""
     val facts = buildList {
         add(
             stringResource(R.string.todaySummary_rain) to
-                "${formatValue(convertPrecipitation(rainTotal, unit), 1)} ${precipitationUnitLabel(unit)}",
+                "${formatValue(convertPrecipitation(restOfDay?.totalPrecipitation, unit), 1)} ${precipitationUnitLabel(unit)}",
         )
         add(
             stringResource(R.string.todaySummary_wind) to
-                "${formatValue(convertWindSpeed(today.windAverage, unit), 0)} ${windUnitLabel(unit)}$compass",
+                "${formatValue(convertWindSpeed(restOfDay?.windAverage, unit), 0)} ${windUnitLabel(unit)}$compass",
         )
         add(stringResource(R.string.todaySummary_sunrise) to formatTime(sunrise, locale))
         add(stringResource(R.string.todaySummary_sunset) to formatTime(sunset, locale))
@@ -159,36 +169,44 @@ fun TodaySummaryCard(
         }
     }
 
+    var expanded by rememberSaveable { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     WeatherIconImage(
-                        smhiSymbolCode = null,
+                        // Same inputs as the timeline's column for this observation (observationIcon).
+                        smhiSymbolCode = currentIcon?.smhiSymbolCode,
                         condition = condition,
-                        isNight = isNight(Instant.now().toString()),
+                        isNight = currentIcon?.isNight ?: isNight(Instant.now().toString()),
                         temperatureCelsius = characterTemperature,
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(48.dp),
                     )
                     CompanionCharacterImage(
                         condition = condition,
                         temperatureCelsius = characterTemperature,
                         contentDescription = null,
-                        modifier = Modifier.size(72.dp),
+                        modifier = Modifier.size(48.dp),
                     )
                 }
-                Column(
+                Row(
                     modifier = Modifier
                         .weight(1f)
-                        .semantics(mergeDescendants = true) { contentDescription = headlineDescription },
+                        .semantics(mergeDescendants = true) {
+                            heading()
+                            contentDescription = headlineDescription
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (nowText != null) {
                         Text(
@@ -198,34 +216,89 @@ fun TodaySummaryCard(
                             softWrap = false,
                         )
                     }
-                    if (conditionLabel.isNotEmpty()) {
-                        Text(conditionLabel, style = MaterialTheme.typography.titleMedium)
-                    }
-                    if (feelsText != null) {
-                        Text(
-                            "${stringResource(R.string.todaySummary_feelsLike).capitalised()} $feelsText째",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = muted,
-                        )
+                    Column(Modifier.weight(1f, fill = false)) {
+                        if (conditionLabel.isNotEmpty()) {
+                            Text(conditionLabel, style = MaterialTheme.typography.titleMedium)
+                        }
+                        if (feelsText != null) {
+                            Text(
+                                "${stringResource(R.string.todaySummary_feelsLike).capitalised()} $feelsText째",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = muted,
+                            )
+                        }
                     }
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                LabelValue(
-                    stringResource(R.string.todaySummary_high),
-                    "${formatValue(convertTemperature(today.high, unit), 0)}째",
-                    Modifier.weight(1f),
-                )
-                LabelValue(
-                    stringResource(R.string.todaySummary_low),
-                    "${formatValue(convertTemperature(today.low, unit), 0)}째",
-                    Modifier.weight(1f),
-                )
+            val restOfDayLabel = stringResource(R.string.todaySummary_restOfDay)
+            val summaryDescription = buildString {
+                append(restOfDayLabel)
+                (listOf(
+                    stringResource(R.string.todaySummary_high) to "${formatValue(convertTemperature(restOfDay?.high, unit), 0)}�",
+                    stringResource(R.string.todaySummary_low) to "${formatValue(convertTemperature(restOfDay?.low, unit), 0)}�",
+                ) + facts.take(2)).forEach { (l, v) -> append(". $l $v") }
+            }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {
+                    contentDescription = summaryDescription
+                },
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                LabelValue(stringResource(R.string.todaySummary_high), "${formatValue(convertTemperature(restOfDay?.high, unit), 0)}째")
+                LabelValue(stringResource(R.string.todaySummary_low), "${formatValue(convertTemperature(restOfDay?.low, unit), 0)}째")
+                facts.take(2).forEach { (l, v) -> LabelValue(l, v) }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                pairUp(facts).forEach { rowItems ->
+            val moreStateText = stringResource(
+                if (expanded) R.string.todaySummary_noticeExpanded else R.string.todaySummary_noticeCollapsed,
+            )
+            val badgeText = stringResource(R.string.todaySummary_noticesBadge, informationalWarnings.size)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .semantics { stateDescription = moreStateText }
+                    .clickable(role = Role.Button) { expanded = !expanded },
+                contentAlignment = Alignment.Center,
+            ) {
+            Text(
+                restOfDayLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = muted,
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            ) {
+                Text(
+                    stringResource(if (expanded) R.string.todaySummary_less else R.string.todaySummary_more),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = muted,
+                )
+                if (informationalWarnings.isNotEmpty() && !expanded) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .background(LocalNoticeColors.current.marker, CircleShape)
+                            .semantics { contentDescription = badgeText },
+                    )
+                }
+                Image(
+                    painter = painterResource(R.drawable.ic_expand_more),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(muted),
+                    modifier = Modifier.size(24.dp).rotate(if (expanded) 180f else 0f),
+                )
+            }
+            }
+
+            if (expanded) {
+            Column(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                pairUp(facts.drop(2)).forEach { rowItems ->
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         rowItems.forEach { (l, v) -> LabelValue(l, v, Modifier.weight(1f)) }
                         if (rowItems.size == 1) Spacer(Modifier.weight(1f))
@@ -255,6 +328,7 @@ fun TodaySummaryCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
+                            Box(Modifier.size(8.dp).background(LocalNoticeColors.current.marker, CircleShape))
                             Text(
                                 warning.title,
                                 style = MaterialTheme.typography.bodyLarge,
@@ -277,6 +351,8 @@ fun TodaySummaryCard(
                         }
                     }
                 }
+            }
+            }
             }
         }
     }

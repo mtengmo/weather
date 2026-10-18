@@ -46,4 +46,28 @@ class TimelineLogicTest {
         assertEquals("0.4 mm", rainText(rain, "mm"))
         assertEquals("30%", chanceText(rain))
     }
+
+    @Test fun nowDirectionLeftRightInside() {
+        assertEquals(NowDirection.Left, nowDirection(100f, 300, 400))
+        assertEquals(NowDirection.Right, nowDirection(800f, 300, 400))
+        assertEquals(NowDirection.None, nowDirection(500f, 300, 400))
+        assertEquals(NowDirection.None, nowDirection(300f, 300, 400))
+        assertEquals(NowDirection.None, nowDirection(700f, 300, 400))
+    }
+
+    @Test fun nowDirectionNoMarkerOrViewport() {
+        assertEquals(NowDirection.None, nowDirection(null, 0, 400))
+        assertEquals(NowDirection.None, nowDirection(500f, 0, 0))
+    }
+
+    @Test fun centredNowIsInsideForAllModesWithLabelPadding() {
+        // 24h / 3d / 7d: content x = label pad + position * width; centring puts Now in view.
+        for ((cols, pos) in listOf(48 to 0.5, 12 to 0.4, 7 to 0.6)) {
+            val total = cols * 72f
+            val nowX = 60f + (pos * total).toFloat()
+            val max = (60f + total - 400f).toInt()
+            val target = centeredScrollTarget(nowX, 400, max)
+            assertEquals(NowDirection.None, nowDirection(nowX, target, 400))
+        }
+    }
 }

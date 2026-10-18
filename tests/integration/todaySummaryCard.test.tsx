@@ -77,6 +77,21 @@ describe("Today summary card structure", () => {
     expect(card.querySelector("dd")).toHaveTextContent("1.2 mm");
   });
 
+  it("uses the rest-of-day window for High/Low/Rain/Wind and captions it", () => {
+    renderCard({ restOfDay: { high: 18, low: 9, totalPrecipitation: 2.5, windAverage: 3, windDirection: 90, windGustHigh: null, pointCount: 5 } });
+    expect(screen.getByText("Rest of today")).toBeInTheDocument();
+    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High 18°");
+    expect(document.querySelector(".today-summary-low")).toHaveTextContent("Low 9°");
+    expect(screen.getByRole("region", { name: "Today" })).toHaveTextContent(/Rain\s*2\.5 mm/);
+  });
+
+  it("shows dashes, not NaN, when the rest-of-day window is empty", () => {
+    renderCard({ restOfDay: { high: null, low: null, totalPrecipitation: null, windAverage: null, windDirection: null, windGustHigh: null, pointCount: 0 } });
+    const card = screen.getByRole("region", { name: "Today" });
+    expect(card.textContent).not.toContain("NaN");
+    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High —");
+  });
+
   it("omits Humidity when there is no humidity reading", () => {
     renderCard({ currentHumidity: null });
     expect(screen.queryByText("Humidity")).not.toBeInTheDocument();

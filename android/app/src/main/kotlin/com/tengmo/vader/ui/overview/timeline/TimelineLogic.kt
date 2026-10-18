@@ -37,6 +37,18 @@ internal fun nowOffset(position: Double?, totalWidth: Float): Float? =
 internal fun centeredScrollTarget(nowX: Float, viewportWidth: Int, maxScroll: Int): Int =
     (nowX - viewportWidth / 2f).toInt().coerceIn(0, maxScroll.coerceAtLeast(0))
 
+/** Which way the Now marker lies relative to the visible horizontal range. */
+internal enum class NowDirection { None, Left, Right }
+
+/** [nowX] is Now's x inside the scrolling content; the viewport spans scrollValue..scrollValue+viewportWidth.
+ *  None when there is no marker, no measured viewport, or Now is within view. */
+internal fun nowDirection(nowX: Float?, scrollValue: Int, viewportWidth: Int): NowDirection = when {
+    nowX == null || viewportWidth <= 0 -> NowDirection.None
+    nowX < scrollValue -> NowDirection.Left
+    nowX > scrollValue + viewportWidth -> NowDirection.Right
+    else -> NowDirection.None
+}
+
 /** Index of the first forecast column, or -1 when every column is observed. */
 internal fun firstForecastIndex(isForecast: List<Boolean>): Int = isForecast.indexOfFirst { it }
 

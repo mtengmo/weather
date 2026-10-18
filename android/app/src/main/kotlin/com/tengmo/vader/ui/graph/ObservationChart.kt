@@ -70,7 +70,7 @@ fun ObservationChart(
 
     var inspectX by remember { mutableStateOf<Float?>(null) }
     var plotWidthPx by remember { mutableStateOf(1f) }
-    val gridColor = MaterialTheme.colorScheme.outline
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
     val labelColor = MaterialTheme.colorScheme.onSurface
     val nowMillis = System.currentTimeMillis()
 

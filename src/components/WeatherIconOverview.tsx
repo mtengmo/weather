@@ -25,7 +25,7 @@ import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { deriveWeatherCondition, isNight } from "../services/weatherCondition";
 import { deriveFeelsLike } from "../services/feelsLike";
 import { formatValue } from "../services/format";
-import { sumCalendarDayPrecipitation, toDailyAggregates } from "../services/dailyAggregation";
+import { restOfDayAggregate, toDailyAggregates } from "../services/dailyAggregation";
 import TodaySummaryCard from "./TodaySummaryCard";
 import WeeklyForecastStrip from "./WeeklyForecastStrip";
 import { buildGradientStops, buildFillGradientStops } from "../services/temperatureColorScale";
@@ -778,12 +778,9 @@ export default function WeatherIconOverview({
   })();
   const today = todayIndex >= 0 ? weeklyDays[todayIndex] : null;
 
-  // The Today card's rain figure specifically uses a calendar-day sum (midnight to midnight)
-  // rather than `today.totalPrecipitation`'s own rolling next-24h-from-now window, which can
-  // include part of tomorrow (033-todays-rain-total) — every other value on the card still reads
-  // from `today` unchanged.
-  const todaysRainTotalMm =
-    weeklySeries !== null ? sumCalendarDayPrecipitation(weeklySeries.observations, new Date()) : null;
+  // High / Low / Rain / Wind on the Today card all cover the same window: from the start of the
+  // current hour to the next local midnight (the rest of today), observed + forecast alike.
+  const restOfDay = weeklySeries !== null ? restOfDayAggregate(weeklySeries.observations, new Date()) : null;
 
   // The single nearest forward-looking reading (the first forecast-tagged entry, or — only when
   // there's no forecast at all — the latest observed one) — used to override the Today card's own
@@ -855,7 +852,7 @@ export default function WeatherIconOverview({
         currentCondition={currentCondition}
         currentTemperature={currentTemperature}
         currentFeelsLike={currentFeelsLike}
-        todaysRainTotalMm={todaysRainTotalMm}
+        restOfDay={restOfDay}
         informationalWarnings={informationalWarnings}
         currentHumidity={currentHumidity}
       />

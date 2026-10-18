@@ -10,11 +10,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -24,8 +27,7 @@ import com.tengmo.vader.ServiceLocator
 import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.data.repository.capForecastReach
 import com.tengmo.vader.data.repository.todayAggregateOf
-import com.tengmo.vader.data.repository.WeatherConditionInput
-import com.tengmo.vader.data.repository.deriveWeatherCondition
+import com.tengmo.vader.data.repository.observationIcon
 import com.tengmo.vader.location.rememberLocationPermissionState
 import com.tengmo.vader.ui.LaunchScreen
 import com.tengmo.vader.ui.DataFreshnessIndicator
@@ -101,17 +103,28 @@ fun OverviewScreen(
                 onSearchPlace = onOpenFavorites,
             )
             is LocationLoadState.Ready -> {
+                val pullState = rememberPullToRefreshState()
                 PullToRefreshBox(
                     isRefreshing = state.isUserRefreshing,
                     onRefresh = { viewModel.refresh(force = true, userInitiated = true) },
                     modifier = Modifier.fillMaxSize(),
+                    state = pullState,
+                    indicator = {
+                        PullToRefreshDefaults.Indicator(
+                            state = pullState,
+                            isRefreshing = state.isUserRefreshing,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    },
                 ) {
                 Column(
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     RefreshCoordinator(
                         lastUpdatedEpochMillis = state.lastUpdatedEpochMillis,
@@ -139,17 +152,10 @@ fun OverviewScreen(
                         today = today,
                         unit = prefs.unit,
                         location = loc.location,
-                        currentCondition = current?.let {
-                            deriveWeatherCondition(
-                                WeatherConditionInput(
-                                    it.temperature, it.precipitation, it.windSpeed, it.cloudCoverPercent,
-                                    it.timestamp, it.symbolCondition, it.chanceOfRain,
-                                ),
-                            )
-                        },
+                        currentIcon = current?.let { observationIcon(it, java.time.ZoneId.systemDefault()) },
                         currentTemperature = current?.temperature,
                         currentFeelsLike = state.currentFeelsLike,
-                        todaysRainTotalMm = state.todaysRainTotalMm,
+                        restOfDay = state.restOfDay,
                         informationalWarnings = state.warnings.filter { it.isInformational },
                         currentHumidity = current?.relativeHumidity,
                     )

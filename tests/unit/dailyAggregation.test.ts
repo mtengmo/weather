@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { sumCalendarDayPrecipitation, toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
+import { afterEach, describe, expect, it } from "vitest";
+import { restOfDayAggregate, sumCalendarDayPrecipitation, toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
 import type { WeatherObservation } from "../../src/models/types";
 
 function hoursAgo(h: number): string {
@@ -556,5 +556,129 @@ describe("sumCalendarDayPrecipitation (033-todays-rain-total)", () => {
 
     expect(sumCalendarDayPrecipitation(observations, reference)).toBeNull();
     expect(sumCalendarDayPrecipitation([], reference)).toBeNull();
+  });
+});
+
+describe("restOfDayAggregate", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  const at = (iso: string, over: Partial<WeatherObservation> = {}) =>
+    obs({ timestamp: new Date(iso).toISOString(), temperature: 10, precipitation: 0, windSpeed: 2, ...over });
+
+  it("covers [start of current hour, next local midnight) incl. observed and forecast points", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const now = new Date("2026-06-15T12:30:00+02:00"); // 12:30 local
+    const result = restOfDayAggregate(
+      [
+        at("2026-06-15T11:59:00+02:00", { temperature: 99, precipitation: 50, windSpeed: 50 }), // before window
+        at("2026-06-15T12:00:00+02:00", { temperature: 14, precipitation: 1, windSpeed: 4, windDirection: 90 }),
+        at("2026-06-15T15:00:00+02:00", { temperature: 20, precipitation: 2, windSpeed: 6, windGust: 11, windDirection: 180, isForecast: true }),
+        at("2026-06-15T23:00:00+02:00", { temperature: 8, precipitation: 0.5, windSpeed: 2, windDirection: null }),
+        at("2026-06-16T00:00:00+02:00", { temperature: -50, precipitation: 50, windSpeed: 50 }), // midnight excluded
+      ],
+      now
+    );
+    expect(result.high).toBe(20);
+    expect(result.low).toBe(8);
+    expect(result.totalPrecipitation).toBeCloseTo(3.5);
+    expect(result.windAverage).toBeCloseTo(4);
+    expect(result.windDirection).toBe(180);
+    expect(result.windGustHigh).toBe(11);
+    expect(result.pointCount).toBe(3);
+  });
+
+  it("ends at 00:00 when it is 23:59", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const result = restOfDayAggregate(
+      [at("2026-06-15T23:00:00+02:00", { temperature: 7 }), at("2026-06-16T00:00:00+02:00", { temperature: 30 })],
+      new Date("2026-06-15T23:59:00+02:00")
+    );
+    expect(result.high).toBe(7);
+    expect(result.pointCount).toBe(1);
+  });
+
+  it("falls back to the remaining single point, and to nulls (no NaN) when none remain", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const now = new Date("2026-06-15T23:30:00+02:00");
+    const one = restOfDayAggregate([at("2026-06-15T23:00:00+02:00", { temperature: 9, windSpeed: 3 })], now);
+    expect(one.high).toBe(9);
+    expect(one.low).toBe(9);
+    expect(one.windAverage).toBe(3);
+    const none = restOfDayAggregate([], now);
+    expect(none).toEqual({
+      high: null, low: null, totalPrecipitation: null, windAverage: null,
+      windDirection: null, windGustHigh: null, pointCount: 0,
+    });
+  });
+
+  it("ignores null values per point and handles forecast-only / observation-only input", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const now = new Date("2026-06-15T10:00:00+02:00");
+    const result = restOfDayAggregate(
+      [
+        at("2026-06-15T10:00:00+02:00", { temperature: null, precipitation: null, windSpeed: null }),
+        at("2026-06-15T11:00:00+02:00", { temperature: 12, precipitation: 1, windSpeed: 5, isForecast: true }),
+      ],
+      now
+    );
+    expect(result.high).toBe(12);
+    expect(result.totalPrecipitation).toBe(1);
+    expect(result.windAverage).toBe(5);
+    const onlyObserved = restOfDayAggregate([at("2026-06-15T10:00:00+02:00", { temperature: 3 })], now);
+    expect(onlyObserved.low).toBe(3);
+    const allNull = restOfDayAggregate([at("2026-06-15T10:00:00+02:00", { temperature: null, precipitation: null, windSpeed: null })], now);
+    expect(allNull.high).toBeNull();
+    expect(allNull.totalPrecipitation).toBeNull();
+    expect(allNull.windAverage).toBeNull();
+  });
+
+  it("handles the 23-hour spring-forward day (2026-03-29, Europe/Stockholm)", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const now = new Date("2026-03-29T22:30:00+02:00");
+    const result = restOfDayAggregate(
+      [
+        at("2026-03-29T22:00:00+02:00", { precipitation: 1 }),
+        at("2026-03-29T23:00:00+02:00", { precipitation: 2 }),
+        at("2026-03-30T00:00:00+02:00", { precipitation: 100 }),
+      ],
+      now
+    );
+    expect(result.totalPrecipitation).toBe(3);
+    // From 01:30 local the rest of the day is 21.5h (day is 23h long).
+    const early = restOfDayAggregate(
+      [at("2026-03-29T00:00:00+01:00", { precipitation: 4 }), at("2026-03-29T23:00:00+02:00", { precipitation: 1 })],
+      new Date("2026-03-29T00:10:00+01:00")
+    );
+    expect(early.totalPrecipitation).toBe(5);
+  });
+
+  it("handles the 25-hour fall-back day (2026-10-25, Europe/Stockholm)", () => {
+    process.env.TZ = "Europe/Stockholm";
+    const result = restOfDayAggregate(
+      [
+        at("2026-10-25T00:00:00+02:00", { precipitation: 1 }),
+        at("2026-10-25T02:00:00+02:00", { precipitation: 1 }), // first 02:00
+        at("2026-10-25T02:00:00+01:00", { precipitation: 1 }), // second 02:00
+        at("2026-10-25T23:00:00+01:00", { precipitation: 1 }),
+        at("2026-10-26T00:00:00+01:00", { precipitation: 100 }),
+      ],
+      new Date("2026-10-25T00:20:00+02:00")
+    );
+    expect(result.totalPrecipitation).toBe(4);
+    expect(result.pointCount).toBe(4);
+  });
+
+  it("works in a TZ without DST (UTC)", () => {
+    process.env.TZ = "UTC";
+    const result = restOfDayAggregate(
+      [at("2026-06-15T10:00:00Z", { temperature: 5 }), at("2026-06-15T23:00:00Z", { temperature: 1 }), at("2026-06-16T00:00:00Z", { temperature: 99 })],
+      new Date("2026-06-15T10:15:00Z")
+    );
+    expect(result.high).toBe(5);
+    expect(result.low).toBe(1);
   });
 });

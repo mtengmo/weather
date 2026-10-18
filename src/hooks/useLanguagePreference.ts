@@ -19,7 +19,9 @@ export function useLanguagePreference(): UseLanguagePreferenceResult {
   const [language, setLanguageState] = useState<LanguagePreference>(() => getLanguagePreference());
 
   useEffect(() => {
-    void i18n.changeLanguage(resolveI18nLanguage(language));
+    const resolved = resolveI18nLanguage(language);
+    void i18n.changeLanguage(resolved);
+    document.documentElement.lang = resolved;
   }, [language]);
 
   const setLanguage = useCallback((next: LanguagePreference) => {

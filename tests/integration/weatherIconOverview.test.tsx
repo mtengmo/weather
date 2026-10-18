@@ -6,7 +6,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WeatherIconOverview from "../../src/components/WeatherIconOverview";
 import { useObservationData } from "../../src/hooks/useObservationData";
-import { sumCalendarDayPrecipitation } from "../../src/services/dailyAggregation";
+import { restOfDayAggregate } from "../../src/services/dailyAggregation";
 import type { Location, ObservationWindow, WeatherWarning } from "../../src/models/types";
 
 vi.mock("../../src/services/weatherApi", () => ({
@@ -1811,6 +1811,14 @@ describe("Sticky row-label column (018-dashboard-visual-redesign, US3)", () => {
   });
 });
 
+// Two points inside the current local hour — always within the card's "rest of today" window,
+// whatever the wall-clock time the suite runs at.
+function currentHourStartIso(offsetMs = 0): string {
+  const d = new Date();
+  d.setMinutes(0, 0, 0);
+  return new Date(d.getTime() + offsetMs).toISOString();
+}
+
 describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
   beforeEach(() => {
     vi.mocked(getObservations).mockReset();
@@ -1826,8 +1834,8 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: hoursAgo(2), temperature: 5, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(1), temperature: 15, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
+              { timestamp: currentHourStartIso(), temperature: 5, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
+              { timestamp: currentHourStartIso(1), temperature: 15, precipitation: 1, windSpeed: 3, windDirection: 90, cloudCoverPercent: 10 },
             ]
           : [],
     }));
@@ -1852,7 +1860,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
       status: "ready",
       observations:
         w === "last-7-days"
-          ? [{ timestamp: hoursAgo(1), temperature: 15, precipitation: 1, windSpeed: 3, cloudCoverPercent: 10 }]
+          ? [{ timestamp: currentHourStartIso(1), temperature: 15, precipitation: 1, windSpeed: 3, cloudCoverPercent: 10 }]
           : [],
     }));
 
@@ -2075,7 +2083,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
-    const expectedMm = sumCalendarDayPrecipitation(weeklyObservations, new Date());
+    const expectedMm = restOfDayAggregate(weeklyObservations, new Date()).totalPrecipitation;
     const card = await screen.findByRole("region", { name: "Today" });
     expect(card).toHaveTextContent(new RegExp(`Rain\\s*${expectedMm !== null ? expectedMm.toFixed(1) : "—"}`));
   });
@@ -2689,8 +2697,8 @@ describe("High/Low temperature labeling (019-dashboard-polish-round-four, US6)",
       observations:
         w === "last-7-days"
           ? [
-              { timestamp: hoursAgo(2), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
-              { timestamp: hoursAgo(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: currentHourStartIso(), temperature: 5, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
+              { timestamp: currentHourStartIso(1), temperature: 15, precipitation: 0, windSpeed: 1, cloudCoverPercent: 10 },
             ]
           : [],
     }));

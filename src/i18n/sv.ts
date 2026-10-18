@@ -26,6 +26,7 @@ export const sv: Record<string, string> = {
   "todaySummary.feelsLike": "känns som",
   "todaySummary.high": "Högsta",
   "todaySummary.low": "Lägsta",
+  "todaySummary.restOfDay": "Resten av dagen",
   "todaySummary.rain": "Regn",
   "todaySummary.wind": "Vind",
   "todaySummary.sunrise": "Soluppgång",

@@ -191,6 +191,26 @@ private fun hourlyCondition(obs: WeatherObservation, ms: Long, zone: ZoneId, wit
     }
 }
 
+/** Everything the weather icon / companion character is picked from for one observation. */
+data class ObservationIcon(
+    val smhiSymbolCode: Int?,
+    val condition: WeatherCondition?,
+    val isNight: Boolean,
+    val temperature: Double?,
+)
+
+/** Single source of icon inputs: the timeline's hourly columns and the Today card both use it,
+ *  so the same observation always yields the same icon (condition, night rule by its own timestamp/zone). */
+fun observationIcon(obs: WeatherObservation, zone: ZoneId): ObservationIcon {
+    val endMs = Instant.parse(obs.timestamp).toEpochMilli()
+    return ObservationIcon(
+        smhiSymbolCode = obs.smhiSymbolCode,
+        condition = hourlyCondition(obs, endMs, zone, withChance = true),
+        isNight = nightHour(endMs, zone),
+        temperature = obs.temperature,
+    )
+}
+
 /**
  * The 24-hour view: one column per hourly observation, observed then forecast. [extended] allows
  * up to 48 forecast columns, otherwise at most 24 (a longer cached series never leaks in).
@@ -211,15 +231,16 @@ fun buildHourlyTimeline(
 
     val periods = kept.map { obs ->
         val endMs = Instant.parse(obs.timestamp).toEpochMilli()
+        val icon = observationIcon(obs, zone)
         TimelinePeriod(
             key = obs.timestamp,
             label = TimeFormat.hourLabel(Instant.ofEpochMilli(endMs).atZone(zone), locale),
             isForecast = obs.isForecast,
-            condition = hourlyCondition(obs, endMs, zone, withChance = true),
-            smhiSymbolCode = obs.smhiSymbolCode,
-            temperature = obs.temperature,
+            condition = icon.condition,
+            smhiSymbolCode = icon.smhiSymbolCode,
+            temperature = icon.temperature,
             uvRisk = periodHasUvRisk(obs.isForecast, endMs - HOUR_MS, endMs, uvRiskHours),
-            isNight = nightHour(endMs, zone),
+            isNight = icon.isNight,
             startMillis = endMs - HOUR_MS,
             endMillis = endMs,
         )

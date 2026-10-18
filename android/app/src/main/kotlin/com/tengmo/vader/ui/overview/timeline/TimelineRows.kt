@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -44,13 +46,14 @@ import com.tengmo.vader.theme.AppColors
 import com.tengmo.vader.ui.overview.WeatherIconImage
 import com.tengmo.vader.ui.overview.conditionStringKey
 
-private val IconSize = 40.dp
-private val BarAreaHeight = 40.dp
+/** Forecast marks are lighter than observed ones but stay readable against the forecast tint. */
+private const val ForecastAlpha = 0.85f
+private val IconSize = 36.dp
+private val BarAreaHeight = 28.dp
 private val BarWidth = 24.dp
 private val WindArrowSize = 24.dp
-private val TempRowHeight = 112.dp
-private val TempTopPad = 32.dp
-private val TempBottomPad = 16.dp
+private val TempBottomPad = 8.dp
+private val TempLabelGap = 6.dp
 
 private fun Context.stringNamed(name: String): String? =
     resources.getIdentifier(name, "string", packageName).takeIf { it != 0 }?.let(::getString)
@@ -70,21 +73,26 @@ private fun valueColor(isForecast: Boolean): Color =
 @Composable
 internal fun TimelineHeaderRow(data: TimelineData, g: TimelineGeometry) {
     val context = LocalContext.current
+    // Always tall enough for label + sub-label so 24h / 3 Days / 7 Days headers have identical height.
+    val twoLines = with(LocalDensity.current) {
+        MaterialTheme.typography.labelMedium.lineHeight.toDp() + MaterialTheme.typography.labelSmall.lineHeight.toDp()
+    }
     Row(Modifier.width(g.totalWidth).timelineBackdrop(g).clearAndSetSemantics {}) {
-        data.periods.forEach { p ->
+        data.periods.forEachIndexed { i, p ->
             Column(
-                Modifier.width(g.columnWidth).padding(vertical = 4.dp),
+                Modifier.width(g.columnWidth).padding(vertical = 2.dp).heightIn(min = twoLines),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     periodName(context, p),
+                    modifier = Modifier.nowKnockout(g, i),
                     style = if (p.subDayPeriod != null) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
                 )
                 p.subLabel?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text(it, modifier = Modifier.nowKnockout(g, i), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
         }
@@ -100,11 +108,11 @@ internal fun TimelineWeatherRow(data: TimelineData, g: TimelineGeometry, descrip
             Column(
                 Modifier
                     .width(g.columnWidth)
-                    .padding(vertical = 4.dp, horizontal = 2.dp)
+                    .padding(vertical = 2.dp, horizontal = 2.dp)
                     .semantics(mergeDescendants = true) { contentDescription = descriptions.getOrElse(i) { "" } },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(Modifier.size(IconSize)) {
+                Box(Modifier.size(IconSize).nowKnockout(g, i)) {
                     WeatherIconImage(
                         smhiSymbolCode = p.smhiSymbolCode,
                         condition = p.condition,
@@ -116,9 +124,11 @@ internal fun TimelineWeatherRow(data: TimelineData, g: TimelineGeometry, descrip
                 }
                 Text(
                     conditionWord(context, p.condition),
+                    modifier = Modifier.nowKnockout(g, i),
                     style = MaterialTheme.typography.labelSmall,
                     color = valueColor(p.isForecast),
                     textAlign = TextAlign.Center,
+                    minLines = 2, // reserved so wrapping words never change the row height between modes
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -137,10 +147,14 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
     val forecastText = MaterialTheme.colorScheme.onSurfaceVariant
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelMedium
+    val fontScale = LocalDensity.current.fontScale.coerceIn(1f, 1.4f)
+    val knockouts = row.points.indices.map { g.crossesColumn(it) }
+    val backdrops = row.points.indices.map { g.backdropColor(it) }
+    // Room for one label above the highest point plus a short plot band; grows with the font scale.
     Canvas(
         Modifier
             .width(g.totalWidth)
-            .height(TempRowHeight)
+            .height(40.dp + 24.dp * fontScale)
             .timelineBackdrop(g)
             .clearAndSetSemantics {},
     ) {
@@ -149,7 +163,8 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
         val lo = present.min()
         val hi = present.max()
         val range = (hi - lo).coerceAtLeast(1.0)
-        val top = TempTopPad.toPx()
+        val labelH = measurer.measure("0", labelStyle).size.height
+        val top = labelH + TempLabelGap.toPx() + 3.dp.toPx()
         val plotH = size.height - top - TempBottomPad.toPx()
         val colW = g.columnWidth.toPx()
         fun x(i: Int) = colW * (i + 0.5f)
@@ -166,15 +181,23 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
             }
             drawPath(
                 path,
-                if (run.forecast) lineColor.copy(alpha = 0.6f) else lineColor,
+                if (run.forecast) lineColor.copy(alpha = ForecastAlpha) else lineColor,
                 style = Stroke(strokeW, pathEffect = if (run.forecast) dash else null),
             )
         }
         row.points.forEachIndexed { i, p ->
             val v = p.value ?: return@forEachIndexed
-            drawCircle(if (p.isForecast) lineColor.copy(alpha = 0.6f) else lineColor, 3.dp.toPx(), Offset(x(i), y(v)))
+            drawCircle(if (p.isForecast) lineColor.copy(alpha = ForecastAlpha) else lineColor, 3.dp.toPx(), Offset(x(i), y(v)))
             val text = measurer.measure(temperatureText(p), labelStyle.copy(color = if (p.isForecast) forecastText else observedText))
-            val ty = (y(v) - text.size.height - 6.dp.toPx()).coerceAtLeast(0f)
+            val ty = (y(v) - text.size.height - TempLabelGap.toPx()).coerceAtLeast(0f)
+            if (knockouts[i]) {
+                drawRoundRect(
+                    backdrops[i],
+                    Offset(x(i) - text.size.width / 2f - 2.dp.toPx(), ty),
+                    androidx.compose.ui.geometry.Size(text.size.width + 4.dp.toPx(), text.size.height.toFloat()),
+                    androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
+                )
+            }
             drawText(text, topLeft = Offset(x(i) - text.size.width / 2f, ty))
         }
     }
@@ -186,9 +209,9 @@ internal fun TimelineBarRow(row: TimelineRow, g: TimelineGeometry, showChance: B
     val scaleMax = remember(row) { (row.points.mapNotNull { it.value }.maxOrNull() ?: 0.0).coerceAtLeast(2.0) }
     val bar = MaterialTheme.colorScheme.tertiary
     Row(Modifier.width(g.totalWidth).timelineBackdrop(g).clearAndSetSemantics {}) {
-        row.points.forEach { p ->
+        row.points.forEachIndexed { i, p ->
             Column(
-                Modifier.width(g.columnWidth).padding(vertical = 4.dp, horizontal = 2.dp),
+                Modifier.width(g.columnWidth).padding(vertical = 2.dp, horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(Modifier.fillMaxWidth().height(BarAreaHeight), contentAlignment = Alignment.BottomCenter) {
@@ -199,20 +222,20 @@ internal fun TimelineBarRow(row: TimelineRow, g: TimelineGeometry, showChance: B
                             Modifier
                                 .width(BarWidth)
                                 .height(h)
-                                .background(bar.copy(alpha = if (p.isForecast) 0.5f else 1f), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)),
+                                .background(bar.copy(alpha = if (p.isForecast) ForecastAlpha else 1f), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)),
                         )
                     }
                 }
                 Text(
                     rainText(p, row.unitLabel),
+                    modifier = Modifier.nowKnockout(g, i),
                     style = MaterialTheme.typography.labelSmall,
                     color = valueColor(p.isForecast),
                     textAlign = TextAlign.Center,
                 )
                 if (showChance) {
-                    chanceText(p)?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    // Always rendered (blank when unknown) so the row height is the same in every mode.
+                    Text(chanceText(p) ?: " ", modifier = Modifier.nowKnockout(g, i), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
             }
         }
@@ -224,12 +247,12 @@ internal fun TimelineBarRow(row: TimelineRow, g: TimelineGeometry, showChance: B
 internal fun TimelineWindRow(row: TimelineRow, g: TimelineGeometry) {
     val arrowTint = MaterialTheme.colorScheme.onSurfaceVariant
     Row(Modifier.width(g.totalWidth).timelineBackdrop(g).clearAndSetSemantics {}) {
-        row.points.forEach { p ->
+        row.points.forEachIndexed { i, p ->
             Column(
-                Modifier.width(g.columnWidth).padding(vertical = 4.dp, horizontal = 2.dp),
+                Modifier.width(g.columnWidth).padding(vertical = 2.dp, horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Box(Modifier.size(WindArrowSize)) {
+                Box(Modifier.size(WindArrowSize).nowKnockout(g, i)) {
                     p.direction?.let { dir ->
                         Icon(
                             painterResource(R.drawable.ic_wind_arrow),
@@ -241,9 +264,12 @@ internal fun TimelineWindRow(row: TimelineRow, g: TimelineGeometry) {
                 }
                 Text(
                     windText(p, row.unitLabel),
+                    modifier = Modifier.nowKnockout(g, i),
                     style = MaterialTheme.typography.labelSmall,
                     color = valueColor(p.isForecast),
                     textAlign = TextAlign.Center,
+                    minLines = 2,
+                    maxLines = 2,
                 )
             }
         }

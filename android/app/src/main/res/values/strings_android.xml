@@ -44,6 +44,9 @@
     <string name="freshness_updating">Updating weather…</string>
     <string name="freshness_refresh">Refresh weather</string>
     <string name="todaySummary_a11yNow">Now %1$s degrees, %2$s</string>
+    <string name="todaySummary_more">More</string>
+    <string name="todaySummary_less">Less</string>
+    <string name="todaySummary_noticesBadge">%1$d notices</string>
     <string name="todaySummary_noticeExpanded">Expanded</string>
     <string name="todaySummary_noticeCollapsed">Collapsed</string>
     <string name="todaySummary_a11yNowFeels">Now %1$s degrees, %2$s, feels like %3$s degrees</string>
@@ -57,4 +60,8 @@
     <string name="locationUnavailable_noFix">We couldn\'t find your location. Make sure location is turned on for your device, then try again.</string>
     <string name="locationUnavailable_retry">Try again</string>
     <string name="locationUnavailable_searchPlace">Search for a place instead</string>
+    <string name="timeline_extendedOn">Showing 48 hours</string>
+    <string name="timeline_extendedOff">Showing 24 hours</string>
+    <string name="timeline_extendedShort">48 h</string>
+    <string name="timeline_goToNow">Go to now</string>
 </resources>

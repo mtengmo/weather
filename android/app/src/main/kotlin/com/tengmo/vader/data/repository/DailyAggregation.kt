@@ -276,3 +276,40 @@ fun windowAroundToday(days: List<DailyAggregate>, count: Int): List<DailyAggrega
     val start = maxOf(0, end - count)
     return days.subList(start, end)
 }
+
+/** The "rest of today" window shared by the Today card's High / Low / Rain / Wind. */
+data class RestOfDayAggregate(
+    val high: Double?, val low: Double?, val totalPrecipitation: Double?,
+    val windAverage: Double?, val windDirection: Double?, val windGustHigh: Double?,
+    val pointCount: Int,
+)
+
+/**
+ * Observations with timestamp in [start of the current local hour, next local midnight). The end
+ * uses local date arithmetic so 23h/25h DST days end correctly. Observed and forecast alike; null
+ * per-point values ignored; no padding. Port of web `restOfDayAggregate`.
+ */
+fun restOfDayAggregate(
+    observations: List<WeatherObservation>,
+    now: Long = System.currentTimeMillis(),
+    zone: ZoneId = ZoneId.systemDefault(),
+): RestOfDayAggregate {
+    val ref = Instant.ofEpochMilli(now).atZone(zone)
+    val startMs = ref.truncatedTo(java.time.temporal.ChronoUnit.HOURS).toInstant().toEpochMilli()
+    val endMs = ref.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    val inWindow = observations
+        .filter { epochMillisOf(it) in startMs until endMs }
+        .sortedBy { epochMillisOf(it) }
+    val temperatures = inWindow.mapNotNull { it.temperature }
+    val winds = inWindow.mapNotNull { it.windSpeed }
+    val precipitations = inWindow.mapNotNull { it.precipitation }
+    return RestOfDayAggregate(
+        high = temperatures.maxOrNull(),
+        low = temperatures.minOrNull(),
+        totalPrecipitation = precipitations.takeIf { it.isNotEmpty() }?.sum(),
+        windAverage = winds.takeIf { it.isNotEmpty() }?.let(::mean),
+        windDirection = inWindow.mapNotNull { it.windDirection }.lastOrNull(),
+        windGustHigh = inWindow.mapNotNull { it.windGust }.maxOrNull(),
+        pointCount = inWindow.size,
+    )
+}

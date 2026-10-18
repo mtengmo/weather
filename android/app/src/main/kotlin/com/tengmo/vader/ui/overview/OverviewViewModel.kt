@@ -21,7 +21,8 @@ import com.tengmo.vader.data.model.WeatherObservation
 import com.tengmo.vader.data.model.WeatherWarning
 import com.tengmo.vader.data.repository.deriveFeelsLike
 import com.tengmo.vader.data.repository.nearestObservationOf
-import com.tengmo.vader.data.repository.sumCalendarDayPrecipitation
+import com.tengmo.vader.data.repository.RestOfDayAggregate
+import com.tengmo.vader.data.repository.restOfDayAggregate
 import com.tengmo.vader.data.repository.toDailyAggregates
 import com.tengmo.vader.location.CurrentLocationProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +57,7 @@ data class OverviewUiState(
     val currentObservation: WeatherObservation? = null,
     val currentFeelsLike: Double? = null,
     /** Precipitation summed over today's local calendar day (033-todays-rain-total). */
-    val todaysRainTotalMm: Double? = null,
+    val restOfDay: RestOfDayAggregate? = null,
     val warnings: List<WeatherWarning> = emptyList(),
     /** Language the shown warnings were fetched in; a mismatch with the app language triggers a re-fetch. */
     val warningsLanguage: String? = null,
@@ -146,7 +147,8 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
                     TimelineMode.Days7 -> mergeMultiSourceIntoTimeline(buildDailyTimeline(weekly, now, zone, unit, uv, locale), weeklyMulti, unit)
                 }
             }
-            _uiState.update { it.copy(timeline = timeline) }
+            val restOfDay = (hourly ?: weekly).takeIf { it.isNotEmpty() }?.let { restOfDayAggregate(it) }
+            _uiState.update { it.copy(timeline = timeline, restOfDay = restOfDay) }
         }
     }
 
@@ -323,7 +325,6 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
             currentFeelsLike = latestActual?.let {
                 deriveFeelsLike(it.temperature, it.windSpeed, it.relativeHumidity?.toDouble())
             },
-            todaysRainTotalMm = sumCalendarDayPrecipitation(series.observations),
             lastUpdatedEpochMillis = loadedAt,
             loadFailed = false,
             showingCachedData = fromCache,

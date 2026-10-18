@@ -21,6 +21,7 @@
     <string name="todaySummary_feelsLike">feels like</string>
     <string name="todaySummary_high">High</string>
     <string name="todaySummary_low">Low</string>
+    <string name="todaySummary_restOfDay">Rest of today</string>
     <string name="todaySummary_rain">Rain</string>
     <string name="todaySummary_wind">Wind</string>
     <string name="todaySummary_sunrise">Sunrise</string>

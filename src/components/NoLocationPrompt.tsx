@@ -36,9 +36,11 @@ export default function NoLocationPrompt({
     <section className="no-location-prompt" aria-labelledby="no-location-title">
       <h2 id="no-location-title">{t("noLocation.title")}</h2>
       <p role="alert">{t(reason === "denied" ? "app.locationDenied" : "app.locationUnavailable")}</p>
-      <button type="button" onClick={onRequestCurrentLocation}>
-        {t("noLocation.useMyLocation")}
-      </button>
+      {!compact && (
+        <button type="button" onClick={onRequestCurrentLocation}>
+          {t("noLocation.useMyLocation")}
+        </button>
+      )}
       {!compact && (
         <>
           <PlaceSearch

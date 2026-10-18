@@ -1,9 +1,13 @@
 package com.tengmo.vader.ui.overview.timeline
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +45,33 @@ private val MarkerWidth = 2.dp
 private val ChipGap = 32.dp
 private val MinCaptionRoom = 48.dp
 
+/** True when the Now line runs through the middle of column [index] (3-day / 7-day: Now sits
+ *  inside today's column); false in 24h mode where it sits on a column boundary. */
+private fun TimelineGeometry.nowCrosses(index: Int): Boolean {
+    val x = nowX ?: return false
+    val start = columnWidth * index
+    return x > start + MarkerWidth * 2 && x < start + columnWidth - MarkerWidth * 2
+}
+
+/**
+ * Lets the Now line pass *behind* a label: paints the label's own backdrop colour (screen
+ * background, or the forecast tint) under it, but only in the one column the line crosses, so
+ * text and icons stay legible while the line stays visibly continuous around them.
+ */
+@Composable
+internal fun Modifier.nowKnockout(g: TimelineGeometry, index: Int): Modifier {
+    if (!g.nowCrosses(index)) return this
+    return this.background(g.backdropColor(index), RoundedCornerShape(4.dp)).padding(horizontal = 2.dp)
+}
+
+/** Backdrop colour under column [index] (also used by Canvas rows). */
+@Composable
+internal fun TimelineGeometry.backdropColor(index: Int): Color =
+    if (firstForecast in 0..index) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.background
+
+/** True when the Now line crosses column [index] (exposed for Canvas rows). */
+internal fun TimelineGeometry.crossesColumn(index: Int): Boolean = nowCrosses(index)
+
 /** Tints the forecast columns and draws the vertical Now line; apply to every row's content. */
 @Composable
 internal fun Modifier.timelineBackdrop(g: TimelineGeometry): Modifier {
@@ -62,7 +93,9 @@ internal fun Modifier.timelineBackdrop(g: TimelineGeometry): Modifier {
 internal fun TimelineCaptionRow(g: TimelineGeometry, modifier: Modifier = Modifier) {
     val observedEnd: Dp = g.nowX?.minus(ChipGap) ?: g.forecastStartX ?: g.totalWidth
     val forecastStart: Dp? = g.nowX?.plus(ChipGap) ?: g.forecastStartX
-    Box(modifier.width(g.totalWidth).timelineBackdrop(g).padding(vertical = 4.dp)) {
+    // Min height = the Now chip (labelMedium line + 4dp), so the row is the same with or without a chip.
+    val minH = with(LocalDensity.current) { MaterialTheme.typography.labelMedium.lineHeight.toDp() } + 4.dp
+    Box(modifier.width(g.totalWidth).timelineBackdrop(g).padding(vertical = 2.dp).heightIn(min = minH)) {
         if (g.firstForecast != 0 && observedEnd >= MinCaptionRoom) {
             Caption(
                 stringResource(R.string.weatherOverview_observed),

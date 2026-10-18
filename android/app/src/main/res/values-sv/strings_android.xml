@@ -44,6 +44,9 @@
     <string name="freshness_updating">Uppdaterar vädret…</string>
     <string name="freshness_refresh">Uppdatera vädret</string>
     <string name="todaySummary_a11yNow">Nu %1$s grader, %2$s</string>
+    <string name="todaySummary_more">Mer</string>
+    <string name="todaySummary_less">Mindre</string>
+    <string name="todaySummary_noticesBadge">%1$d notiser</string>
     <string name="todaySummary_noticeExpanded">Utfälld</string>
     <string name="todaySummary_noticeCollapsed">Hopfälld</string>
     <string name="todaySummary_a11yNowFeels">Nu %1$s grader, %2$s, känns som %3$s grader</string>
@@ -57,4 +60,8 @@
     <string name="locationUnavailable_noFix">Vi kunde inte hitta din plats. Kontrollera att platstjänster är påslagna på enheten och försök igen.</string>
     <string name="locationUnavailable_retry">Försök igen</string>
     <string name="locationUnavailable_searchPlace">Sök efter en plats i stället</string>
+    <string name="timeline_extendedOn">Visar 48 timmar</string>
+    <string name="timeline_extendedOff">Visar 24 timmar</string>
+    <string name="timeline_extendedShort">48 h</string>
+    <string name="timeline_goToNow">Gå till nu</string>
 </resources>
