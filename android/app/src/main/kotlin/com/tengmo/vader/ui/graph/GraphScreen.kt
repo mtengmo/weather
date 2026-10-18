@@ -13,7 +13,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.tengmo.vader.ui.details.DetailsContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,21 +41,43 @@ import com.tengmo.vader.data.repository.windUnitLabel
 
 /** T042 — the Graph screen (US2): metric tabs, time-window tabs, the chart, and the nearby-
  *  station legend, with Home returning to the Overview (FR-014). */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun GraphScreen(viewModel: GraphViewModel = viewModel()) {
+    var subTab by rememberSaveable { mutableStateOf(GraphSubTab.Graph) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
+        PrimaryTabRow(selectedTabIndex = subTab.ordinal) {
+            GraphSubTab.entries.forEach { tab ->
+                Tab(
+                    selected = subTab == tab,
+                    onClick = { subTab = tab },
+                    text = {
+                        Text(stringResource(if (tab == GraphSubTab.Graph) R.string.nav_graph else R.string.app_detailsButton))
+                    },
+                )
+            }
+        }
+        when (subTab) {
+            GraphSubTab.Graph -> GraphContent(viewModel)
+            GraphSubTab.Details -> DetailsContent(viewModel)
+        }
+    }
+}
+
+enum class GraphSubTab { Graph, Details }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun GraphScreen(onHome: () -> Unit, viewModel: GraphViewModel = viewModel()) {
+private fun GraphContent(viewModel: GraphViewModel) {
     val state by viewModel.uiState.collectAsState()
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onHome) { Text(stringResource(R.string.app_homeButton)) }
         RefreshCoordinator(state.lastUpdatedEpochMillis, enabled = !state.isLoading, onRefresh = viewModel::refresh)
         OfflineIndicator(
             showingCachedData = false,

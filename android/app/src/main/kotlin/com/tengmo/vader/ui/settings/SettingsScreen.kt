@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
@@ -42,8 +41,9 @@ private fun SectionTitle(text: String) = Text(text, fontSize = 16.sp, color = Ma
  *  LanguageToggle/HighLowToggle/NearbyStationCountControl offers, plus the how-it-works, privacy
  *  and attribution information (FR-004, FR-019). */
 @OptIn(ExperimentalLayoutApi::class)
+@Suppress("UNUSED_PARAMETER")
 @Composable
-fun SettingsScreen(onHome: () -> Unit, viewModel: SettingsViewModel = viewModel()) {
+fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
     val prefs by viewModel.preferences.collectAsState(initial = UserPreferences())
     var showHowItWorks by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
@@ -52,14 +52,10 @@ fun SettingsScreen(onHome: () -> Unit, viewModel: SettingsViewModel = viewModel(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onHome) { Text(stringResource(R.string.app_homeButton)) }
-        Text(stringResource(R.string.settingsMenu_settings), fontSize = 22.sp)
-
         // Theme.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(prefs.theme == Theme.Midnight, { viewModel.setTheme(Theme.Midnight) }, { Text(stringResource(R.string.themeToggle_dark)) })

@@ -7,9 +7,25 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Release signing is enabled only when ANDROID_KEYSTORE_PATH is set (CI release workflow, or a
+// local developer who exports the same variables). Debug and PR builds stay unsigned-by-config.
+fun signingValue(name: String): String? = (findProperty(name) as String?) ?: System.getenv(name)
+val releaseKeystorePath: String? = signingValue("ANDROID_KEYSTORE_PATH")
+
 android {
     namespace = "com.tengmo.vader"
     compileSdk = 35
+
+    signingConfigs {
+        if (releaseKeystorePath != null) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
+                storePassword = signingValue("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("ANDROID_KEY_ALIAS")
+                keyPassword = signingValue("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.tengmo.vader"
@@ -17,7 +33,8 @@ android {
         // updates" at plan time; Android 8.0 (API 26) covers that window with wide reach.
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        // CI release builds pass -PVERSION_CODE=<run number> so every upload is strictly newer.
+        versionCode = (findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -34,6 +51,9 @@ android {
 
     buildTypes {
         release {
+            if (releaseKeystorePath != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // T077: Play Console's own crash/ANR reporting needs no SDK — it is automatic for

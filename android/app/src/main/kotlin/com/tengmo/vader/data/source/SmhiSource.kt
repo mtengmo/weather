@@ -9,6 +9,7 @@ import com.tengmo.vader.data.model.ObservationWindow
 import com.tengmo.vader.data.model.StationInfo
 import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.model.WeatherObservation
+import com.tengmo.vader.data.repository.stripStationAutoSuffix
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -170,7 +171,7 @@ class SmhiSource(private val client: HttpClient, private val json: Json) {
             .map {
                 StationInfo(
                     id = it.key,
-                    displayName = it.name?.trim()?.ifEmpty { null } ?: "Unnamed station",
+                    displayName = it.name?.trim()?.ifEmpty { null }?.let { name -> stripStationAutoSuffix(name) } ?: "Unnamed station",
                     distanceKm = haversineKm(latitude, longitude, it.latitude, it.longitude),
                     latitude = it.latitude,
                     longitude = it.longitude,

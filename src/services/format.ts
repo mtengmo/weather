@@ -2,7 +2,9 @@ import i18next from "i18next";
 
 export function formatValue(value: number | null, decimals = 1): string {
   if (value === null) return "—";
-  return value.toFixed(decimals);
+  const formatted = value.toFixed(decimals);
+  // A small negative value that rounds to zero keeps its sign ("-0"); show it as "0".
+  return /^-0(\.0*)?$/.test(formatted) ? formatted.slice(1) : formatted;
 }
 
 /**

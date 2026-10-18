@@ -20,6 +20,9 @@ data class DailyAggregate(
     val feelsLikeAverage: Double? = null,
     val chanceOfRainMax: Int? = null,
     val subDayLabel: String? = null,
+    val subDayPeriod: String? = null, // morning|lunch|afternoon|evening|night
+    val subDayStartHour: Int? = null, // effective local start hour (0 for the widened first-day Morning)
+    val subDayEndHour: Int? = null, // local end hour, exclusive (>24 wraps past midnight)
     val windDirection: Double? = null,
     // Daytime-hour-only (6 AM-8 PM local) counterparts, used to derive a whole-day condition/icon
     // not dominated by an overnight blip (mirrors web's 066/067 additions).

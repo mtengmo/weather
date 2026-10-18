@@ -11,6 +11,7 @@ import com.tengmo.vader.data.source.NetworkModule
 import com.tengmo.vader.data.source.NominatimSource
 import com.tengmo.vader.data.source.OpenMeteoSource
 import com.tengmo.vader.data.source.SmhiSource
+import com.tengmo.vader.work.sync.PostSyncHook
 
 /** Minimal hand-rolled DI container (no Hilt/Dagger dependency, to keep this scaffold's build
  *  surface small) — every screen/worker gets its dependencies from here via
@@ -31,6 +32,9 @@ class ServiceLocator private constructor(context: Context) {
     val preferencesStore = PreferencesStore(context)
     val snapshotStore = SnapshotStore(context)
     val widgetTargetStore = WidgetTargetStore(context)
+
+    /** Extension point: hooks run after every background sync (e.g. notifications, later). */
+    val postSyncHooks: List<PostSyncHook> = emptyList()
 
     companion object {
         @Volatile private var instance: ServiceLocator? = null

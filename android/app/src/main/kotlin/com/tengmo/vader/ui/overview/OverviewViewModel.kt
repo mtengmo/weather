@@ -12,6 +12,8 @@ import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.data.model.WeatherObservation
 import com.tengmo.vader.data.model.WeatherWarning
 import com.tengmo.vader.data.repository.deriveFeelsLike
+import com.tengmo.vader.data.repository.nearestObservationOf
+import com.tengmo.vader.data.repository.sumCalendarDayPrecipitation
 import com.tengmo.vader.data.repository.toDailyAggregates
 import com.tengmo.vader.location.CurrentLocationProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,8 @@ data class OverviewUiState(
     val uvRiskHours: Set<Long> = emptySet(),
     val lastUpdatedEpochMillis: Long? = null,
     val isRefreshing: Boolean = false,
+    /** True only while a user-initiated (pull / button) refresh runs — drives the pull spinner. */
+    val isUserRefreshing: Boolean = false,
     val loadFailed: Boolean = false,
     /** True when the shown data came from the on-device cache because the network fetch failed
      *  (FR-020) — the UI pairs it with lastUpdatedEpochMillis for the offline indicator. */
@@ -103,69 +107,66 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
             if (remember) services.preferencesStore.setLastViewedLocation(location)
             _uiState.value = _uiState.value.copy(
                 locationState = LocationLoadState.Ready(location),
-                isRefreshing = true,
                 loadFailed = false,
             )
-            refresh(location)
+            // Cache first, then network only when stale; warnings/UV once per screen load.
+            load(location, force = false, userInitiated = false, fetchExtras = true)
         }
     }
 
-    fun refreshCurrent() {
+    /** Re-checks the current place. [force] always hits the network; otherwise only a cache older
+     *  than [CACHE_MAX_AGE_MS] does. Only [userInitiated] refreshes show the pull spinner. */
+    fun refresh(force: Boolean, userInitiated: Boolean) {
         val current = (_uiState.value.locationState as? LocationLoadState.Ready)?.location ?: return
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isRefreshing = true)
-            refresh(current)
-        }
+        if (_uiState.value.isRefreshing) return
+        viewModelScope.launch { load(current, force, userInitiated, fetchExtras = force) }
     }
 
-    private suspend fun refresh(location: Location) {
+    private suspend fun load(location: Location, force: Boolean, userInitiated: Boolean, fetchExtras: Boolean) {
         val repo = services.weatherRepository
-        val fetched = runCatching {
-            repo.getObservations(location.latitude, location.longitude, ObservationWindow.Last7Days)
-        }.getOrNull()?.takeIf { it.observations.isNotEmpty() }
+        val lat = location.latitude
+        val lon = location.longitude
 
-        val series: ObservationSeries
-        val loadedAt: Long
-        val fromCache: Boolean
-        if (fetched != null) {
-            series = fetched
-            loadedAt = System.currentTimeMillis()
-            fromCache = false
-            services.snapshotStore.saveSeries(fetched, loadedAt)
-        } else {
-            // Network/source failure: fall back to the last successfully loaded data (FR-020).
-            val cached = services.snapshotStore.loadSeries(location.latitude, location.longitude)
-            if (cached == null) {
-                _uiState.value = _uiState.value.copy(isRefreshing = false, loadFailed = true)
+        var cached = services.snapshotStore.loadSeries(lat, lon)
+        if (cached != null) {
+            applySeries(cached.first, cached.second, fromCache = false)
+        }
+        val stale = cached == null || System.currentTimeMillis() - cached.second > CACHE_MAX_AGE_MS
+        val needFetch = force || stale
+
+        if (needFetch) {
+            _uiState.value = _uiState.value.copy(isRefreshing = true, isUserRefreshing = userInitiated)
+            val fetched = runCatching {
+                repo.getObservations(lat, lon, ObservationWindow.Last7Days)
+            }.getOrNull()?.takeIf { it.observations.isNotEmpty() }
+            if (fetched != null) {
+                val loadedAt = System.currentTimeMillis()
+                services.snapshotStore.saveSeries(fetched, loadedAt)
+                cached = fetched to loadedAt
+                applySeries(fetched, loadedAt, fromCache = false)
+            } else if (cached != null) {
+                // Network/source failure: keep showing the last successfully loaded data (FR-020).
+                applySeries(cached.first, cached.second, fromCache = true)
+            } else {
+                _uiState.value = _uiState.value.copy(isRefreshing = false, isUserRefreshing = false, loadFailed = true)
                 return
             }
-            series = cached.first
-            loadedAt = cached.second
-            fromCache = true
         }
 
-        val warnings = if (fromCache) {
-            emptyList()
-        } else {
-            runCatching { repo.getWarningsForLocation(location.latitude, location.longitude) }.getOrDefault(emptyList())
+        if (fetchExtras || needFetch) {
+            val warnings = runCatching { repo.getWarningsForLocation(lat, lon) }.getOrNull()
+            val uvRisk = runCatching { repo.getUvRisk(lat, lon, ObservationWindow.Last7Days) }.getOrNull()
+            _uiState.value = _uiState.value.copy(
+                warnings = warnings ?: _uiState.value.warnings,
+                uvRiskHours = uvRisk ?: _uiState.value.uvRiskHours,
+            )
         }
-        val uvRisk = if (fromCache) {
-            emptySet()
-        } else {
-            runCatching {
-                repo.getUvRisk(location.latitude, location.longitude, ObservationWindow.Last7Days)
-            }.getOrDefault(emptySet())
-        }
+        _uiState.value = _uiState.value.copy(isRefreshing = false, isUserRefreshing = false)
+    }
 
-        val latestActual = series.observations.lastOrNull { !it.isForecast }
-        val zone = ZoneId.systemDefault()
-        val today = LocalDate.now(zone)
-        val todaysRain = series.observations
-            .filter { Instant.parse(it.timestamp).atZone(zone).toLocalDate() == today }
-            .mapNotNull { it.precipitation }
-            .takeIf { it.isNotEmpty() }
-            ?.sum()
-
+    private fun applySeries(series: ObservationSeries, loadedAt: Long, fromCache: Boolean) {
+        // Forward-looking "Now" reading (web 027): nearest forecast hour, not the latest observed one.
+        val latestActual = nearestObservationOf(series.observations)
         _uiState.value = _uiState.value.copy(
             dailyAggregates = toDailyAggregates(series.observations, bucketCount = 7),
             observations = series.observations,
@@ -173,13 +174,14 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
             currentFeelsLike = latestActual?.let {
                 deriveFeelsLike(it.temperature, it.windSpeed, it.relativeHumidity?.toDouble())
             },
-            todaysRainTotalMm = todaysRain,
-            warnings = warnings,
-            uvRiskHours = uvRisk,
+            todaysRainTotalMm = sumCalendarDayPrecipitation(series.observations),
             lastUpdatedEpochMillis = loadedAt,
-            isRefreshing = false,
             loadFailed = false,
             showingCachedData = fromCache,
         )
+    }
+
+    private companion object {
+        const val CACHE_MAX_AGE_MS = 15 * 60_000L
     }
 }

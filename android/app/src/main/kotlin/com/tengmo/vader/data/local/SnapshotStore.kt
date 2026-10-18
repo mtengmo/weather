@@ -8,7 +8,10 @@ import com.tengmo.vader.data.model.CachedWeatherSnapshot
 import com.tengmo.vader.data.model.ObservationSeries
 import com.tengmo.vader.data.source.NetworkModule
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.Serializable
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 
 private val Context.snapshotDataStore by preferencesDataStore(name = "weather_snapshots")
 
@@ -48,26 +51,32 @@ class SnapshotStore(context: Context) {
     // --- full-series cache for offline display -------------------------------------------------
     // Warnings/UV aren't cached: they're SMHI extras that simply show nothing when stale.
 
-    @Serializable
-    private data class CachedSeries(val loadedAtEpochMillis: Long, val series: ObservationSeries)
+    private val seriesCache = SeriesFileCache(File(context.cacheDir, "series"), NetworkModule.json)
+    private val migratedKey = booleanPreferencesKey("series_migrated_to_files")
 
-    private fun seriesKeyFor(latitude: Double, longitude: Double) =
-        stringPreferencesKey("series_%.3f_%.3f".format(latitude, longitude))
+    /** One-time removal of the legacy `series_*` entries from the DataStore. */
+    private suspend fun migrateLegacySeries() {
+        if (dataStore.data.first()[migratedKey] == true) return
+        dataStore.edit { prefs ->
+            prefs.asMap().keys.filter { it.name.startsWith("series_") }.forEach { prefs.remove(it) }
+            prefs[migratedKey] = true
+        }
+    }
 
     suspend fun saveSeries(series: ObservationSeries, loadedAtEpochMillis: Long) {
-        val json = NetworkModule.json.encodeToString(
-            CachedSeries.serializer(),
-            CachedSeries(loadedAtEpochMillis, series),
-        )
-        dataStore.edit { it[seriesKeyFor(series.location.latitude, series.location.longitude)] = json }
+        migrateLegacySeries()
+        withContext(Dispatchers.IO) { seriesCache.save(series, loadedAtEpochMillis) }
     }
 
     /** The cached series and the time it was loaded, or null when nothing is cached (or unreadable). */
     suspend fun loadSeries(latitude: Double, longitude: Double): Pair<ObservationSeries, Long>? {
-        val raw = dataStore.data.first()[seriesKeyFor(latitude, longitude)] ?: return null
-        val cached = runCatching {
-            NetworkModule.json.decodeFromString(CachedSeries.serializer(), raw)
-        }.getOrNull() ?: return null
-        return cached.series to cached.loadedAtEpochMillis
+        migrateLegacySeries()
+        return withContext(Dispatchers.IO) { seriesCache.load(latitude, longitude) }
+    }
+
+    /** Drops cached series for every location not in [keep] (latitude to longitude). */
+    suspend fun pruneSeries(keep: Collection<Pair<Double, Double>>) {
+        val keys = keep.map { SeriesFileCache.keyFor(it.first, it.second) }.toSet()
+        withContext(Dispatchers.IO) { seriesCache.prune(keys) }
     }
 }

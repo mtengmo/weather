@@ -18,6 +18,17 @@ describe("formatValue", () => {
     expect(formatValue(1.005, 2)).toBe("1.00"); // toFixed's standard float rounding, not a bug in formatValue
     expect(formatValue(3.14159, 3)).toBe("3.142");
   });
+
+  it("shows a negative value that rounds to zero as 0, not -0", () => {
+    expect(formatValue(-0.3, 0)).toBe("0");
+    expect(formatValue(-0.04)).toBe("0.0");
+    expect(formatValue(-0.3, 0)).not.toContain("-");
+  });
+
+  it("keeps the sign for negative values that do not round to zero", () => {
+    expect(formatValue(-0.6, 0)).toBe("-1");
+    expect(formatValue(-1.5)).toBe("-1.5");
+  });
 });
 
 describe("directionToCompass (018-dashboard-visual-redesign)", () => {

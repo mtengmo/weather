@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tengmo Väder</string>
+    <string name="widget_smallDescription">Current weather for one place</string>
+    <string name="widget_mediumDescription">Today\'s weather, high/low, rain chance, and the next few hours</string>
+    <string name="widget_placeRemoved">Place removed</string>
+    <string name="widget_placeRemovedAction">Tap to choose another place</string>
+    <string name="widget_permissionNeeded">Location access needed</string>
+    <string name="widget_permissionNeededAction">Tap to allow \"all the time\" location</string>
+    <string name="widget_chooseTarget">Choose what this widget shows</string>
+    <string name="widget_targetFavorite">A favorite place</string>
+    <string name="widget_targetMyLocation">My location</string>
+    <string name="widget_lastUpdated">Updated %1$s</string>
+    <string name="widget_configureConfirm">Add widget</string>
+    <string name="permission_foregroundRationaleTitle">Location for local weather</string>
+    <string name="permission_foregroundRationale">Tengmo Väder uses your location only to show weather for where you are. It is never sent anywhere except the weather services that answer your request.</string>
+    <string name="permission_backgroundRationaleTitle">Keep this widget on your location</string>
+    <string name="permission_backgroundRationale">To keep a \"My location\" widget showing weather for wherever you are, even when the app is closed, Android needs \"Allow all the time\" location access. This is only used to refresh that widget — never sent anywhere except the weather services, and never used for anything else.</string>
+    <string name="permission_backgroundDenied">Background location was not granted. The widget will keep showing your last known location until you allow it.</string>
+    <string name="permission_grantAction">Allow location</string>
+    <string name="offline_indicator">Offline — showing data from %1$s</string>
+    <string name="offline_noData">No data yet — connect to the internet to load the weather.</string>
+    <string name="launch_loading">Loading…</string>
+    <string name="favoritesList_limitReachedTitle">Favorites limit reached</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_graph">Graph</string>
+    <string name="nav_overview">Overview</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_back">Back</string>
+    <string name="privacy_storage">This app has no account and no backend server of ours. Your favorite places, last-viewed location, widget choices and display preferences (theme, units, language) are saved only on this device and are never sent anywhere.</string>
+    <string name="privacy_location">Your location is used only to show weather for where you are. Its coordinates are sent solely to the public weather and place-name services that answer your request (SMHI, Open-Meteo, MET Norway, OpenStreetMap Nominatim), never to us. \"My location\" widgets can keep following your position while the app is closed if you allow background location; it is used for nothing else.</string>
+    <string name="privacy_noTracking">The app contains no advertising, no analytics and no tracking identifiers.</string>
+    <string name="attribution_title">Data sources</string>
+    <string name="attribution_smhi">Weather observations, forecasts, warnings and UV data: SMHI open data (Sweden\'s national weather service).</string>
+    <string name="attribution_openMeteo">Worldwide weather data and place search: Open-Meteo (open-meteo.com).</string>
+    <string name="attribution_metNo">Forecast data: MET Norway (api.met.no), licensed CC BY 4.0.</string>
+    <string name="attribution_osm">Map tiles and place names: © OpenStreetMap contributors.</string>
+    <string name="attribution_rainviewer">Radar imagery: RainViewer (rainviewer.com).</string>
+    <string name="attribution_owm">Temperature and wind map layers: OpenWeatherMap (openweathermap.org).</string>
+    <string name="locationSwitcher_a11y">Change location, showing %1$s</string>
+    <string name="locationSwitcher_searchPlaces">Search or manage places…</string>
+    <string name="freshness_updatedAt">Updated %1$s</string>
+    <string name="freshness_updating">Updating…</string>
+    <string name="freshness_refresh">Refresh</string>
+</resources>

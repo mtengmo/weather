@@ -1,6 +1,7 @@
 import type { ObservationSeries, ObservationWindow, StationInfo, WeatherObservation } from "../models/types";
 import type { WeatherCondition } from "./weatherCondition";
 import { forecastHoursFor } from "./forecastHours";
+import { stripStationAutoSuffix } from "./locationName";
 
 const BASE_URL = "https://opendata-download-metobs.smhi.se/api/version/1.0";
 const TEMPERATURE_PARAM = 1;
@@ -208,7 +209,7 @@ async function nearestActiveStations(
     .map((s) => ({
       id: s.key,
       key: s.key,
-      displayName: s.name?.trim() ? s.name : "Unnamed station",
+      displayName: s.name?.trim() ? stripStationAutoSuffix(s.name) : "Unnamed station",
       latitude: s.latitude,
       longitude: s.longitude,
       distanceKm: haversineKm(location, s),

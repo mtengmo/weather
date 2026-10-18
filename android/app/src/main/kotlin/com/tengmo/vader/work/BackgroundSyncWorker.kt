@@ -1,0 +1,78 @@
+package com.tengmo.vader.work
+
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import androidx.work.CoroutineWorker
+import androidx.work.WorkerParameters
+import com.tengmo.vader.ServiceLocator
+import com.tengmo.vader.work.sync.JobSuccessCallback
+import com.tengmo.vader.work.sync.RepositorySeriesFetcher
+import com.tengmo.vader.work.sync.RetryDecision
+import com.tengmo.vader.work.sync.SnapshotSeriesCache
+import com.tengmo.vader.work.sync.SyncEngine
+import com.tengmo.vader.work.sync.SyncMode
+import com.tengmo.vader.work.sync.SyncPlace
+import com.tengmo.vader.work.sync.SyncPlanInputs
+import com.tengmo.vader.work.sync.SyncPlanner
+import com.tengmo.vader.work.sync.SyncRole
+import kotlinx.coroutines.flow.first
+import java.time.Instant
+
+/** The single periodic background sync: plans what is stale, fetches it once, caches it and
+ *  feeds widget snapshots from the same fetched series. No GPS is used for the selected place. */
+class BackgroundSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result {
+        val services = ServiceLocator.get(applicationContext)
+        val updater = WidgetSnapshotUpdater(applicationContext)
+        val now = Instant.now()
+
+        val hasWidgets = updater.hasWidgets()
+        val widgets = if (hasWidgets) runCatching { updater.resolveWidgets() }.getOrDefault(emptyList()) else emptyList()
+        val selected = services.preferencesStore.preferences.first().lastViewedLocation
+            ?.let { SyncPlace(it.latitude, it.longitude, it.displayName) }
+        val favorites = services.favoritesStore.favorites.first().map { SyncPlace(it.latitude, it.longitude, it.displayName) }
+        val widgetPlaces = widgets.map { SyncPlace(it.location.latitude, it.location.longitude, it.location.displayName) }
+
+        val cache = SnapshotSeriesCache(services.snapshotStore)
+        val candidates = (listOfNotNull(selected) + favorites + widgetPlaces).distinctBy { it.key }
+        val ages = candidates.associate { it.key to cache.ageOf(it.key, now) }
+
+        val jobs = SyncPlanner.plan(
+            SyncPlanInputs(
+                selected = selected,
+                favorites = favorites,
+                widgetTargets = widgetPlaces,
+                cacheAge = ages,
+                now = now,
+                isUnmetered = isUnmetered(applicationContext),
+                hasWidgets = hasWidgets,
+                mode = SyncMode.FULL,
+            ),
+        )
+
+        val engine = SyncEngine(RepositorySeriesFetcher(services.weatherRepository), cache, cache)
+        val report = engine.run(
+            jobs = jobs,
+            postHooks = services.postSyncHooks,
+            mode = SyncMode.FULL,
+            keepForPrune = listOfNotNull(selected) + favorites,
+            onFetched = JobSuccessCallback { job, series, _ ->
+                if (SyncRole.WIDGET in job.roles) updater.applySeries(widgets, series)
+            },
+        )
+        if (hasWidgets && jobs.isNotEmpty()) runCatching { updater.redraw() }
+
+        return when (SyncPlanner.retryDecision(report.outcomes, runAttemptCount)) {
+            RetryDecision.RETRY -> Result.retry()
+            RetryDecision.SUCCESS -> Result.success()
+        }
+    }
+
+    private fun isUnmetered(context: Context): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }
+}

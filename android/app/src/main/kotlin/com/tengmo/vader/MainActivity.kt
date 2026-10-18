@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.theme.SystemBarsController
@@ -19,6 +21,9 @@ import kotlinx.coroutines.launch
  *  launch theme (FR-015) — the launch screen. Extends AppCompatActivity so per-app language
  *  switching (settings, FR-009) works on all supported Android versions. */
 class MainActivity : AppCompatActivity() {
+    // Bumped on each widget-tap intent; AppScaffold switches to Overview on change.
+    private var goToOverviewSignal by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Leave the window-level launch theme behind once the first frame is ready.
         setTheme(R.style.Theme_TengmoVader)
@@ -33,7 +38,10 @@ class MainActivity : AppCompatActivity() {
             val preferences by preferencesStore.preferences.collectAsState(initial = UserPreferences())
             SystemBarsController(preferences.theme)
             TengmoVaderTheme(theme = preferences.theme) {
-                AppNavHost()
+                AppNavHost(
+                    placeName = preferences.lastViewedLocation?.displayName,
+                    goToOverviewSignal = goToOverviewSignal,
+                )
             }
         }
     }
@@ -46,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleWidgetTap(intent: Intent?) {
+        if (WidgetTapHandler.locationFrom(intent) != null) goToOverviewSignal++
         lifecycleScope.launch { WidgetTapHandler.handleIntent(this@MainActivity, intent) }
     }
 }

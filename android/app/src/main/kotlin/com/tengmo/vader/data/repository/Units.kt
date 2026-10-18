@@ -26,8 +26,14 @@ fun precipitationUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) 
 fun windUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "mph" else "m/s"
 
 /** "—" for a gap, otherwise the value with fixed decimals (locale-independent, like JS toFixed). */
-fun formatValue(value: Double?, decimals: Int = 1): String =
-    if (value == null) "—" else String.format(Locale.US, "%.${decimals}f", value)
+fun formatValue(value: Double?, decimals: Int = 1): String {
+    if (value == null) return "—"
+    val formatted = String.format(Locale.US, "%.${decimals}f", value)
+    // A small negative value that rounds to zero keeps its sign ("-0"); show it as "0".
+    return if (formatted.matches(NEGATIVE_ZERO)) formatted.drop(1) else formatted
+}
+
+private val NEGATIVE_ZERO = Regex("""-0(\.0*)?""")
 
 private val COMPASS_POINTS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 

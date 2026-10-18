@@ -20,6 +20,7 @@ import com.tengmo.vader.data.repository.toDailyAggregates
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -41,6 +42,10 @@ data class GraphUiState(
     val lastUpdatedEpochMillis: Long? = null,
 )
 
+/** Preference fields that invalidate the loaded graph data. */
+internal fun graphReloadKey(p: UserPreferences): List<Any?> =
+    listOf(p.lastViewedLocation, p.unit, p.nearbyStationCount, p.highLowVisible)
+
 /** T041 — Graph view-model (US2): loads the selected location's series for the chosen window and,
  *  when `nearbyStationCount` > 0, the comparison stations' series. Because this view-model only
  *  exists while the Graph/Details screens are open, nearby-station fetching is naturally gated on
@@ -52,7 +57,12 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<GraphUiState> = _uiState.asStateFlow()
 
     init {
-        load(silent = false)
+        // Reload whenever place / units / nearby count / high-low change, so restored state is never stale.
+        viewModelScope.launch {
+            services.preferencesStore.preferences
+                .distinctUntilChanged { a, b -> graphReloadKey(a) == graphReloadKey(b) }
+                .collect { load(silent = false) }
+        }
     }
 
     /** Background refresh (RefreshCoordinator, FR-008): reloads without blanking the chart. */

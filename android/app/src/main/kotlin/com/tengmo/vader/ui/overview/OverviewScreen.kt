@@ -3,19 +3,17 @@ package com.tengmo.vader.ui.overview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,6 +28,9 @@ import com.tengmo.vader.R
 import com.tengmo.vader.ServiceLocator
 import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.data.model.WeatherObservation
+import com.tengmo.vader.data.repository.capForecastReach
+import com.tengmo.vader.data.repository.todayAggregateOf
+import com.tengmo.vader.data.repository.windowAroundToday
 import com.tengmo.vader.data.repository.convertTemperature
 import com.tengmo.vader.data.repository.formatValue
 import com.tengmo.vader.data.repository.isNight
@@ -37,7 +38,7 @@ import com.tengmo.vader.data.repository.WeatherConditionInput
 import com.tengmo.vader.data.repository.deriveWeatherCondition
 import com.tengmo.vader.location.rememberLocationPermissionState
 import com.tengmo.vader.ui.LaunchScreen
-import com.tengmo.vader.ui.OfflineIndicator
+import com.tengmo.vader.ui.DataFreshnessIndicator
 import androidx.compose.ui.platform.LocalContext
 import java.time.Instant
 import java.time.ZoneId
@@ -45,15 +46,13 @@ import java.time.format.DateTimeFormatter
 
 private val HOUR_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH")
 
-/** T037 — the Overview screen (US1): assembles the header/nav buttons, warning banner, Today
- *  summary card, hourly strip, and 7-day forecast strip, bound to [OverviewViewModel]. */
+/** T037 — the Overview screen (US1): assembles the warning banner, Today summary card, hourly
+ *  strip, and 7-day forecast strip, bound to [OverviewViewModel]. The app bar (Scaffold) shows
+ *  the place name and provides navigation, so this screen has no header or nav buttons. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OverviewScreen(
-    onOpenGraph: () -> Unit,
-    onOpenDetails: () -> Unit,
-    onOpenMap: () -> Unit,
     onOpenFavorites: () -> Unit,
-    onOpenSettings: () -> Unit,
     viewModel: OverviewViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -86,28 +85,8 @@ fun OverviewScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding(),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(stringResource(R.string.app_name), fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
-            Row {
-                TextButton(onClick = onOpenGraph) { Text(stringResource(R.string.nav_graph)) }
-                TextButton(onClick = onOpenDetails) { Text(stringResource(R.string.app_detailsButton)) }
-                TextButton(onClick = onOpenMap) { Text(stringResource(R.string.app_mapButton)) }
-            }
-        }
-        Row(Modifier.padding(horizontal = 8.dp)) {
-            TextButton(onClick = onOpenFavorites) { Text(stringResource(R.string.nav_favorites)) }
-            TextButton(onClick = onOpenSettings) { Text(stringResource(R.string.nav_settings)) }
-        }
-
         when (val loc = state.locationState) {
             is LocationLoadState.Loading -> LaunchScreen()
             is LocationLoadState.Unavailable -> LocationUnavailableView(
@@ -116,6 +95,11 @@ fun OverviewScreen(
                 onSearchPlace = onOpenFavorites,
             )
             is LocationLoadState.Ready -> {
+                PullToRefreshBox(
+                    isRefreshing = state.isUserRefreshing,
+                    onRefresh = { viewModel.refresh(force = true, userInitiated = true) },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                 Column(
                     Modifier
                         .fillMaxSize()
@@ -123,17 +107,17 @@ fun OverviewScreen(
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(loc.location.displayName, fontSize = 22.sp, color = MaterialTheme.colorScheme.onBackground)
-
                     RefreshCoordinator(
                         lastUpdatedEpochMillis = state.lastUpdatedEpochMillis,
                         enabled = !state.isRefreshing,
-                        onRefresh = viewModel::refreshCurrent,
+                        onRefresh = { viewModel.refresh(force = false, userInitiated = false) },
                     )
-                    OfflineIndicator(
-                        showingCachedData = state.showingCachedData,
+                    DataFreshnessIndicator(
                         lastUpdatedEpochMillis = state.lastUpdatedEpochMillis,
+                        isUpdating = state.isRefreshing,
+                        showingCachedData = state.showingCachedData,
                         hasAnyData = state.observations.isNotEmpty(),
+                        onRefresh = { viewModel.refresh(force = true, userInitiated = true) },
                     )
 
                     if (state.loadFailed) {
@@ -142,9 +126,8 @@ fun OverviewScreen(
 
                     WarningBanner(warnings = state.warnings.filter { !it.isInformational })
 
-                    // Today's card summarizes the rolling window ending "now" — the last
-                    // non-forecast bucket.
-                    val today = state.dailyAggregates.lastOrNull { !it.isForecast }
+                    // Today's card is forward-looking: the (now, now+24h] bucket (web 023).
+                    val today = todayAggregateOf(capForecastReach(state.dailyAggregates, 7))
                     val current = state.currentObservation
                     TodaySummaryCard(
                         today = today,
@@ -167,7 +150,8 @@ fun OverviewScreen(
 
                     HourlyStrip(state.observations, prefs)
 
-                    WeeklyForecastStrip(state.dailyAggregates, prefs.unit)
+                    WeeklyForecastStrip(windowAroundToday(capForecastReach(state.dailyAggregates, 7), 7), prefs.unit)
+                }
                 }
             }
         }

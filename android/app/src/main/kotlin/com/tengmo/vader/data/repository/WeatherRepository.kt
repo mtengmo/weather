@@ -177,13 +177,15 @@ class WeatherRepository(
     suspend fun searchPlaces(query: String): List<OpenMeteoSource.PlaceCandidate> = openMeteo.searchPlaces(query)
 
     /** Resolves a bare coordinate into a [Location] with the best available display name —
-     *  the nearest SMHI station's own name if covered, else reverse geocoding. */
+     *  reverse geocoding first (a human place name), else the nearest SMHI station's own name if
+     *  covered (matches useGeolocation.ts on web). */
     suspend fun resolveCurrentLocationName(latitude: Double, longitude: Double): Location {
-        val name = if (isSmhiCovered(latitude, longitude)) {
+        val stationName = if (isSmhiCovered(latitude, longitude)) {
             smhi.nearestStations(latitude, longitude, 1).firstOrNull()?.displayName
         } else {
             null
-        } ?: reverseGeocodeName(latitude, longitude) ?: "Current location"
+        }
+        val name = reverseGeocodeName(latitude, longitude) ?: stationName ?: "Current location"
         return Location(latitude, longitude, name, LocationSource.CurrentPosition)
     }
 }

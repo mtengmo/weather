@@ -4,14 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,7 +22,9 @@ import com.tengmo.vader.R
 
 /** Place search + favorites management screen (US3): search a place, view it or save it (max
  *  10), switch to a saved favorite or back to the current position, and remove favorites.
- *  Selecting anything returns Home, where the Overview shows it (App.tsx `selectLocation`). */
+ *  Selecting anything returns Home, where the Overview shows it (App.tsx `selectLocation`).
+ *  The app bar (Scaffold) provides the title and navigation; this screen only pads its content
+ *  and keeps the search field above the keyboard via [imePadding]. */
 @Composable
 fun FavoritesScreen(
     onHome: () -> Unit,
@@ -38,13 +39,11 @@ fun FavoritesScreen(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onHome) { Text(stringResource(R.string.app_homeButton)) }
-
         OutlinedButton(onClick = { favoritesViewModel.useCurrentLocation(onHome) }) {
             Text(stringResource(R.string.locationSwitcher_useCurrentLocation))
         }

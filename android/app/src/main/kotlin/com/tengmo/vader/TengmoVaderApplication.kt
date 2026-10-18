@@ -4,6 +4,7 @@ import android.app.Application
 import com.tengmo.vader.data.model.WidgetTargetKind
 import com.tengmo.vader.location.SignificantLocationTracker
 import com.tengmo.vader.location.hasBackgroundLocationPermission
+import com.tengmo.vader.work.BackgroundSyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,6 +23,7 @@ class TengmoVaderApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        scope.launch { runCatching { BackgroundSyncScheduler.reschedule(this@TengmoVaderApplication) } }
         scope.launch {
             runCatching {
                 val store = ServiceLocator.get(this@TengmoVaderApplication).widgetTargetStore

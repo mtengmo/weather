@@ -1,6 +1,5 @@
 package com.tengmo.vader.ui.details
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,13 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tengmo.vader.R
 import com.tengmo.vader.ui.OfflineIndicator
 import com.tengmo.vader.ui.overview.RefreshCoordinator
@@ -60,19 +55,16 @@ private val ROW_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE
  *  loading (same location, same window model) so the two views can never disagree. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DetailsScreen(onHome: () -> Unit, viewModel: GraphViewModel = viewModel()) {
+fun DetailsContent(viewModel: GraphViewModel) {
     val state by viewModel.uiState.collectAsState()
     val unit = state.preferences.unit
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TextButton(onClick = onHome) { Text(stringResource(R.string.app_homeButton)) }
         RefreshCoordinator(state.lastUpdatedEpochMillis, enabled = !state.isLoading, onRefresh = viewModel::refresh)
         OfflineIndicator(
             showingCachedData = false,

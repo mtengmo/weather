@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tengmo Väder</string>
+    <string name="widget_smallDescription">Aktuellt väder för en plats</string>
+    <string name="widget_mediumDescription">Dagens väder, högsta/lägsta, regnchans och kommande timmar</string>
+    <string name="widget_placeRemoved">Platsen borttagen</string>
+    <string name="widget_placeRemovedAction">Tryck för att välja en annan plats</string>
+    <string name="widget_permissionNeeded">Platsåtkomst behövs</string>
+    <string name="widget_permissionNeededAction">Tryck för att tillåta plats \"hela tiden\"</string>
+    <string name="widget_chooseTarget">Välj vad denna widget ska visa</string>
+    <string name="widget_targetFavorite">En favoritplats</string>
+    <string name="widget_targetMyLocation">Min plats</string>
+    <string name="widget_lastUpdated">Uppdaterad %1$s</string>
+    <string name="widget_configureConfirm">Lägg till widget</string>
+    <string name="permission_foregroundRationaleTitle">Plats för lokalt väder</string>
+    <string name="permission_foregroundRationale">Tengmo Väder använder din plats endast för att visa väder där du är. Den skickas aldrig någonstans förutom till väder­tjänsterna som svarar på din förfrågan.</string>
+    <string name="permission_backgroundRationaleTitle">Håll denna widget vid din plats</string>
+    <string name="permission_backgroundRationale">För att en \"Min plats\"-widget ska fortsätta visa väder för var du än är, även när appen är stängd, behöver Android platsåtkomst \"Hela tiden\". Detta används bara för att uppdatera den widgeten — skickas aldrig någonstans förutom till väder­tjänsterna, och används aldrig för något annat.</string>
+    <string name="permission_backgroundDenied">Bakgrundsplats tilläts inte. Widgeten fortsätter visa din senast kända plats tills du tillåter det.</string>
+    <string name="permission_grantAction">Tillåt plats</string>
+    <string name="offline_indicator">Offline — visar data från %1$s</string>
+    <string name="offline_noData">Ingen data ännu — anslut till internet för att hämta vädret.</string>
+    <string name="launch_loading">Laddar…</string>
+    <string name="favoritesList_limitReachedTitle">Favoritgränsen uppnådd</string>
+    <string name="nav_favorites">Favoriter</string>
+    <string name="nav_settings">Inställningar</string>
+    <string name="nav_graph">Graf</string>
+    <string name="nav_overview">Översikt</string>
+    <string name="nav_map">Karta</string>
+    <string name="nav_back">Tillbaka</string>
+    <string name="privacy_storage">Appen har inget konto och ingen egen backend-server. Dina favoritplatser, senast visade plats, widget-val och visningsinställningar (tema, enheter, språk) sparas bara på den här enheten och skickas aldrig någonstans.</string>
+    <string name="privacy_location">Din plats används bara för att visa väder där du är. Dess koordinater skickas enbart till de öppna väder- och ortnamnstjänster som besvarar din förfrågan (SMHI, Open-Meteo, MET Norway, OpenStreetMap Nominatim), aldrig till oss. \"Min plats\"-widgets kan följa din position även när appen är stängd om du tillåter bakgrundsplats; den används inte till något annat.</string>
+    <string name="privacy_noTracking">Appen innehåller ingen reklam, ingen analys och inga spårningsidentifierare.</string>
+    <string name="attribution_title">Datakällor</string>
+    <string name="attribution_smhi">Väderobservationer, prognoser, varningar och UV-data: SMHI:s öppna data.</string>
+    <string name="attribution_openMeteo">Väderdata för hela världen och platssökning: Open-Meteo (open-meteo.com).</string>
+    <string name="attribution_metNo">Prognosdata: MET Norway (api.met.no), licensierad CC BY 4.0.</string>
+    <string name="attribution_osm">Kartbilder och ortnamn: © OpenStreetMap-bidragsgivare.</string>
+    <string name="attribution_rainviewer">Radarbilder: RainViewer (rainviewer.com).</string>
+    <string name="attribution_owm">Kartlager för temperatur och vind: OpenWeatherMap (openweathermap.org).</string>
+    <string name="locationSwitcher_a11y">Byt plats, visar %1$s</string>
+    <string name="locationSwitcher_searchPlaces">Sök eller hantera platser…</string>
+    <string name="freshness_updatedAt">Uppdaterad %1$s</string>
+    <string name="freshness_updating">Uppdaterar…</string>
+    <string name="freshness_refresh">Uppdatera</string>
+</resources>
