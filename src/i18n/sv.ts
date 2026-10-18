@@ -35,6 +35,9 @@ export const sv: Record<string, string> = {
   "todaySummary.humidity": "Luftfuktighet",
   "todaySummary.humidityDry": "Torr",
   "todaySummary.humidityNormal": "Normal",
+  "todaySummary.more": "Mer",
+  "todaySummary.less": "Mindre",
+  "todaySummary.noticesAvailable": "Notiser finns",
   "todaySummary.humidityHigh": "Hög",
 
   "moonPhase.new": "nymåne",
@@ -93,6 +96,8 @@ export const sv: Record<string, string> = {
   "timelineRow.snow": "Snö",
 
   "weatherOverview.show48h": "Visa 48 timmar framåt",
+  "weatherOverview.goToNow": "Gå till nu",
+  "weatherOverview.show48hShort": "48 h",
   "weatherOverview.show24h": "Visa 24 timmar framåt",
   "weatherOverview.windowLabel24h": "24 timmar",
   "weatherOverview.windowLabel3d": "3 dagar",

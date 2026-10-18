@@ -1844,10 +1844,11 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent("High 15°");
-    expect(card).toHaveTextContent("Low 5°");
+    expect(card).toHaveTextContent(/High\s*15°/);
+    expect(card).toHaveTextContent(/Low\s*5°/);
     expect(card).toHaveTextContent(/Rain/);
     expect(card).toHaveTextContent(/Wind.*E/);
+    await userEvent.setup().click(within(card).getByRole("button", { name: "More" }));
     expect(card).toHaveTextContent(/Sunrise/);
     expect(card).toHaveTextContent(/Sunset/);
     expect(card).toHaveTextContent(/Moon/);
@@ -1909,6 +1910,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
+    await user.click(within(card).getByRole("button", { name: /More/ }));
     expect(card).toHaveTextContent("Risk for water shortage");
     expect(card).not.toHaveTextContent("Water levels are low.");
 
@@ -1969,6 +1971,7 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
+    await user.click(within(card).getByRole("button", { name: /More/ }));
     await user.click(within(card).getByRole("button", { name: "Risk for water shortage" }));
 
     expect(card).toHaveTextContent("Water levels are low.");
@@ -2208,8 +2211,8 @@ describe("Today summary card (018-dashboard-visual-redesign, US4)", () => {
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent("High —°");
-    expect(card).toHaveTextContent("Low —°");
+    expect(card).toHaveTextContent(/High\s*—°/);
+    expect(card).toHaveTextContent(/Low\s*—°/);
     expect(card.querySelector(".today-summary-character")).toBeNull();
   });
 
@@ -2707,8 +2710,8 @@ describe("High/Low temperature labeling (019-dashboard-polish-round-four, US6)",
     await waitFor(() => expect(getObservations).toHaveBeenCalledWith(stockholm, "last-24-hours"));
 
     const card = await screen.findByRole("region", { name: "Today" });
-    expect(card).toHaveTextContent("High 15°");
-    expect(card).toHaveTextContent("Low 5°");
+    expect(card).toHaveTextContent(/High\s*15°/);
+    expect(card).toHaveTextContent(/Low\s*5°/);
   });
 });
 

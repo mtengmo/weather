@@ -36,6 +36,9 @@ export const en: Record<string, string> = {
   "todaySummary.humidity": "Humidity",
   "todaySummary.humidityDry": "Dry",
   "todaySummary.humidityNormal": "Normal",
+  "todaySummary.more": "More",
+  "todaySummary.less": "Less",
+  "todaySummary.noticesAvailable": "Notices available",
   "todaySummary.humidityHigh": "High",
 
   "moonPhase.new": "new",
@@ -94,6 +97,8 @@ export const en: Record<string, string> = {
   "timelineRow.snow": "Snow",
 
   "weatherOverview.show48h": "Show next 48 hours",
+  "weatherOverview.goToNow": "Go to now",
+  "weatherOverview.show48hShort": "48 h",
   "weatherOverview.show24h": "Show next 24 hours",
   "weatherOverview.windowLabel24h": "24 Hours",
   "weatherOverview.windowLabel3d": "3 Days",

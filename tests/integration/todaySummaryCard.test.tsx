@@ -63,33 +63,94 @@ describe("Today summary card structure", () => {
     const { container } = renderCard();
     const high = container.querySelector(".today-summary-high")!;
     const low = container.querySelector(".today-summary-low")!;
-    expect(high).toHaveTextContent("High 14°");
-    expect(low).toHaveTextContent("Low 6°");
-    const classes = (el: Element) => Array.from(el.querySelectorAll("span")).map((s) => s.className);
+    expect(high).toHaveTextContent("High14°");
+    expect(low).toHaveTextContent("Low6°");
+    const classes = (el: Element) => Array.from(el.children).map((s) => s.className);
     expect(classes(high)).toEqual(classes(low));
   });
 
-  it("lays out Rain, Wind, Sunrise, Sunset, Moon and Humidity as label/value pairs", () => {
+  it("collapsed: one summary line (High, Low, Rain, Wind); the rest sits behind More", () => {
     renderCard();
     const card = screen.getByRole("region", { name: "Today" });
-    const labels = Array.from(card.querySelectorAll("dt")).map((e) => e.textContent);
-    expect(labels).toEqual(["Rain", "Wind", "Sunrise", "Sunset", "Moon", "Humidity"]);
-    expect(card.querySelector("dd")).toHaveTextContent("1.2 mm");
+    const line = card.querySelector(".today-summary-line")!;
+    expect(Array.from(line.querySelectorAll("dt")).map((e) => e.textContent)).toEqual(["High", "Low", "Rain", "Wind"]);
+    expect(line.querySelectorAll("dd")[2]).toHaveTextContent("1.2 mm");
+    const extra = card.querySelector(".today-summary-extra")!;
+    expect(extra).toHaveAttribute("hidden");
+    expect(Array.from(extra.querySelectorAll("dt")).map((e) => e.textContent)).toEqual([
+      "Sunrise",
+      "Sunset",
+      "Moon",
+      "Humidity",
+    ]);
+    expect(screen.queryByText("Sunrise")).not.toBeVisible();
+  });
+
+  it("More/Less toggles the details with aria-expanded and aria-controls", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const more = screen.getByRole("button", { name: "More" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    const extra = document.getElementById(more.getAttribute("aria-controls")!)!;
+    expect(extra).toHaveAttribute("hidden");
+    await user.click(more);
+    expect(screen.getByRole("button", { name: "Less" })).toHaveAttribute("aria-expanded", "true");
+    expect(extra).not.toHaveAttribute("hidden");
+    expect(screen.getByText("Sunrise")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Less" }));
+    expect(extra).toHaveAttribute("hidden");
+  });
+
+  it("shows a non-text notice dot with an accessible label only while collapsed with notices", async () => {
+    const user = userEvent.setup();
+    const { container } = renderCard({ informationalWarnings: [notice] });
+    const more = screen.getByRole("button", { name: /More/ });
+    expect(more).toHaveAccessibleName("More Notices available");
+    expect(container.querySelector(".today-summary-notice-dot")).not.toBeNull();
+    await user.click(more);
+    expect(container.querySelector(".today-summary-notice-dot")).toBeNull();
+  });
+
+  it("has no notice dot without notices", () => {
+    const { container } = renderCard();
+    expect(container.querySelector(".today-summary-notice-dot")).toBeNull();
+  });
+
+  it("uses real Swedish copy for the toggle and a long condition word without overflowing text", async () => {
+    await i18n.changeLanguage("sv");
+    renderCard({ informationalWarnings: [notice], restOfDay: { high: 1, low: 0, totalPrecipitation: 0, windAverage: 1, windDirection: 0, windGustHigh: null, pointCount: 3 } });
+    expect(screen.getByRole("button", { name: "Mer Notiser finns" })).toBeInTheDocument();
+    expect(screen.getByText("Resten av dagen")).toBeInTheDocument();
+  });
+
+  it("derives the icon from the supplied symbol code and the observation's own timestamp (icon parity)", () => {
+    const night = new Date();
+    night.setHours(2, 0, 0, 0);
+    const day = new Date();
+    day.setHours(13, 0, 0, 0);
+    const first = renderCard({ currentSymbolCode: 1, currentTimestamp: night.toISOString() });
+    const nightSrc = first.container.querySelector(".today-summary-icon img:not(.today-summary-character)")?.getAttribute("src");
+    first.unmount();
+    const second = renderCard({ currentSymbolCode: 1, currentTimestamp: day.toISOString() });
+    const daySrc = second.container.querySelector(".today-summary-icon img:not(.today-summary-character)")?.getAttribute("src");
+    expect(nightSrc).toBeTruthy();
+    expect(daySrc).toBeTruthy();
+    expect(nightSrc).not.toBe(daySrc);
   });
 
   it("uses the rest-of-day window for High/Low/Rain/Wind and captions it", () => {
     renderCard({ restOfDay: { high: 18, low: 9, totalPrecipitation: 2.5, windAverage: 3, windDirection: 90, windGustHigh: null, pointCount: 5 } });
     expect(screen.getByText("Rest of today")).toBeInTheDocument();
-    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High 18°");
-    expect(document.querySelector(".today-summary-low")).toHaveTextContent("Low 9°");
-    expect(screen.getByRole("region", { name: "Today" })).toHaveTextContent(/Rain\s*2\.5 mm/);
+    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High18°");
+    expect(document.querySelector(".today-summary-low")).toHaveTextContent("Low9°");
+    expect(screen.getByRole("region", { name: "Today" })).toHaveTextContent(/Rain2\.5 mm/);
   });
 
   it("shows dashes, not NaN, when the rest-of-day window is empty", () => {
     renderCard({ restOfDay: { high: null, low: null, totalPrecipitation: null, windAverage: null, windDirection: null, windGustHigh: null, pointCount: 0 } });
     const card = screen.getByRole("region", { name: "Today" });
     expect(card.textContent).not.toContain("NaN");
-    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High —");
+    expect(document.querySelector(".today-summary-high")).toHaveTextContent("High—");
   });
 
   it("omits Humidity when there is no humidity reading", () => {
@@ -99,12 +160,14 @@ describe("Today summary card structure", () => {
 
   it("formats sunrise on a 12-hour clock in English and a 24-hour clock in Swedish", async () => {
     const first = renderCard();
+    await userEvent.setup().click(screen.getByRole("button", { name: "More" }));
     const enSunrise = screen.getByText("Sunrise").nextElementSibling!.textContent!;
     expect(enSunrise).toMatch(/AM|PM/i);
     first.unmount();
 
     await i18n.changeLanguage("sv");
     renderCard();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Mer" }));
     const svSunrise = screen.getByText("Soluppgång").nextElementSibling!.textContent!;
     expect(svSunrise).toMatch(/^\d{2}[:.]\d{2}$/);
   });
@@ -112,6 +175,7 @@ describe("Today summary card structure", () => {
   it("renders informational notices as an expandable row with a drawn chevron", async () => {
     const user = userEvent.setup();
     renderCard({ informationalWarnings: [notice] });
+    await user.click(screen.getByRole("button", { name: /More/ }));
     const toggle = screen.getByRole("button", { name: "Risk of water shortage" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle.querySelector("svg.chevron")).not.toBeNull();

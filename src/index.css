@@ -29,6 +29,10 @@
   --row-precipitation: #5b9bd9;
   --row-snow: #dbe9f7;
   --now-accent: #5fd0ff;
+  /* Calm informational tone for SMHI MESSAGE-level notices: never red. Dot (non-text) needs
+     >=3:1 on --surface (7.3:1 here); --notice-text needs >=4.5:1 (same value, 7.3:1). */
+  --notice: #c9a86a;
+  --notice-text: #c9a86a;
 }
 
 [data-theme="ivory"] {
@@ -62,6 +66,10 @@
   --row-precipitation: #2f72b8;
   --row-snow: #4a90c2;
   --now-accent: #0369a1;
+  /* Calm informational tone, never the crimson accent. #b7791f on #fff = 3.6:1 (dot, >=3:1);
+     #9a6412 on #fff = 5.0:1 (text, >=4.5:1). */
+  --notice: #b7791f;
+  --notice-text: #9a6412;
 }
 
 :root {
@@ -538,6 +546,83 @@ a {
   box-sizing: border-box;
 }
 
+/* Strip reserved above the timeline in every mode (24h/3d/7d) so the diagram never shifts when
+   the 48 h chip (24h only) or the Go-to-Now control appears. Buttons are 44px tall hit targets
+   whose visible pill is 32px (transparent block border). */
+.weather-timeline-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: 44px;
+}
+
+.timeline-chip,
+.timeline-now-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--type-label);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The visible pill is 32px; the surrounding 44px button is the touch target. */
+.timeline-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.timeline-chip[aria-pressed="true"] .timeline-pill {
+  color: var(--text);
+  font-weight: var(--weight-strong);
+  border-color: var(--text-muted);
+}
+
+.timeline-now-button {
+  margin-inline-start: auto;
+  animation: timeline-now-button-in 160ms ease-out;
+}
+
+.timeline-now-button .timeline-pill {
+  background: var(--now-accent);
+  border-color: var(--now-accent);
+  color: var(--surface);
+  font-weight: var(--weight-strong);
+}
+
+@keyframes timeline-now-button-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-now-button {
+    animation: none;
+  }
+}
+
 /* Scrolls horizontally on a narrow screen rather than shrinking columns illegibly
    (008 FR-008, research.md §6) — same pattern as the existing .observation-table-wrap. */
 .weather-timeline-wrap {
@@ -588,6 +673,8 @@ a {
 .weather-timeline-row-time .weather-timeline-cell {
   font-weight: 600;
   color: var(--text-muted);
+  /* Room for hour label + sub-label in EVERY mode, so 24h/3d/7d never shift the rows below. */
+  min-height: 3.175rem;
 }
 
 /* Weekday label for each day's group of sub-day period columns on the 3-day view
@@ -657,6 +744,14 @@ a {
 .weather-timeline-condition-label {
   font-size: var(--type-micro);
   color: var(--text-muted);
+  /* Always two lines tall (clamped) so a long Swedish condition word never moves the rows below. */
+  min-height: 2.4em;
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
 }
 
 /* Small UV-risk badge on the existing condition icon — never a separate row/section
@@ -1060,13 +1155,13 @@ a {
 }
 
 /* Today summary card (018-dashboard-visual-redesign, US4) — persistent across all three
-   overview tabs. */
+   overview tabs. Collapsed by default: headline + one summary line; the rest sits behind "More". */
 .today-summary-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-  margin: 0.75rem 0;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0.25rem;
+  margin: 0.5rem 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1075,7 +1170,7 @@ a {
 .today-summary-top {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .today-summary-icon {
@@ -1085,17 +1180,27 @@ a {
   flex: 0 0 auto;
 }
 
+.today-summary-icon img,
+.today-summary-icon svg {
+  width: 48px;
+  height: 48px;
+}
+
 /* Cartoon companion beside the weather icon (061-cartoon-weather-companion, FR-001/FR-006) — capped
    to the icon's own height so it never grows the card or crowds the surrounding text. */
 .today-summary-character {
-  height: 64px;
+  height: 56px;
   width: auto;
 }
 
+/* Temperature and condition word share one line (the word wraps inside its own column);
+   "feels like" sits under both. */
 .today-summary-now-block {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 0.5rem;
+  row-gap: 0.1rem;
   min-width: 0;
 }
 
@@ -1113,36 +1218,95 @@ a {
 }
 
 .today-summary-feels {
+  grid-column: 1 / -1;
   font-size: var(--type-label);
   color: var(--text-muted);
 }
 
-/* High and Low carry equal weight: same colour and weight, label small/muted, value normal. */
-.today-summary-highlow {
+/* The one compact summary line: High, Low, Rain, Wind carry equal weight (label small/muted,
+   value normal); wraps rather than truncating at large text sizes. */
+.today-summary-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 2rem;
+  gap: 0.25rem 1rem;
+  margin: 0;
 }
 
-.today-summary-highlow > span {
-  display: inline-flex;
+.today-summary-line .today-summary-pair {
+  flex-direction: row;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
-/* Caption stating the window shared by High/Low/Rain/Wind; sits inline at the end of the High/Low row. */
+.today-summary-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Caption stating the window shared by High/Low/Rain/Wind. */
 .today-summary-window {
-  margin-inline-start: auto;
-  align-self: baseline;
   font-size: var(--type-label);
   color: var(--text-muted);
+}
+
+.today-summary-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.25rem 0 0.75rem;
+  margin-inline-start: auto;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  font-size: var(--type-label);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.today-summary-more:focus-visible,
+.timeline-chip:focus-visible,
+.timeline-now-button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.today-summary-more .chevron {
+  transition: transform 150ms ease;
+}
+
+.today-summary-more[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.today-summary-notice-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--notice);
+}
+
+.today-summary-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+.today-summary-extra[hidden] {
+  display: none;
 }
 
 .today-summary-grid {
   display: grid;
   /* Two columns normally; collapses to one at large text sizes so values never break mid-word. */
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
-  gap: 0.75rem 1rem;
+  gap: 0.5rem 1rem;
   margin: 0;
 }
 
@@ -1200,8 +1364,24 @@ a {
 }
 
 .today-summary-notice-toggle:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--text);
   outline-offset: 2px;
+}
+
+/* Informational tone marker: a small calm dot, never red. */
+.today-summary-notice-title {
+  color: var(--notice-text);
+  font-weight: var(--weight-medium);
+}
+
+.today-summary-notice-title::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-end: 0.5rem;
+  border-radius: 50%;
+  background: var(--notice);
 }
 
 .today-summary-notice-toggle .chevron {
@@ -1449,7 +1629,7 @@ a {
   padding: 1rem;
 }
 
-/* Overview window tabs and the 48h toggle share one row; the toggle sits at the right edge. */
+/* Overview window tabs (24h / 3d / 7d). */
 .weather-overview .window-toggle {
   display: flex;
   align-items: center;
@@ -1460,12 +1640,6 @@ a {
 .weather-overview .window-toggle button {
   margin-right: 0;
   min-height: 44px;
-}
-
-.weather-overview .window-toggle .extend-forecast-toggle {
-  margin-left: auto;
-  font-size: var(--type-label);
-  white-space: nowrap;
 }
 
 @media (max-width: 480px) {
@@ -1483,19 +1657,34 @@ a {
     white-space: nowrap;
   }
 
-  /* Phone: tighter card rhythm so the timeline starts higher; headline and facts keep their size. */
-  .today-summary-card {
-    gap: 0.6rem;
-    padding: 0.75rem;
-    margin: 0.5rem 0;
-  }
-
-  .today-summary-grid {
-    gap: 0.5rem 1rem;
+  .today-summary-icon img,
+  .today-summary-icon svg {
+    width: 40px;
+    height: 40px;
   }
 
   .today-summary-character {
-    height: 56px;
+    height: 48px;
+  }
+
+  .today-summary-now {
+    font-size: 2rem;
+  }
+
+  .today-summary-card {
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem 0;
+    margin: 0.5rem 0 0.25rem;
+  }
+
+  .today-summary-line {
+    gap: 0.125rem 0.75rem;
+  }
+
+  /* The 7 Days tab shows the same days; on a phone the strip would push the timeline below the
+     first screen (Android has no such strip either). */
+  .weekly-forecast-strip {
+    display: none;
   }
 }
 

@@ -30,6 +30,9 @@
     <string name="todaySummary_humidity">Humidity</string>
     <string name="todaySummary_humidityDry">Dry</string>
     <string name="todaySummary_humidityNormal">Normal</string>
+    <string name="todaySummary_more">More</string>
+    <string name="todaySummary_less">Less</string>
+    <string name="todaySummary_noticesAvailable">Notices available</string>
     <string name="todaySummary_humidityHigh">High</string>
     <string name="moonPhase_new">new</string>
     <string name="moonPhase_waxing_crescent">waxing crescent</string>
@@ -83,6 +86,8 @@
     <string name="timelineRow_wind">Wind</string>
     <string name="timelineRow_snow">Snow</string>
     <string name="weatherOverview_show48h">Show next 48 hours</string>
+    <string name="weatherOverview_goToNow">Go to now</string>
+    <string name="weatherOverview_show48hShort">48 h</string>
     <string name="weatherOverview_show24h">Show next 24 hours</string>
     <string name="weatherOverview_windowLabel24h">24 Hours</string>
     <string name="weatherOverview_windowLabel3d">3 Days</string>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { deriveWeatherCondition, isNight, type WeatherCondition } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
@@ -41,6 +41,12 @@ interface TodaySummaryCardProps {
    *  (050-show-humidity-level). `null`/`undefined` when there's no current reading with a
    *  humidity value — renders nothing, same as the other optional "Now"-derived fields. */
   currentHumidity?: number | null;
+  /** SMHI symbol code and timestamp of the SAME observation `currentTemperature`/`currentCondition`
+   *  come from. The icon and character are derived from these exactly as the timeline derives its
+   *  Now column (symbol code, day/night by the observation's own timestamp), so the two can never
+   *  disagree. Both optional: without them the card falls back to condition + wall-clock time. */
+  currentSymbolCode?: number | null;
+  currentTimestamp?: string | null;
 }
 
 function humidityLevelKey(percent: number): "todaySummary.humidityDry" | "todaySummary.humidityNormal" | "todaySummary.humidityHigh" {
@@ -65,8 +71,13 @@ export default function TodaySummaryCard({
   restOfDay,
   informationalWarnings,
   currentHumidity,
+  currentSymbolCode,
+  currentTimestamp,
 }: TodaySummaryCardProps) {
   const { t } = useTranslation();
+  const detailsId = useId();
+  // Session-only: the card always starts collapsed (compact first screen).
+  const [expanded, setExpanded] = useState(false);
   const [expandedNoticeIds, setExpandedNoticeIds] = useState<Set<string>>(new Set());
 
   if (today === null) return null;
@@ -93,9 +104,9 @@ export default function TodaySummaryCard({
   const characterTemperature =
     currentTemperature ?? (today.high != null && today.low != null ? (today.high + today.low) / 2 : null);
   const iconInfo = resolveConditionIconFromCondition(
-    undefined,
+    currentSymbolCode,
     condition,
-    isNight(new Date().toISOString()),
+    isNight(currentTimestamp ?? new Date().toISOString()),
     characterTemperature
   );
   const characterIcon = resolveCharacterIcon(condition, characterTemperature);
@@ -110,7 +121,7 @@ export default function TodaySummaryCard({
   const formatClock = (iso: string | null | undefined) => (iso ? formatClockTime(new Date(iso)) : "—");
   const conditionLabel = iconInfo ? t(iconInfo.label) : "—";
 
-  const details: Array<{ key: string; label: string; value: string }> = [
+  const summaryFacts: Array<{ key: string; label: string; value: string }> = [
     {
       key: "rain",
       label: t("todaySummary.rain"),
@@ -123,6 +134,8 @@ export default function TodaySummaryCard({
         windDirection != null ? ` ${directionToCompass(windDirection)}` : ""
       }`,
     },
+  ];
+  const details: Array<{ key: string; label: string; value: string }> = [
     { key: "sunrise", label: t("todaySummary.sunrise"), value: formatClock(sunrise) },
     { key: "sunset", label: t("todaySummary.sunset"), value: formatClock(sunset) },
     { key: "moon", label: t("todaySummary.moon"), value: t(`moonPhase.${moonPhase}`) },
@@ -134,6 +147,7 @@ export default function TodaySummaryCard({
       value: t(humidityLevelKey(currentHumidity)),
     });
   }
+  const hasNotices = !!informationalWarnings && informationalWarnings.length > 0;
 
   return (
     <section className="today-summary-card" aria-label={t("todaySummary.title")}>
@@ -169,48 +183,76 @@ export default function TodaySummaryCard({
           )}
         </div>
       </div>
-      <div className="today-summary-highlow">
-        <span className="today-summary-high">
-          <span className="today-summary-label">{t("todaySummary.high")}</span>{" "}
-          <span className="today-summary-value">{formatValue(convertTemperature(high, unit), 0)}°</span>
-        </span>
-        <span className="today-summary-low">
-          <span className="today-summary-label">{t("todaySummary.low")}</span>{" "}
-          <span className="today-summary-value">{formatValue(convertTemperature(low, unit), 0)}°</span>
-        </span>
-        {win && <span className="today-summary-window">{t("todaySummary.restOfDay")}</span>}
-      </div>
-      <dl className="today-summary-grid">
-        {details.map((d) => (
+      <dl className="today-summary-line">
+        <div className="today-summary-pair today-summary-high">
+          <dt className="today-summary-label">{t("todaySummary.high")}</dt>
+          <dd className="today-summary-value">{formatValue(convertTemperature(high, unit), 0)}°</dd>
+        </div>
+        <div className="today-summary-pair today-summary-low">
+          <dt className="today-summary-label">{t("todaySummary.low")}</dt>
+          <dd className="today-summary-value">{formatValue(convertTemperature(low, unit), 0)}°</dd>
+        </div>
+        {summaryFacts.map((d) => (
           <div key={d.key} className="today-summary-pair">
             <dt className="today-summary-label">{d.label}</dt>
             <dd className="today-summary-value">{d.value}</dd>
           </div>
         ))}
       </dl>
-      {informationalWarnings && informationalWarnings.length > 0 && (
-        <div className="today-summary-notices">
-          {informationalWarnings.map((warning) => {
-            const expanded = expandedNoticeIds.has(warning.id);
-            return (
-              <div key={warning.id} className="today-summary-notice">
-                <button
-                  type="button"
-                  className="today-summary-notice-toggle"
-                  aria-expanded={expanded}
-                  onClick={() => toggleNoticeExpanded(warning.id)}
-                >
-                  <span className="today-summary-notice-title">{warning.title}</span>
-                  <svg className="chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-                    <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {expanded && <p className="today-summary-notice-detail">{warning.description}</p>}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="today-summary-footer">
+        {win ? <span className="today-summary-window">{t("todaySummary.restOfDay")}</span> : <span />}
+        <button
+          type="button"
+          className="today-summary-more"
+          aria-expanded={expanded}
+          aria-controls={detailsId}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span>{expanded ? t("todaySummary.less") : t("todaySummary.more")}</span>
+          {hasNotices && !expanded && (
+            <>
+              <span className="today-summary-notice-dot" aria-hidden="true" />
+              <span className="visually-hidden">{t("todaySummary.noticesAvailable")}</span>
+            </>
+          )}
+          <svg className="chevron" viewBox="0 0 12 12" width="16" height="16" aria-hidden="true" focusable="false">
+            <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      <div id={detailsId} className="today-summary-extra" hidden={!expanded}>
+        <dl className="today-summary-grid">
+          {details.map((d) => (
+            <div key={d.key} className="today-summary-pair">
+              <dt className="today-summary-label">{d.label}</dt>
+              <dd className="today-summary-value">{d.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {hasNotices && (
+          <div className="today-summary-notices">
+            {informationalWarnings!.map((warning) => {
+              const noticeExpanded = expandedNoticeIds.has(warning.id);
+              return (
+                <div key={warning.id} className="today-summary-notice">
+                  <button
+                    type="button"
+                    className="today-summary-notice-toggle"
+                    aria-expanded={noticeExpanded}
+                    onClick={() => toggleNoticeExpanded(warning.id)}
+                  >
+                    <span className="today-summary-notice-title">{warning.title}</span>
+                    <svg className="chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+                      <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  {noticeExpanded && <p className="today-summary-notice-detail">{warning.description}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

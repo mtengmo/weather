@@ -651,6 +651,79 @@ function useTimelineWheelScroll<T extends HTMLElement>() {
   return ref;
 }
 
+type NowDirection = "left" | "right" | null;
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+}
+
+/** Where the Now marker sits relative to the horizontally scrolled viewport: "left"/"right" when it
+ *  is outside the visible range (so a Go-to-Now control is useful), null when it is in view. Driven
+ *  by the scroll container's own metrics: a passive scroll listener plus a ResizeObserver. */
+function useNowDirection(
+  wrapRef: React.RefObject<HTMLDivElement | null>,
+  nowRef: React.RefObject<HTMLDivElement | null>,
+  deps: ReadonlyArray<unknown>
+): { direction: NowDirection; goToNow: () => void } {
+  const [direction, setDirection] = useState<NowDirection>(null);
+
+  function measure(): NowDirection {
+    const wrap = wrapRef.current;
+    const now = nowRef.current;
+    if (!wrap || !now) return null;
+    const x = now.offsetLeft;
+    if (x < wrap.scrollLeft) return "left";
+    if (x > wrap.scrollLeft + wrap.clientWidth) return "right";
+    return null;
+  }
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const update = () => setDirection(measure());
+    update();
+    wrap.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    observer?.observe(wrap);
+    return () => {
+      wrap.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  function goToNow() {
+    const wrap = wrapRef.current;
+    const now = nowRef.current;
+    if (!wrap || !now) return;
+    const target = Math.max(0, Math.min(now.offsetLeft - wrap.clientWidth / 2, wrap.scrollWidth - wrap.clientWidth));
+    if (typeof wrap.scrollTo === "function") {
+      wrap.scrollTo({ left: target, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    } else {
+      wrap.scrollLeft = target;
+    }
+  }
+
+  return { direction, goToNow };
+}
+
+function ArrowIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+      <path
+        d={direction === "left" ? "M10 3 5 8l5 5" : "M6 3l5 5-5 5"}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function WeatherIconOverview({
   location,
   window,
@@ -668,6 +741,7 @@ export default function WeatherIconOverview({
   const { t } = useTranslation();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const timelineWrapRef = useTimelineWheelScroll<HTMLDivElement>();
+  const nowMarkerRef = useRef<HTMLDivElement>(null);
 
   // Local display choice, independent of the shared fetch `window` — "last-3-days" and
   // "last-7-days" both fetch via "last-7-days" (015, research.md §3), so this alone decides
@@ -836,6 +910,14 @@ export default function WeatherIconOverview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series, window, displayMode, nowLeftPercent]);
 
+  const { direction: nowDirection, goToNow } = useNowDirection(timelineWrapRef, nowMarkerRef, [
+    series,
+    window,
+    displayMode,
+    nowLeftPercent,
+    extendedForecast,
+  ]);
+
   return (
     <section aria-label={t("weatherOverview.ariaLabel", { location: location.displayName })} className="weather-overview">
       {/* Visually redundant with the app-level header's own location/conditions display
@@ -855,6 +937,8 @@ export default function WeatherIconOverview({
         restOfDay={restOfDay}
         informationalWarnings={informationalWarnings}
         currentHumidity={currentHumidity}
+        currentSymbolCode={nearestObservation?.smhiSymbolCode ?? null}
+        currentTimestamp={nearestObservation?.timestamp ?? null}
       />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast
@@ -872,16 +956,6 @@ export default function WeatherIconOverview({
             {t(w.label)}
           </button>
         ))}
-        {displayMode === "last-24-hours" && onExtendedForecastChange && (
-          <button
-            type="button"
-            className="extend-forecast-toggle"
-            aria-pressed={extendedForecast}
-            onClick={() => onExtendedForecastChange(!extendedForecast)}
-          >
-            {extendedForecast ? t("weatherOverview.show24h") : t("weatherOverview.show48h")}
-          </button>
-        )}
       </div>
 
       {series === null && <p role="status">{t("weatherOverview.loading")}</p>}
@@ -894,6 +968,43 @@ export default function WeatherIconOverview({
 
       {timeline !== null && (
         <>
+          {/* Fixed-height strip reserved in EVERY mode so the diagram never shifts between
+              24h/3d/7d: 48 h chip at the start (24h only), Go-to-Now at the end. */}
+          <div className="weather-timeline-strip">
+            {displayMode === "last-24-hours" && onExtendedForecastChange && (
+              <button
+                type="button"
+                className="timeline-chip"
+                aria-pressed={extendedForecast}
+                aria-label={t("weatherOverview.show48h")}
+                onClick={() => onExtendedForecastChange(!extendedForecast)}
+              >
+                <span className="timeline-pill">
+                  {extendedForecast && (
+                    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                      <path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                  <span aria-hidden="true">{t("weatherOverview.show48hShort")}</span>
+                </span>
+              </button>
+            )}
+            {nowDirection !== null && (
+              <button
+                type="button"
+                className="timeline-now-button"
+                data-direction={nowDirection}
+                aria-label={t("weatherOverview.goToNow")}
+                onClick={goToNow}
+              >
+                <span className="timeline-pill">
+                  {nowDirection === "left" && <ArrowIcon direction="left" />}
+                  <span aria-hidden="true">{t("weatherOverview.now")}</span>
+                  {nowDirection === "right" && <ArrowIcon direction="right" />}
+                </span>
+              </button>
+            )}
+          </div>
           <div className="weather-timeline-wrap" ref={timelineWrapRef}>
             <div className="weather-timeline">
               {/* left is a percentage of the DATA columns' own width, but this element's
@@ -904,6 +1015,7 @@ export default function WeatherIconOverview({
               {nowLeftPercent !== null && (
                 <div
                   className="weather-timeline-now"
+                  ref={nowMarkerRef}
                   style={{ left: `calc(7rem + (100% - 7rem) * ${nowLeftPercent / 100})` }}
                   aria-label={t("weatherOverview.now")}
                 >

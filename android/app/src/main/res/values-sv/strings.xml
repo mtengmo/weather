@@ -30,6 +30,9 @@
     <string name="todaySummary_humidity">Luftfuktighet</string>
     <string name="todaySummary_humidityDry">Torr</string>
     <string name="todaySummary_humidityNormal">Normal</string>
+    <string name="todaySummary_more">Mer</string>
+    <string name="todaySummary_less">Mindre</string>
+    <string name="todaySummary_noticesAvailable">Notiser finns</string>
     <string name="todaySummary_humidityHigh">Hög</string>
     <string name="moonPhase_new">nymåne</string>
     <string name="moonPhase_waxing_crescent">tilltagande månskära</string>
@@ -83,6 +86,8 @@
     <string name="timelineRow_wind">Vind</string>
     <string name="timelineRow_snow">Snö</string>
     <string name="weatherOverview_show48h">Visa 48 timmar framåt</string>
+    <string name="weatherOverview_goToNow">Gå till nu</string>
+    <string name="weatherOverview_show48hShort">48 h</string>
     <string name="weatherOverview_show24h">Visa 24 timmar framåt</string>
     <string name="weatherOverview_windowLabel24h">24 timmar</string>
     <string name="weatherOverview_windowLabel3d">3 dagar</string>
