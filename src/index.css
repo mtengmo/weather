@@ -1103,6 +1103,17 @@ a {
   background: var(--surface);
 }
 
+/* Pin the row titles on wide screens (web), where there is room for the label column; on narrow
+   screens they scroll away with their row (039-rain-percent-sticky-fix, US2: the pinned column ate
+   into the chart on mobile). */
+@media (min-width: 640px) {
+  .weather-timeline-row-title {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+}
+
 .weather-timeline-row-sublabel {
   display: block;
   font-size: var(--type-micro);

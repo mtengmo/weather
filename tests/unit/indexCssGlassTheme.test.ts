@@ -60,12 +60,16 @@ describe("New condition colors: thunderstorm, foggy, sleet (022-met-forecast-sou
   });
 });
 
-describe("Timeline row title no longer pins in place during horizontal scroll (039-rain-percent-sticky-fix, US2)", () => {
-  it("does not give .weather-timeline-row-title a sticky/fixed position", () => {
-    const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+describe("Timeline row title pins only on wide screens (039-rain-percent-sticky-fix, US2; restored for web)", () => {
+  const css = readFileSync(join(process.cwd(), "src/index.css"), "utf-8");
+  // Every @media block with its nested rules, so unconditional rules can be checked separately.
+  const mediaBlocks = [...css.matchAll(/@media[^{]*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g)].map((m) => m[0]);
+  const withoutMedia = mediaBlocks.reduce((acc, block) => acc.replace(block, ""), css);
+
+  it("does not pin .weather-timeline-row-title unconditionally (mobile scrolls it away)", () => {
     // Two separate rules share this selector (a base text-style rule and the flex/width layout
-    // rule) — check every block naming the selector, not just the first match.
-    const ruleMatches = [...css.matchAll(/\.weather-timeline-row-title\s*\{[^}]*\}/g)];
+    // rule) — check every unconditional block naming the selector, not just the first match.
+    const ruleMatches = [...withoutMedia.matchAll(/\.weather-timeline-row-title\s*\{[^}]*\}/g)];
 
     expect(ruleMatches.length).toBeGreaterThanOrEqual(2);
     // jsdom doesn't load external stylesheets, so a real scroll test can't observe this — the
@@ -75,7 +79,13 @@ describe("Timeline row title no longer pins in place during horizontal scroll (0
       expect(match[0]).not.toMatch(/position:\s*(sticky|fixed)/);
     }
     // The column's width must stay intact so every row's scrolling data still starts at the same
-    // x-offset (008 research.md §1) — only the pinning behavior was meant to go away.
+    // x-offset (008 research.md §1).
     expect(ruleMatches.some((match) => match[0].includes("width: 7rem"))).toBe(true);
+  });
+
+  it("pins it only inside a min-width media query (web)", () => {
+    const pinning = mediaBlocks.filter((b) => /\.weather-timeline-row-title\s*\{[^}]*position:\s*sticky/.test(b));
+    expect(pinning.length).toBe(1);
+    expect(pinning[0]).toMatch(/@media\s*\(min-width:\s*\d+px\)/);
   });
 });

@@ -5,8 +5,10 @@ import { formatClockTime } from "../services/timeFormat";
 /** SMHI's sjörapport as plain text, shown at the top of the sea page. Hidden on failure. */
 export default function SeaReport({ latitude, longitude }: { latitude: number; longitude: number }) {
   const { t, i18n } = useTranslation();
-  const language = i18n.language?.startsWith("sv") ? "sv" : "en";
-  const state = useSeaReport(latitude, longitude, language);
+  // Always the Swedish report: SMHI's English text is updated less often (hours older) and is
+  // heavily abbreviated, so it is both staler and harder to read than the original.
+  const state = useSeaReport(latitude, longitude, "sv");
+  const uiIsSwedish = i18n.language?.startsWith("sv");
   if (state.status !== "ready") return null;
   const { report } = state;
   const updated = report.updated ? new Date(report.updated) : null;
@@ -34,7 +36,10 @@ export default function SeaReport({ latitude, longitude }: { latitude: number; l
           ))}
         </p>
       )}
-      <p className="sea-report-source">{t("seaReport.source")}</p>
+      <p className="sea-report-source">
+        {t("seaReport.source")}
+        {!uiIsSwedish && ` · ${t("seaReport.swedishNote")}`}
+      </p>
     </section>
   );
 }

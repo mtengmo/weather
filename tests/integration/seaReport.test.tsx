@@ -52,7 +52,7 @@ describe("SeaReport", () => {
     expect(await screen.findByText("Overview sentence.")).toBeInTheDocument();
     expect(screen.getByText("Sandhamn - Landsort")).toBeInTheDocument();
     expect(screen.getByText("Area text here.")).toBeInTheDocument();
-    expect(screen.getByText("Source: SMHI")).toBeInTheDocument();
+    expect(screen.getByText(/Source: SMHI/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Sea report/ })).toBeInTheDocument();
   });
 

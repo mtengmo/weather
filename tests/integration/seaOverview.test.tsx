@@ -155,7 +155,7 @@ describe("SeaOverview", () => {
     expect(container.querySelector(".weather-timeline-row-waves-values")).toHaveTextContent("1.2 m");
     expect(container.querySelector(".weather-timeline-row-waves .weather-timeline-bar.wave-level-3")).toBeInTheDocument();
     expect(rowTitle(container, "waves")).toHaveTextContent("Kungsholmen · 0 km");
-    expect(rowTitle(container, "swell")).toHaveTextContent("Open-Meteo model");
+    expect(rowTitle(container, "swell")).toHaveTextContent("Model forecast (no station)");
     expect(rowTitle(container, "waterLevel")).toHaveTextContent("Kungsholmen · 0 km");
   });
 

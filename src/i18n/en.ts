@@ -30,11 +30,12 @@ export const en: Record<string, string> = {
   "seaWeather.sourceNote": "Waves, swell, currents: Open-Meteo Marine (model). Water level, sea temperature: SMHI observations where available.",
   "seaWeather.forecastLink": "Sea and coastal forecast at SMHI",
   "seaWeather.stationSub": "{{name}} · {{km}} km",
-  "seaWeather.modelSource": "Open-Meteo model",
+  "seaWeather.modelSource": "Model forecast (no station)",
   "seaWeather.waveLegend": "Wave height",
   "seaReport.title": "Sea report",
   "seaReport.updated": "Updated {{time}}",
   "seaReport.source": "Source: SMHI",
+  "seaReport.swedishNote": "in Swedish, as SMHI's English version is updated less often",
   "app.mapButton": "Map",
   "app.menu": "Menu",
   "app.locationUnavailable":
