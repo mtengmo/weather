@@ -1,7 +1,6 @@
 import { ConditionArtwork } from "../WindBadge";
 import { useTranslation } from "react-i18next";
 import { resolveConditionIconFromCondition } from "../smhiSymbolIcons";
-import { isNight } from "../../services/weatherCondition";
 import { formatValue } from "../../services/format";
 import type { TimelinePeriod, TimelineRow, TimelineRowPoint } from "../timelineData";
 
@@ -269,7 +268,7 @@ export function ConditionRow({
             const iconInfo = resolveConditionIconFromCondition(
               period.smhiSymbolCode,
               period.condition,
-              isNight(period.key),
+              period.isNight,
               period.temperature
             );
             const noDataLabel = t("weatherOverview.noData");

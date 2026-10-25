@@ -647,3 +647,38 @@ describe("TimelinePeriod.windy flag", () => {
     expect(calm.periods.some((p) => p.windy === true)).toBe(false);
   });
 });
+
+describe("TimelinePeriod.isNight flag", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0, 0) });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function at(day: number, hour: number): WeatherObservation {
+    return obs({ timestamp: new Date(2026, 5, day, hour, 0, 0).toISOString(), temperature: 10, windSpeed: 9 });
+  }
+
+  it("hourly: uses the real hour", () => {
+    const data = buildHourlyTimelineData(series([at(15, 12), at(14, 23)]), "metric");
+    expect(data.periods.map((p) => p.isNight)).toEqual([false, true]);
+  });
+
+  it("7-day: whole-day columns are never night", () => {
+    const data = buildDailyTimelineData(series([at(15, 12), at(15, 23), at(16, 2)]), "metric");
+    expect(data.periods.length).toBeGreaterThan(0);
+    expect(data.periods.every((p) => p.isNight === false)).toBe(true);
+  });
+
+  it("3-day: only the night bucket is night", () => {
+    const obsList = [14, 15, 16].flatMap((d) => [8, 12, 15, 19, 23].map((h) => at(d, h)));
+    const data = build3DayTimelineData(series(obsList), "metric");
+    const labels = data.periods.map((p) => p.label);
+    expect(labels).toContain(i18next.t("subDay.night"));
+    data.periods.forEach((p) => {
+      expect(p.isNight).toBe(p.label === i18next.t("subDay.night"));
+    });
+    expect(data.periods.some((p) => p.label === i18next.t("subDay.evening") && !p.isNight)).toBe(true);
+  });
+});

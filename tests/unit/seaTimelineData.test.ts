@@ -57,6 +57,7 @@ function period(endMs: number, isForecast: boolean): TimelinePeriod {
     condition: null,
     uvRisk: false,
     temperature: null,
+    isNight: false,
   };
 }
 

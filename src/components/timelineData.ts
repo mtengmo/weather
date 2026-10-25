@@ -7,7 +7,7 @@ import type {
 import i18next from "i18next";
 import { formatHourLabel, formatWeekdayDay } from "../services/timeFormat";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
-import { dailyWindSpeed, deriveDailyCondition, deriveWeatherCondition, isWindy, type WeatherCondition } from "../services/weatherCondition";
+import { dailyWindSpeed, deriveDailyCondition, deriveWeatherCondition, isNight, isWindy, type WeatherCondition } from "../services/weatherCondition";
 import { toCalendarDayAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
@@ -95,6 +95,10 @@ export interface TimelinePeriod {
    *  than omitting the icon (research.md §8). Populated the same way `smhiSymbolCode` already is,
    *  from the same source value each builder already reads for condition derivation. */
   temperature: number | null;
+  /** Whether this column should use night art for icon selection: the real hour for hourly
+   *  columns, only the 'night' sub-day bucket for the 3-day view, never for whole-day columns.
+   *  (Not derivable from `key`, which is the bucket END.) */
+  isNight: boolean;
 }
 
 /** One column's value for a single metric row. `value === null` renders as a gap (FR-006). */
@@ -343,6 +347,7 @@ export function buildHourlyTimelineData(
       uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
       smhiSymbolCode: obs.smhiSymbolCode,
       temperature: obs.temperature,
+      isNight: isNight(obs.timestamp),
     };
   });
 
@@ -421,6 +426,7 @@ function daysToTimelineData(
       windy: isWindy(dailyWindSpeed(day)),
       uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
       temperature: day.average,
+      isNight: day.subDayPeriod === "night",
     };
   });
 

@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { ConditionRow, DirectionRow, formatRowValue } from "../../src/components/timeline/rows";
 import type { TimelinePeriod, TimelineRow } from "../../src/components/timelineData";
+import { resolveConditionIconFromCondition } from "../../src/components/smhiSymbolIcons";
 
 function period(key: string): TimelinePeriod {
-  return { key, label: key, isForecast: false, condition: null, uvRisk: false, temperature: null };
+  return { key, label: key, isForecast: false, condition: null, uvRisk: false, temperature: null, isNight: false };
 }
 
 const periods = [period("a"), period("b")];
@@ -115,5 +116,27 @@ describe("ConditionRow windy artwork", () => {
     const { container } = render(<ConditionRow periods={[windy]} nowBoundaryIndex={null} />);
     expect(container.querySelectorAll(".wind-badge")).toHaveLength(1);
     expect(container.querySelector(".weather-timeline-condition")?.getAttribute("aria-label")).not.toMatch(/Windy.*Windy/);
+  });
+});
+
+describe("ConditionRow night art uses period.isNight", () => {
+  const srcOf = (p: TimelinePeriod) => {
+    const { container } = render(<ConditionRow periods={[p]} nowBoundaryIndex={null} />);
+    return container.querySelector(".weather-timeline-condition img")?.getAttribute("src");
+  };
+  const expected = (night: boolean) => {
+    const icon = resolveConditionIconFromCondition(null, "windy", night, 10);
+    return icon?.kind === "smhi-symbol" ? icon.src : undefined;
+  };
+
+  it("a windy whole-day column resolves day art, not night art", () => {
+    const col: TimelinePeriod = { ...period("2026-06-16T00:00:00"), condition: "windy", windy: true, temperature: 10, isNight: false };
+    expect(expected(true)).not.toBe(expected(false));
+    expect(srcOf(col)).toBe(expected(false));
+  });
+
+  it("a windy 23:00 hourly column resolves night art", () => {
+    const col: TimelinePeriod = { ...period("2026-06-15T21:00:00.000Z"), condition: "windy", windy: true, temperature: 10, isNight: true };
+    expect(srcOf(col)).toBe(expected(true));
   });
 });
