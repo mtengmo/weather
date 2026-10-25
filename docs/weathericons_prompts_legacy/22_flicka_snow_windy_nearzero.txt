@@ -1,0 +1,51 @@
+flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
+
+Style consistency: this is a set of flat-vector children's-book weather icons — keep the thick clean black outlines, flat cel-shading and soft rounded shapes described above, and avoid drifting toward a painterly, semi-realistic, or oversized-head "chibi" style. Draw every icon of the sheet as the SAME character, with identical face, proportions, hairstyle, outfit and colors in every column and both rows.
+
+Layout: a grid sprite sheet with exactly 2 columns and exactly 2 rows
+(4 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: bright, crisp daylight with windblown snow clouds, sparkling white highlights — small secondary touches only, never obscuring the snow cloud.
+
+Row 2 = nighttime scenes. Mood: dark navy night, glowing slanted snow catching the soft light of a smiling half moon — small secondary touches only, never obscuring the snow cloud.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
+core outfit and colors in every column of this sheet, in both rows — only
+pose/expression changes per weather type, never the clothing: medium winter jacket and hat, mittens, catching a heavy wet snowflake, visible breath, cheeks pink from the damp cold
+Exception: daylight-only accessories (e.g. sunglasses worn because of bright
+sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
+in daytime, removed/pushed up at night — if the clothing description above
+specifies a DAY/NIGHT difference. Everything else about the outfit stays
+identical between rows.
+
+CRITICAL — wind IS the subject of this sheet: in EVERY icon, in both rows, it is clearly and strongly windy (a blizzard-like gale) — the girl's pigtails and every loose piece of clothing she is actually wearing per the clothing description below (and NO item that is not listed there) are blown sideways in ONE consistent direction (left to right), she leans slightly into the wind, the snowflakes fly sideways in the same direction in slanted streaks, and 3-5 bold, simple, black-outlined white/light-blue wind swoosh lines curl around her and the snow cloud, plus 2-3 loose leaves or small bits of debris swirling in the same direction. The wind effect must be bold and instantly recognizable but must NEVER hide the snow cloud or her face. The wind direction, swoosh style and amount of effect must be IDENTICAL in every icon of the sheet, in both rows — only the snow intensity and the day/night lighting change.
+
+Character(s) for this sheet: a young girl with pigtails, clearly a child, medium winter jacket and hat, mittens, catching a heavy wet snowflake, visible breath, cheeks pink from the damp cold. Do not redesign the character between icons.
+
+Temperature band: nearzero, -5°C till 5°C
+
+CRITICAL — strict column order: the list below is FIXED. Each numbered item is exactly one column, in exactly that position — no more, no fewer. Do NOT reorder, merge, skip, duplicate, or substitute any column. Every column is WINDY (as described above).
+
+Columns, left to right (same weather type in row 1 and row 2, day mood
+above / night mood below):
+1. Windy light-to-moderate snow — pigtails and clothing whipping sideways, snowflakes streaking sideways in the wind, she braces against the gale, sparkling white highlights (day) / gently glowing slanted snow, plus a small smiling cartoon HALF moon (flat straight edge on one side, NOT a full moon, NOT a thin crescent) with a cute friendly face — two small round eyes, a tiny rosy cheek and a gentle warm SMILE — peeking out from behind the edge of the snow cloud, drawn smaller than the cloud so the snow cloud stays the main symbol (night)
+2. Windy heavy snow — near-blizzard: dense sideways snow streaks, she leans hard into the wind, snow piling up at her feet, bright crisp daylight (day) / glittering slanted heavy snow, with a small smiling cartoon HALF moon (flat straight edge on one side, NOT a full moon, NOT a thin crescent) with a cute friendly face — two small round eyes, a tiny rosy cheek and a gentle warm SMILE — peeking out from behind the edge of the snow cloud, drawn smaller than the cloud so the snow cloud stays the main symbol (night)

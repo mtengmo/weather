@@ -33,7 +33,10 @@
     { "input_file": "21_par_rain_windy_nearzero.png", "band": "nearzero",   "columns": ["rain-light-windy", "rain-heavy-windy"] },
     { "input_file": "21_par_rain_windy_mild.png",    "band": "mild",       "columns": ["rain-light-windy", "rain-heavy-windy"] },
     { "input_file": "21_par_rain_windy_warm.png",    "band": "warm",       "columns": ["rain-light-windy", "rain-heavy-windy"] },
-    { "input_file": "21_par_rain_windy_hot.png",     "band": "hot",        "columns": ["rain-light-windy", "rain-heavy-windy"] }
+    { "input_file": "21_par_rain_windy_hot.png",     "band": "hot",        "columns": ["rain-light-windy", "rain-heavy-windy"] },
+    { "input_file": "22_flicka_snow_windy_frozen.png", "band": "frozen",     "columns": ["snow-light-windy", "snow-heavy-windy"] },
+    { "input_file": "22_flicka_snow_windy_cold.png", "band": "cold",       "columns": ["snow-light-windy", "snow-heavy-windy"] },
+    { "input_file": "22_flicka_snow_windy_nearzero.png", "band": "nearzero",   "columns": ["snow-light-windy", "snow-heavy-windy"] }
   ],
   "code_mapping": {
     "clear": [1], "nearly-clear": [2], "variable": [3, 4], "cloudy": [5], "overcast": [6], "fog": [7],
