@@ -173,6 +173,16 @@ export function dailyWindSpeed(day: DailyAggregate): number | null {
 }
 
 export function deriveDailyCondition(day: DailyAggregate): WeatherCondition | null {
+  return deriveDailyConditionWith(day, true);
+}
+
+/** Same as `deriveDailyCondition` but ignoring wind: the sky/precipitation part only, used to pick
+ *  windy artwork for a windy day. */
+export function deriveDailySkyCondition(day: DailyAggregate): WeatherCondition | null {
+  return deriveDailyConditionWith(day, false);
+}
+
+function deriveDailyConditionWith(day: DailyAggregate, useWind: boolean): WeatherCondition | null {
   const hasDaytimeData =
     day.daytimeAverage != null ||
     day.daytimeTotalPrecipitation != null ||
@@ -194,7 +204,7 @@ export function deriveDailyCondition(day: DailyAggregate): WeatherCondition | nu
   return deriveWeatherCondition({
     temperature: (hasDaytimeData ? day.daytimeAverage : day.average) ?? null,
     precipitation: (hasDaytimeData ? daytimePrecipitationForCondition : day.totalPrecipitation) ?? null,
-    windSpeed: (hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null,
+    windSpeed: useWind ? ((hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null) : null,
     cloudCoverPercent: (hasDaytimeData ? day.daytimeCloudAverage : day.cloudAverage) ?? null,
     chanceOfRain: (hasDaytimeData ? day.daytimeChanceOfRainMax : day.chanceOfRainMax) ?? null,
   });

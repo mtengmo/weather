@@ -1,4 +1,4 @@
-import { deriveWeatherCondition, isNight, type WeatherCondition, type WeatherConditionInput } from "../services/weatherCondition";
+import { deriveWeatherCondition, isNight, isWindy, type WeatherCondition, type WeatherConditionInput } from "../services/weatherCondition";
 import { WEATHER_ICONS } from "./weatherIcons";
 
 export interface SmhiSymbolIconEntry {
@@ -58,7 +58,13 @@ export type WeatherType =
   | "thunder"
   | "sleet"
   | "snow-light"
-  | "snow-heavy";
+  | "snow-heavy"
+  // Wind variants (windy character artwork): sky + wind, or rain + wind.
+  | "windy-clear"
+  | "windy-variable"
+  | "windy-cloudy"
+  | "rain-light-windy"
+  | "rain-heavy-windy";
 
 /** Inverse of `sheet-manifest.json`'s `code_mapping` — every one of the 27 SMHI codes maps to
  *  exactly one of the 12 `WeatherType`s. */
@@ -176,6 +182,18 @@ const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
   sleet: 23, // Moderate sleet
 };
 
+/** Base type -> its wind-variant artwork type. Types without an entry (snow, sleet, thunder, fog)
+ *  keep their base art and get the wind badge instead. */
+const WINDY_VARIANT: Partial<Record<WeatherType, WeatherType>> = {
+  clear: "windy-clear",
+  "nearly-clear": "windy-clear",
+  variable: "windy-variable",
+  cloudy: "windy-cloudy",
+  overcast: "windy-cloudy",
+  "rain-light": "rain-light-windy",
+  "rain-heavy": "rain-heavy-windy",
+};
+
 /** Default temperature band used only when no temperature reading is available at all
  *  (063-replace-weather-icons, US3/FR-006) — the icon still renders rather than being omitted. */
 const DEFAULT_ICON_TEMP_BAND: IconTempBand = "nearzero";
@@ -198,12 +216,13 @@ function resolveFromParts(
   smhiSymbolCode: number | null | undefined,
   condition: WeatherCondition | null,
   isNightNow: boolean,
-  temperatureCelsius: number | null
+  temperatureCelsius: number | null,
+  windy: boolean,
+  skyCondition: WeatherCondition | null | undefined
 ): ResolvedConditionIcon | null {
   let code: number | undefined;
   let label: string | undefined;
   let useNightVariant = isNightNow;
-  let windy = false;
 
   if (smhiSymbolCode != null && SMHI_SYMBOL_LABELS[smhiSymbolCode] !== undefined) {
     code = smhiSymbolCode;
@@ -211,13 +230,16 @@ function resolveFromParts(
   } else if (condition !== null) {
     // Reached both when no code was given at all, and when an unrecognized/out-of-range code was
     // given (e.g. a future SMHI code this app doesn't know yet) — same best-fit fallback either way.
-    const fallbackCode = CONDITION_SMHI_FALLBACK[condition];
+    // A "windy" condition hides the sky (deriveWeatherCondition returns it before cloud cover), so
+    // the caller passes the sky-only condition separately; code 3 when missing.
+    const fallbackCode =
+      condition === "windy" ? (skyCondition != null ? CONDITION_SMHI_FALLBACK[skyCondition] : undefined) ?? 3 : CONDITION_SMHI_FALLBACK[condition];
     if (fallbackCode !== undefined) {
       code = fallbackCode;
       label = WEATHER_ICONS[condition].label;
-      windy = condition === "windy";
+      if (condition === "windy") windy = true;
       // `windy` has no night/day of its own, so it follows the caller's night flag.
-      useNightVariant = condition === "clear-night" || (windy && isNightNow);
+      useNightVariant = condition === "clear-night" || (condition === "windy" && isNightNow);
     }
   }
 
@@ -225,13 +247,23 @@ function resolveFromParts(
     const weatherType = SMHI_CODE_TO_WEATHER_TYPE[code];
     const band = temperatureCelsius === null ? DEFAULT_ICON_TEMP_BAND : mapTemperatureToIconBand(temperatureCelsius);
     const resolvedType = resolveWeatherTypeForBand(weatherType, band);
-    const artwork = WEATHER_TYPE_ARTWORK[resolvedType]?.[band];
+    let artwork = WEATHER_TYPE_ARTWORK[resolvedType]?.[band];
+    let needsBadge = windy;
+    if (artwork && windy) {
+      const windyType = WINDY_VARIANT[resolvedType];
+      const windyArtwork = windyType ? WEATHER_TYPE_ARTWORK[windyType]?.[band] : undefined;
+      if (windyArtwork?.day && windyArtwork.night) {
+        // The art itself shows the wind, so no badge on top.
+        artwork = windyArtwork;
+        needsBadge = false;
+      }
+    }
     if (artwork) {
       return {
         kind: "smhi-symbol",
         src: useNightVariant ? artwork.night : artwork.day,
         label,
-        ...(windy ? { windy: true } : {}),
+        ...(needsBadge ? { windy: true } : {}),
       };
     }
   }
@@ -252,7 +284,15 @@ export function resolveConditionIcon(
 ): ResolvedConditionIcon | null {
   const { smhiSymbolCode, ...conditionInput } = input;
   const isNightNow = input.timestamp !== undefined && isNight(input.timestamp);
-  return resolveFromParts(smhiSymbolCode, deriveWeatherCondition(conditionInput), isNightNow, input.temperature);
+  const skyCondition = deriveWeatherCondition({ ...conditionInput, windSpeed: null });
+  return resolveFromParts(
+    smhiSymbolCode,
+    deriveWeatherCondition(conditionInput),
+    isNightNow,
+    input.temperature,
+    isWindy(input.windSpeed),
+    skyCondition
+  );
 }
 
 /** Resolves a period's icon when a `WeatherCondition` has already been derived upstream (e.g.
@@ -265,7 +305,9 @@ export function resolveConditionIconFromCondition(
   smhiSymbolCode: number | null | undefined,
   condition: WeatherCondition | null,
   isNightNow: boolean = false,
-  temperatureCelsius: number | null = null
+  temperatureCelsius: number | null = null,
+  windy: boolean = false,
+  skyCondition: WeatherCondition | null = null
 ): ResolvedConditionIcon | null {
-  return resolveFromParts(smhiSymbolCode, condition, isNightNow, temperatureCelsius);
+  return resolveFromParts(smhiSymbolCode, condition, isNightNow, temperatureCelsius, windy, skyCondition);
 }

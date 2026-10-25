@@ -30,6 +30,8 @@ interface SeaSummaryCardProps {
   currentCondition: WeatherCondition | null;
   currentTemperature: number | null;
   currentSymbolCode: number | null;
+  /** Sky-only condition (wind ignored) of the same reading, for windy artwork selection. */
+  currentSkyCondition?: WeatherCondition | null;
   currentTimestamp: string | null;
 }
 
@@ -52,6 +54,7 @@ export default function SeaSummaryCard({
   currentTemperature,
   currentSymbolCode,
   currentTimestamp,
+  currentSkyCondition,
 }: SeaSummaryCardProps) {
   const { t } = useTranslation();
   const detailsId = useId();
@@ -66,7 +69,9 @@ export default function SeaSummaryCard({
     currentSymbolCode,
     currentCondition,
     isNight(currentTimestamp ?? new Date().toISOString()),
-    characterTemperature
+    characterTemperature,
+    isWindy(summary?.wind?.speed),
+    currentSkyCondition ?? null
   );
   const characterIcon = resolveCharacterIcon(currentCondition, characterTemperature);
   const conditionLabel = iconInfo ? t(iconInfo.label) : "—";
@@ -185,7 +190,7 @@ export default function SeaSummaryCard({
         >
           {iconInfo ? (
             iconInfo.kind === "smhi-symbol" ? (
-              <ConditionArtwork icon={iconInfo} size={64} windy={isWindy(summary?.wind?.speed)} />
+              <ConditionArtwork icon={iconInfo} size={64} />
             ) : (
               <iconInfo.Icon aria-hidden="true" size={64} />
             )

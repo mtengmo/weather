@@ -1,7 +1,7 @@
 import { ConditionArtwork } from "./WindBadge";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayShort } from "../services/timeFormat";
-import { dailyWindSpeed, deriveDailyCondition, isWindy } from "../services/weatherCondition";
+import { dailyWindSpeed, deriveDailyCondition, deriveDailySkyCondition, isWindy } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
@@ -27,7 +27,14 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
         // independently drift apart on whether a given day shows rain — see
         // `deriveDailyCondition`'s own doc comment for the daytime-weighting rule itself.
         const condition = deriveDailyCondition(day);
-        const iconInfo = resolveConditionIconFromCondition(undefined, condition, false, day.average);
+        const iconInfo = resolveConditionIconFromCondition(
+          undefined,
+          condition,
+          false,
+          day.average,
+          isWindy(dailyWindSpeed(day)),
+          deriveDailySkyCondition(day)
+        );
         return (
           <div
             className={[
@@ -43,7 +50,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             </span>
             {iconInfo ? (
               iconInfo.kind === "smhi-symbol" ? (
-                <ConditionArtwork icon={iconInfo} size={44} windy={isWindy(dailyWindSpeed(day))} />
+                <ConditionArtwork icon={iconInfo} size={44} />
               ) : (
                 <iconInfo.Icon aria-hidden="true" size={44} />
               )

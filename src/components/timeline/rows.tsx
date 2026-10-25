@@ -269,7 +269,9 @@ export function ConditionRow({
               period.smhiSymbolCode,
               period.condition,
               period.isNight,
-              period.temperature
+              period.temperature,
+              period.windy ?? false,
+              period.skyCondition
             );
             const noDataLabel = t("weatherOverview.noData");
             return (
@@ -287,11 +289,11 @@ export function ConditionRow({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                aria-label={`${period.label}: ${iconInfo ? t(iconInfo.label) : noDataLabel}${period.isForecast ? t("weatherOverview.forecastParenthetical") : ""}${period.windy && iconInfo && iconInfo.kind === "smhi-symbol" && !iconInfo.windy ? `, ${t("weatherCondition.windy")}` : ""}${period.uvRisk ? t("weatherOverview.highUvParenthetical") : ""}`}
+                aria-label={`${period.label}: ${iconInfo ? t(iconInfo.label) : noDataLabel}${period.isForecast ? t("weatherOverview.forecastParenthetical") : ""}${period.windy && iconInfo && iconInfo.kind === "smhi-symbol" && iconInfo.label !== "weatherCondition.windy" ? `, ${t("weatherCondition.windy")}` : ""}${period.uvRisk ? t("weatherOverview.highUvParenthetical") : ""}`}
               >
                 {iconInfo ? (
                   iconInfo.kind === "smhi-symbol" ? (
-                    <ConditionArtwork icon={iconInfo} size={44} windy={period.windy} />
+                    <ConditionArtwork icon={iconInfo} size={44} />
                   ) : (
                     <iconInfo.Icon aria-hidden="true" size={44} />
                   )

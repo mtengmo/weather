@@ -65,7 +65,7 @@ export default function SeaOverview({
   const rows = timeline !== null ? buildSeaRows(timeline, merged, unit) : null;
   const summary = summarizeSea(merged, weeklySeries?.observations ?? [], Date.now());
 
-  const { nearestObservation, currentCondition, currentTemperature } = deriveCurrentReading(weeklySeries);
+  const { nearestObservation, currentCondition, currentSkyCondition, currentTemperature } = deriveCurrentReading(weeklySeries);
 
   const stations: SeaStationInfo[] = [];
   for (const metric of SEA_METRICS) {
@@ -128,6 +128,7 @@ export default function SeaOverview({
         currentTemperature={currentTemperature}
         currentSymbolCode={nearestObservation?.smhiSymbolCode ?? null}
         currentTimestamp={nearestObservation?.timestamp ?? null}
+        currentSkyCondition={currentSkyCondition}
       />
 
       <WindowToggle displayMode={displayMode} onSelect={selectDisplayMode} windows={OVERVIEW_WINDOWS} />

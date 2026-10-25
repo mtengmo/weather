@@ -48,6 +48,10 @@ interface TodaySummaryCardProps {
    *  disagree. Both optional: without them the card falls back to condition + wall-clock time. */
   currentSymbolCode?: number | null;
   currentTimestamp?: string | null;
+  /** Wind of the SAME nearest observation (matches the "now" picture, not the rest-of-day average),
+   *  and that observation's sky-only condition — together they select the windy artwork. */
+  currentWindSpeed?: number | null;
+  currentSkyCondition?: WeatherCondition | null;
 }
 
 function humidityLevelKey(percent: number): "todaySummary.humidityDry" | "todaySummary.humidityNormal" | "todaySummary.humidityHigh" {
@@ -74,6 +78,8 @@ export default function TodaySummaryCard({
   currentHumidity,
   currentSymbolCode,
   currentTimestamp,
+  currentWindSpeed,
+  currentSkyCondition,
 }: TodaySummaryCardProps) {
   const { t } = useTranslation();
   const detailsId = useId();
@@ -108,7 +114,16 @@ export default function TodaySummaryCard({
     currentSymbolCode,
     condition,
     isNight(currentTimestamp ?? new Date().toISOString()),
-    characterTemperature
+    characterTemperature,
+    isWindy(currentWindSpeed !== undefined ? currentWindSpeed : today.windAverage),
+    currentSkyCondition ??
+      deriveWeatherCondition({
+        temperature: today.average,
+        precipitation: today.totalPrecipitation,
+        windSpeed: null,
+        cloudCoverPercent: today.cloudAverage,
+        chanceOfRain: today.chanceOfRainMax,
+      })
   );
   const characterIcon = resolveCharacterIcon(condition, characterTemperature);
   const win = restOfDay ?? null;
@@ -160,7 +175,7 @@ export default function TodaySummaryCard({
         >
           {iconInfo ? (
             iconInfo.kind === "smhi-symbol" ? (
-              <ConditionArtwork icon={iconInfo} size={64} windy={isWindy(windAverage)} />
+              <ConditionArtwork icon={iconInfo} size={64} />
             ) : (
               <iconInfo.Icon aria-hidden="true" size={64} />
             )

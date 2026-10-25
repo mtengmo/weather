@@ -86,25 +86,34 @@ describe("timeline rows", () => {
 });
 
 describe("ConditionRow windy artwork", () => {
-  it("renders artwork img plus a wind badge for a windy period, and no badge otherwise", () => {
+  it("renders windy artwork (no badge) for a windy period, and no badge otherwise", () => {
     const windy: TimelinePeriod = { ...period("w"), condition: "windy", temperature: 10 };
     const cloudy: TimelinePeriod = { ...period("c"), condition: "cloudy", temperature: 10 };
     const { container } = render(<ConditionRow periods={[windy, cloudy]} nowBoundaryIndex={null} />);
     const cells = container.querySelectorAll(".weather-timeline-condition");
     expect(cells[0].querySelector("img")).toBeInTheDocument();
-    expect(cells[0].querySelector(".wind-badge")).toBeInTheDocument();
+    // Windy art shows the wind itself at a band that has it (mild), so no badge.
+    expect(cells[0].querySelector(".wind-badge")).toBeNull();
     expect(cells[0].textContent).toContain("Windy");
     expect(cells[1].querySelector("img")).toBeInTheDocument();
     expect(cells[1].querySelector(".wind-badge")).toBeNull();
   });
 
-  it("shows the rain icon plus a wind badge for a rainy windy period, none for a calm rainy one", () => {
+  it("shows a badge on a windy period at a band with no windy art (frozen snow)", () => {
+    const snowy: TimelinePeriod = { ...period("s"), condition: "light-snow", temperature: -10, windy: true };
+    const { container } = render(<ConditionRow periods={[snowy]} nowBoundaryIndex={null} />);
+    expect(container.querySelectorAll(".wind-badge")).toHaveLength(1);
+    expect(container.querySelector(".weather-timeline-condition")?.getAttribute("aria-label")).toContain("Windy");
+  });
+
+  it("shows windy rain art without a badge for a rainy windy period, none for a calm rainy one", () => {
     const rainyWindy: TimelinePeriod = { ...period("r1"), condition: "light-rain", temperature: 10, windy: true };
     const rainyCalm: TimelinePeriod = { ...period("r2"), condition: "light-rain", temperature: 10, windy: false };
     const { container } = render(<ConditionRow periods={[rainyWindy, rainyCalm]} nowBoundaryIndex={null} />);
     const cells = container.querySelectorAll(".weather-timeline-condition");
     expect(cells[0].querySelector("img")).toBeInTheDocument();
-    expect(cells[0].querySelectorAll(".wind-badge")).toHaveLength(1);
+    expect(cells[0].querySelector(".wind-badge")).toBeNull();
+    expect(cells[0].querySelector("img")?.getAttribute("src")).not.toBe(cells[1].querySelector("img")?.getAttribute("src"));
     expect(cells[0].textContent).toContain("Light rain");
     expect(cells[0].getAttribute("aria-label")).toContain("Windy");
     expect(cells[1].querySelector(".wind-badge")).toBeNull();
@@ -112,7 +121,7 @@ describe("ConditionRow windy artwork", () => {
   });
 
   it("shows exactly one badge for the windy condition even when the period is flagged windy", () => {
-    const windy: TimelinePeriod = { ...period("w"), condition: "windy", temperature: 10, windy: true };
+    const windy: TimelinePeriod = { ...period("w"), condition: "light-snow", temperature: -10, windy: true };
     const { container } = render(<ConditionRow periods={[windy]} nowBoundaryIndex={null} />);
     expect(container.querySelectorAll(".wind-badge")).toHaveLength(1);
     expect(container.querySelector(".weather-timeline-condition")?.getAttribute("aria-label")).not.toMatch(/Windy.*Windy/);

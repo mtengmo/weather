@@ -83,7 +83,7 @@ export default function WeatherIconOverview({
   }
 
   const { weeklyDays, today, restOfDay } = deriveToday(weeklySeries);
-  const { nearestObservation, currentCondition, currentTemperature, currentHumidity, currentFeelsLike } =
+  const { nearestObservation, currentCondition, currentSkyCondition, currentTemperature, currentHumidity, currentFeelsLike } =
     deriveCurrentReading(weeklySeries);
 
   return (
@@ -107,6 +107,8 @@ export default function WeatherIconOverview({
         currentHumidity={currentHumidity}
         currentSymbolCode={nearestObservation?.smhiSymbolCode ?? null}
         currentTimestamp={nearestObservation?.timestamp ?? null}
+        currentWindSpeed={nearestObservation?.windSpeed ?? null}
+        currentSkyCondition={currentSkyCondition}
       />
       {/* A stricter "today + up to 6 days ahead" window than weeklyDays' own forecast-reach cap
           (020-dashboard-polish-round-five, US5) — this brief strip has no Observed/Forecast

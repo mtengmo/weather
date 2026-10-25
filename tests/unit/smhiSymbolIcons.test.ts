@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import type { WeatherCondition } from "../../src/services/weatherCondition";
 import {
   SMHI_CODE_TO_WEATHER_TYPE,
   WEATHER_TYPE_ARTWORK,
@@ -9,6 +10,13 @@ import {
   type IconTempBand,
   type WeatherType,
 } from "../../src/components/smhiSymbolIcons";
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0, 0) });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const ALL_BANDS: IconTempBand[] = ["frozen", "cold", "nearzero", "mild", "warm", "hot"];
 const ALL_TYPES: WeatherType[] = [
@@ -24,6 +32,11 @@ const ALL_TYPES: WeatherType[] = [
   "sleet",
   "snow-light",
   "snow-heavy",
+  "windy-clear",
+  "windy-variable",
+  "windy-cloudy",
+  "rain-light-windy",
+  "rain-heavy-windy",
 ];
 
 describe("SMHI_CODE_TO_WEATHER_TYPE (063-replace-weather-icons)", () => {
@@ -65,14 +78,18 @@ describe("WEATHER_TYPE_ARTWORK (063-replace-weather-icons)", () => {
         checked++;
       }
     }
-    // 10 types x 6 bands, minus 2 rain types x 2 cold bands and 2 snow types x 3 warm bands = 124/2 = 62 entries.
-    expect(checked).toBe(62);
+    // 62 base entries + 3 windy sky types x 6 bands + 2 windy rain types x 4 bands = 88.
+    expect(checked).toBe(88);
   });
 
   it("has no generated artwork for rain at frozen/cold or snow at mild/warm/hot (the fallback cases)", () => {
     expect(WEATHER_TYPE_ARTWORK["rain-light"]?.frozen).toBeUndefined();
     expect(WEATHER_TYPE_ARTWORK["rain-light"]?.cold).toBeUndefined();
     expect(WEATHER_TYPE_ARTWORK["rain-heavy"]?.frozen).toBeUndefined();
+    for (const type of ["rain-light-windy", "rain-heavy-windy"] as WeatherType[]) {
+      expect(WEATHER_TYPE_ARTWORK[type]?.frozen).toBeUndefined();
+      expect(WEATHER_TYPE_ARTWORK[type]?.cold).toBeUndefined();
+    }
     expect(WEATHER_TYPE_ARTWORK["rain-heavy"]?.cold).toBeUndefined();
     expect(WEATHER_TYPE_ARTWORK["snow-light"]?.mild).toBeUndefined();
     expect(WEATHER_TYPE_ARTWORK["snow-light"]?.warm).toBeUndefined();
@@ -194,19 +211,105 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     }
   });
 
-  it("gives 'windy' neutral-sky artwork flagged windy, keeping the Windy label (day and night)", () => {
+  it("gives the 'windy' condition windy art without a badge, keeping the Windy label (day and night)", () => {
     const day = resolveConditionIconFromCondition(null, "windy", false, 10);
     expect(day?.kind).toBe("smhi-symbol");
     expect(day?.label).toBe("weatherCondition.windy");
     if (day?.kind === "smhi-symbol") {
-      expect(day.windy).toBe(true);
-      expect(day.src).toBe(WEATHER_TYPE_ARTWORK.variable?.mild?.day);
+      expect(day.windy).toBeUndefined();
+      expect(day.src).toBe(WEATHER_TYPE_ARTWORK["windy-variable"]?.mild?.day);
     }
     const night = resolveConditionIconFromCondition(null, "windy", true, 10);
-    expect(night?.kind).toBe("smhi-symbol");
     if (night?.kind === "smhi-symbol") {
-      expect(night.windy).toBe(true);
-      expect(night.src).toBe(WEATHER_TYPE_ARTWORK.variable?.mild?.night);
+      expect(night.windy).toBeUndefined();
+      expect(night.src).toBe(WEATHER_TYPE_ARTWORK["windy-variable"]?.mild?.night);
+    } else {
+      throw new Error("expected artwork");
+    }
+  });
+
+  it("picks the windy sky from the sky-only condition", () => {
+    const src = (sky: WeatherCondition | null) => {
+      const i = resolveConditionIconFromCondition(null, "windy", false, 10, true, sky);
+      return i?.kind === "smhi-symbol" ? i.src : undefined;
+    };
+    expect(src("clear-day")).toBe(WEATHER_TYPE_ARTWORK["windy-clear"]?.mild?.day);
+    expect(src("partly-cloudy")).toBe(WEATHER_TYPE_ARTWORK["windy-variable"]?.mild?.day);
+    expect(src("cloudy")).toBe(WEATHER_TYPE_ARTWORK["windy-cloudy"]?.mild?.day);
+    expect(src(null)).toBe(WEATHER_TYPE_ARTWORK["windy-variable"]?.mild?.day);
+  });
+
+  it("derives the windy sky from cloud cover in resolveConditionIcon", () => {
+    const base = { temperature: 10, precipitation: 0, windSpeed: 12 };
+    const srcFor = (cloudCoverPercent: number) => {
+      const i = resolveConditionIcon({ ...base, cloudCoverPercent });
+      return i?.kind === "smhi-symbol" ? i.src : undefined;
+    };
+    expect(srcFor(10)).toBe(WEATHER_TYPE_ARTWORK["windy-clear"]?.mild?.day);
+    expect(srcFor(60)).toBe(WEATHER_TYPE_ARTWORK["windy-variable"]?.mild?.day);
+    expect(srcFor(95)).toBe(WEATHER_TYPE_ARTWORK["windy-cloudy"]?.mild?.day);
+  });
+
+  it("maps windy variants of clear/variable/cloudy/rain to windy art with no badge where art exists", () => {
+    const cases: Array<[number, WeatherType, number]> = [
+      [1, "windy-clear", 10],
+      [2, "windy-clear", 10],
+      [4, "windy-variable", 10],
+      [5, "windy-cloudy", 10],
+      [6, "windy-cloudy", 10],
+      [18, "rain-light-windy", 10],
+      [10, "rain-heavy-windy", 10],
+      [1, "windy-clear", -30], // frozen has windy sky art
+    ];
+    for (const [code, type, temp] of cases) {
+      const band = mapTemperatureToIconBand(temp);
+      const icon = resolveConditionIconFromCondition(code, null, false, temp, true);
+      expect(icon?.kind).toBe("smhi-symbol");
+      if (icon?.kind === "smhi-symbol") {
+        expect(icon.src, `code ${code}`).toBe(WEATHER_TYPE_ARTWORK[type]?.[band]?.day);
+        expect(icon.windy).toBeUndefined();
+      }
+    }
+  });
+
+  it("uses night art for windy variants when the night flag is set", () => {
+    const icon = resolveConditionIconFromCondition(18, null, true, 10, true);
+    expect(icon?.kind).toBe("smhi-symbol");
+    if (icon?.kind === "smhi-symbol") {
+      expect(icon.src).toBe(WEATHER_TYPE_ARTWORK["rain-light-windy"]?.mild?.night);
+    }
+  });
+
+  it("keeps base art plus a badge when no windy art exists (snow, sleet, thunder, fog, rain at frozen)", () => {
+    const cases: Array<[number, number, WeatherType]> = [
+      [15, -10, "snow-light"],
+      [27, -10, "snow-heavy"],
+      [11, 10, "thunder"],
+      [7, 10, "fog"],
+      [13, 0, "sleet"],
+      [18, -30, "sleet"], // rain at frozen falls back to sleet
+      [20, -10, "sleet"],
+    ];
+    for (const [code, temp, type] of cases) {
+      const band = mapTemperatureToIconBand(temp);
+      const icon = resolveConditionIconFromCondition(code, null, false, temp, true);
+      expect(icon?.kind).toBe("smhi-symbol");
+      if (icon?.kind === "smhi-symbol") {
+        expect(icon.src, `code ${code}`).toBe(WEATHER_TYPE_ARTWORK[type]?.[band]?.day);
+        expect(icon.windy).toBe(true);
+      }
+    }
+  });
+
+  it("resolveConditionIcon takes windiness from windSpeed (>= 8 m/s)", () => {
+    const calm = resolveConditionIcon({ temperature: 10, precipitation: 0.5, windSpeed: 3, cloudCoverPercent: 90 });
+    const windy = resolveConditionIcon({ temperature: 10, precipitation: 0.5, windSpeed: 9, cloudCoverPercent: 90 });
+    if (calm?.kind === "smhi-symbol" && windy?.kind === "smhi-symbol") {
+      expect(calm.src).toBe(WEATHER_TYPE_ARTWORK["rain-light"]?.mild?.day);
+      expect(windy.src).toBe(WEATHER_TYPE_ARTWORK["rain-light-windy"]?.mild?.day);
+      expect(windy.windy).toBeUndefined();
+    } else {
+      throw new Error("expected artwork");
     }
   });
 

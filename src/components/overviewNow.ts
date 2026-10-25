@@ -27,6 +27,8 @@ export function deriveToday(weeklySeries: ObservationSeries | null) {
 export function deriveCurrentReading(weeklySeries: ObservationSeries | null): {
   nearestObservation: WeatherObservation | null;
   currentCondition: WeatherCondition | null;
+  /** Same reading's sky-only condition (wind ignored), for windy artwork selection. */
+  currentSkyCondition: WeatherCondition | null;
   currentTemperature: number | null;
   currentHumidity: number | null;
   currentFeelsLike: number | null;
@@ -47,6 +49,17 @@ export function deriveCurrentReading(weeklySeries: ObservationSeries | null): {
           chanceOfRain: nearestObservation.chanceOfRain,
         })
       : null;
+  const currentSkyCondition =
+    nearestObservation != null
+      ? deriveWeatherCondition({
+          temperature: nearestObservation.temperature,
+          precipitation: nearestObservation.precipitation,
+          windSpeed: null,
+          cloudCoverPercent: nearestObservation.cloudCoverPercent,
+          timestamp: nearestObservation.timestamp,
+          chanceOfRain: nearestObservation.chanceOfRain,
+        })
+      : null;
   const currentTemperature = nearestObservation?.temperature ?? null;
   const currentHumidity = nearestObservation?.relativeHumidity ?? null;
   const currentFeelsLike =
@@ -57,5 +70,5 @@ export function deriveCurrentReading(weeklySeries: ObservationSeries | null): {
           relativeHumidity: nearestObservation.relativeHumidity ?? null,
         })
       : null;
-  return { nearestObservation, currentCondition, currentTemperature, currentHumidity, currentFeelsLike };
+  return { nearestObservation, currentCondition, currentSkyCondition, currentTemperature, currentHumidity, currentFeelsLike };
 }

@@ -7,7 +7,7 @@ import type {
 import i18next from "i18next";
 import { formatHourLabel, formatWeekdayDay } from "../services/timeFormat";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
-import { dailyWindSpeed, deriveDailyCondition, deriveWeatherCondition, isNight, isWindy, type WeatherCondition } from "../services/weatherCondition";
+import { dailyWindSpeed, deriveDailyCondition, deriveDailySkyCondition, deriveWeatherCondition, isNight, isWindy, type WeatherCondition } from "../services/weatherCondition";
 import { toCalendarDayAggregates, toSubDayBuckets } from "../services/dailyAggregation";
 import {
   convertPrecipitation,
@@ -79,6 +79,9 @@ export interface TimelinePeriod {
   /** True when this period's wind (hour's wind; bucket's average) is windy, whatever `condition`
    *  is — drives the wind badge on the icon without changing the condition or its label. */
   windy?: boolean;
+  /** The sky-only condition (wind ignored) — `condition` is "windy" whenever it's windy, which
+   *  hides the cloud cover; icon selection uses this to pick the matching windy artwork. */
+  skyCondition?: WeatherCondition | null;
   /** True when any hour within this period's span is a UV-risky hour (UV Index >= 6), per
    *  `uvRiskHours` — always `false` when no UV data is available for this period (a forecast
    *  period, a location outside SMHI coverage, or a failed fetch), never `null`/`undefined`
@@ -344,6 +347,14 @@ export function buildHourlyTimelineData(
         chanceOfRain: obs.chanceOfRain,
       }),
       windy: isWindy(obs.windSpeed),
+      skyCondition: deriveWeatherCondition({
+        temperature: obs.temperature,
+        precipitation: obs.precipitation,
+        windSpeed: null,
+        cloudCoverPercent: obs.cloudCoverPercent,
+        timestamp: obs.timestamp,
+        chanceOfRain: obs.chanceOfRain,
+      }),
       uvRisk: periodHasUvRisk(obs.isForecast ?? false, periodEndMs - 3600_000, periodEndMs, uvRiskHours),
       smhiSymbolCode: obs.smhiSymbolCode,
       temperature: obs.temperature,
@@ -424,6 +435,7 @@ function daysToTimelineData(
       // before, unchanged.
       condition: deriveDailyCondition(day),
       windy: isWindy(dailyWindSpeed(day)),
+      skyCondition: deriveDailySkyCondition(day),
       uvRisk: periodHasUvRisk(day.isForecast ?? false, periodStartMs, periodEndMs, uvRiskHours),
       temperature: day.average,
       isNight: day.subDayPeriod === "night",
