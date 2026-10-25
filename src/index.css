@@ -1697,3 +1697,14 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* Sea weather view: same card look as the other summary cards. */
+.sea-weather { display: flex; flex-direction: column; gap: 0.75rem; padding: 0 1rem 1rem; }
+.sea-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; }
+.sea-card h3 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-medium); }
+.sea-card-value { margin: 0.25rem 0 0; font-size: var(--type-display); font-weight: 600; }
+.sea-card-station { margin: 0 0 0.5rem; font-size: var(--type-label); color: var(--text-muted); }
+.sea-weather-more a { color: var(--accent); }
+.sea-window { display: flex; gap: 0.5rem; }
+.sea-window button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.875rem; font-size: var(--type-label); }
+.sea-window button[aria-pressed="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }

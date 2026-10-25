@@ -18,10 +18,11 @@ import NoLocationPrompt from "./components/NoLocationPrompt";
 import Footer from "./components/Footer";
 import DebugPanel from "./components/DebugPanel";
 import MapView from "./components/MapView";
+import SeaWeather from "./components/SeaWeather";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 import type { MultiSourceForecastEntry } from "./services/weatherApi";
 
-type View = "graph" | "details" | "overview" | "map";
+type View = "graph" | "details" | "overview" | "map" | "sea";
 
 // Display names for the footer's forecast-source attribution (022-met-forecast-source, FR-004) —
 // MET Norway's CC BY 4.0 license requires crediting it when it contributes to the blend.
@@ -160,6 +161,7 @@ export default function App() {
           onHome={viewOverview}
           onDetails={() => setView(view === "overview" ? "graph" : "details")}
           onMap={openMap}
+          onSea={() => setView("sea")}
           theme={theme}
           onThemeChange={setTheme}
           unit={unit}
@@ -238,6 +240,8 @@ export default function App() {
           onSelectLocation={selectLocation}
         />
       )}
+
+      {view === "sea" && <SeaWeather location={selected} />}
 
       <DebugPanel multiSourceForecast={multiSourceForecast} />
 

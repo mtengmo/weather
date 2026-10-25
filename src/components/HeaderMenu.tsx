@@ -6,13 +6,14 @@ import ThemeToggle from "./ThemeToggle";
 import SettingsMenu from "./SettingsMenu";
 import NearbyStationCountControl from "./NearbyStationCountControl";
 
-export type HeaderView = "graph" | "details" | "overview" | "map";
+export type HeaderView = "graph" | "details" | "overview" | "map" | "sea";
 
 interface HeaderMenuProps {
   view: HeaderView;
   onDetails: () => void;
   onHome: () => void;
   onMap: () => void;
+  onSea: () => void;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
   unit: UnitSystem;
@@ -135,7 +136,7 @@ export default function HeaderMenu(props: HeaderMenuProps) {
                   {t("app.showOverview")}
                 </button>
               )}
-              {view !== "details" && view !== "map" && (
+              {view !== "details" && view !== "map" && view !== "sea" && (
                 <button type="button" role="menuitem" className="header-menu-item" onClick={() => act(props.onDetails)}>
                   {t("app.showDetails")}
                 </button>
@@ -143,6 +144,11 @@ export default function HeaderMenu(props: HeaderMenuProps) {
               {view !== "map" && (
                 <button type="button" role="menuitem" className="header-menu-item" onClick={() => act(props.onMap)}>
                   {t("app.showMap")}
+                </button>
+              )}
+              {view !== "sea" && (
+                <button type="button" role="menuitem" className="header-menu-item" onClick={() => act(props.onSea)}>
+                  {t("app.showSeaWeather")}
                 </button>
               )}
               <ThemeToggle theme={props.theme} onThemeChange={(next) => act(() => props.onThemeChange(next))} />
