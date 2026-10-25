@@ -19,6 +19,24 @@ const DAY_MS = 86_400_000;
 
 const UNITS: Record<SeaMetric, string> = { waterLevel: "cm", waveHeight: "m", seaTemperature: "°C" };
 
+/** 00:00 and 12:00 local-time ticks across [from, to]; 12h apart for short ranges, daily for long. */
+function chartTicks(from: number, to: number, stepHours: number): number[] {
+  const ticks: number[] = [];
+  // Step in local wall-clock time so ticks stay on 00:00/12:00 across a daylight-saving change.
+  const d = new Date(from);
+  d.setHours(0, 0, 0, 0);
+  while (d.getTime() <= to) {
+    if (d.getTime() >= from) ticks.push(d.getTime());
+    d.setHours(d.getHours() + stepHours);
+  }
+  return ticks;
+}
+
+const formatTick = (ms: number) => {
+  const d = new Date(ms);
+  return d.getHours() === 0 ? formatDay(ms) : formatTime(ms);
+};
+
 const formatDay = (ms: number) => new Date(ms).toLocaleDateString([], { weekday: "short", day: "numeric" });
 const formatTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -66,11 +84,18 @@ function SeaCard({
                 type="number"
                 domain={[from, to]}
                 allowDataOverflow
-                tickFormatter={window === "24h" ? formatTime : formatDay}
+                ticks={chartTicks(from, to, window === "7d" ? 24 : 12)}
+                tickFormatter={formatTick}
                 tick={{ fontSize: 12 }}
-                minTickGap={40}
+                minTickGap={24}
               />
-              <YAxis domain={["auto", "auto"]} width={36} tick={{ fontSize: 12 }} />
+              <YAxis
+                domain={[
+                  metric === "waveHeight" ? 0 : (min: number) => Math.floor(min - 1),
+                  (max: number) => Math.ceil(max + (metric === "waterLevel" ? 1 : 0.5)),
+                ]}
+                allowDecimals={metric !== "waterLevel"}
+                tickCount={4} width={36} tick={{ fontSize: 12 }} />
               <Tooltip
                 labelFormatter={(v) => `${formatDay(Number(v))} ${formatTime(Number(v))}`}
                 formatter={(v, name) => [`${Number(v).toFixed(1)} ${UNITS[metric]}`, t(`seaWeather.${String(name)}`)]}
@@ -80,6 +105,10 @@ function SeaCard({
               <Line name="forecast" type="monotone" dataKey="forecast" stroke="var(--accent-2)" dot={false} strokeWidth={2} strokeDasharray="5 4" connectNulls isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
+          <p className="sea-card-legend" aria-hidden="true">
+            <span className="sea-legend-observed">{t("seaWeather.observed")}</span>
+            <span className="sea-legend-forecast">{t("seaWeather.forecast")}</span>
+          </p>
         </>
       )}
     </section>

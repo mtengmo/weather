@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WeatherIconOverview from "../../src/components/WeatherIconOverview";
@@ -105,6 +105,15 @@ function OverviewHarness({
     />
   );
 }
+
+// These tests build "now"-relative data from the real clock, so they were sensitive to the time of
+// day they ran at (daytime windows, day boundaries). Pin Date to a fixed local midday; timers stay real.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0, 0) });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("US1: synchronized 24h timeline", () => {
   beforeEach(() => {

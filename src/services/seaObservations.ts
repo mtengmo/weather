@@ -44,19 +44,21 @@ function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): num
   return 6371 * 2 * Math.asin(Math.sqrt(a));
 }
 
-export function nearestStation(stations: RawStation[], latitude: number, longitude: number): SeaStation | null {
-  let best: SeaStation | null = null;
+/** Active stations with a position, nearest first. */
+export function stationsByDistance(stations: RawStation[], latitude: number, longitude: number): SeaStation[] {
+  const result: SeaStation[] = [];
   for (const s of stations) {
     if (s.active === false) continue;
     const m = /Latitud:\s*(-?[\d.]+)\s*Longitud:\s*(-?[\d.]+)/.exec(s.summary);
     if (!m) continue;
     const d = distanceKm(latitude, longitude, Number(m[1]), Number(m[2]));
-    if (!best || d < best.distanceKm) {
-      best = { key: s.key, name: s.title.split(" - ").slice(1).join(" - ") || s.title, distanceKm: d };
-    }
+    result.push({ key: s.key, name: s.title.split(" - ").slice(1).join(" - ") || s.title, distanceKm: d });
   }
-  return best;
+  return result.sort((x, y) => x.distanceKm - y.distanceKm);
 }
+
+/** How many of the nearest stations to try before giving up (some "active" stations have no data). */
+const MAX_STATIONS_TRIED = 5;
 
 /** Latest-day readings from the nearest active station for a metric; null if none reports data. */
 export async function fetchSeaObservation(
@@ -69,17 +71,20 @@ export async function fetchSeaObservation(
   const listRes = await fetch(`${BASE_URL}/${parameter}.json`, { signal });
   if (!listRes.ok) throw new Error(`SMHI sea stations: ${listRes.status}`);
   const list = (await listRes.json()) as { station?: RawStation[] };
-  const station = nearestStation(list.station ?? [], latitude, longitude);
-  if (!station) return null;
+  const candidates = stationsByDistance(list.station ?? [], latitude, longitude).slice(0, MAX_STATIONS_TRIED);
 
-  const dataRes = await fetch(`${BASE_URL}/${parameter}/station/${station.key}/period/latest-day/data.json`, { signal });
-  if (!dataRes.ok) throw new Error(`SMHI sea data: ${dataRes.status}`);
-  const data = (await dataRes.json()) as { value?: { date: number; value: number | string }[] };
-  const all = (data.value ?? [])
-    .map((v) => ({ time: v.date, value: Number(v.value) }))
-    .filter((p) => Number.isFinite(p.value));
-  // Minute values for water level: thin to roughly 150 points.
-  const step = Math.max(1, Math.floor(all.length / 150));
-  const points = all.filter((_, i) => i % step === 0 || i === all.length - 1);
-  return { metric, station, points };
+  for (const station of candidates) {
+    const dataRes = await fetch(`${BASE_URL}/${parameter}/station/${station.key}/period/latest-day/data.json`, { signal });
+    if (!dataRes.ok) continue;
+    const data = (await dataRes.json()) as { value?: { date: number; value: number | string }[] };
+    const all = (data.value ?? [])
+      .map((v) => ({ time: v.date, value: Number(v.value) }))
+      .filter((p) => Number.isFinite(p.value));
+    if (all.length === 0) continue;
+    // Minute values for water level: thin to roughly 150 points.
+    const step = Math.max(1, Math.floor(all.length / 150));
+    const points = all.filter((_, i) => i % step === 0 || i === all.length - 1);
+    return { metric, station, points };
+  }
+  return null;
 }

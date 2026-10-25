@@ -147,8 +147,13 @@ describe("Go-to-Now control", () => {
   it("scrolls Now to the centre smoothly on click", async () => {
     const user = userEvent.setup();
     await renderOverview();
-    scrollTimelineTo(0);
-    await user.click(screen.getByRole("button", { name: "Go to now" }));
+    // The overview re-centres on Now whenever its series changes, so retry the scroll until late
+    // data loads have settled (flaky on slow CI otherwise).
+    const button = await waitFor(() => {
+      scrollTimelineTo(0);
+      return screen.getByRole("button", { name: "Go to now" });
+    });
+    await user.click(button);
     expect(scrollToSpy).toHaveBeenCalledWith({ left: 850, behavior: "smooth" });
   });
 

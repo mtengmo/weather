@@ -1,6 +1,15 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { restOfDayAggregate, sumCalendarDayPrecipitation, toDailyAggregates, toSubDayBuckets } from "../../src/services/dailyAggregation";
 import type { WeatherObservation } from "../../src/models/types";
+
+// These tests build "now"-relative data from the real clock, so they were sensitive to the time of
+// day they ran at (daytime windows, day boundaries). Pin Date to a fixed local midday; timers stay real.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0, 0) });
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function hoursAgo(h: number): string {
   return new Date(Date.now() - h * 3600_000).toISOString();
