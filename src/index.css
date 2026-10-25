@@ -868,6 +868,30 @@ a {
   background: var(--row-snow);
 }
 
+/* Small muted second line under a direction row's value (e.g. wave period). */
+.weather-timeline-direction-sub {
+  display: block;
+  font-size: var(--type-micro);
+  color: var(--text-muted);
+}
+
+/* Sea rows (Kustväder): lines and direction arrows get their own row colours. */
+.weather-timeline-row-seaTemperature .weather-timeline-line-observed,
+.weather-timeline-row-seaTemperature .weather-timeline-line-forecast {
+  stroke: var(--row-temperature);
+}
+
+.weather-timeline-row-waterLevel .weather-timeline-line-observed,
+.weather-timeline-row-waterLevel .weather-timeline-line-forecast {
+  stroke: var(--row-precipitation);
+}
+
+.weather-timeline-row-waves .weather-timeline-wind-arrow,
+.weather-timeline-row-swell .weather-timeline-wind-arrow,
+.weather-timeline-row-current .weather-timeline-wind-arrow {
+  color: var(--row-wind);
+}
+
 .weather-timeline-row-wind .weather-timeline-wind-arrow {
   color: var(--row-wind);
 }
@@ -1698,17 +1722,7 @@ a {
   }
 }
 
-/* Sea weather view: same card look as the other summary cards. */
-.sea-weather { display: flex; flex-direction: column; gap: 0.75rem; padding: 0 1rem 1rem; }
-.sea-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; }
-.sea-card h3 { margin: 0; font-size: var(--type-title); font-weight: var(--weight-medium); }
-.sea-card-value { margin: 0.25rem 0 0; font-size: var(--type-display); font-weight: 600; }
-.sea-card-station { margin: 0 0 0.5rem; font-size: var(--type-label); color: var(--text-muted); }
-.sea-weather-more a { color: var(--accent); }
-.sea-window { display: flex; gap: 0.5rem; }
-.sea-window button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.875rem; font-size: var(--type-label); }
-.sea-window button[aria-pressed="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-.sea-card-legend { display: flex; gap: 1rem; margin: 0.25rem 0 0; font-size: var(--type-micro); color: var(--text-muted); }
-.sea-card-legend span::before { content: ""; display: inline-block; width: 1.25rem; margin-right: 0.375rem; vertical-align: middle; border-top: 2px solid var(--accent); }
-.sea-card-legend .sea-legend-forecast::before { border-top: 2px dashed var(--accent-2); }
-.sea-weather h2 { margin: 0; }
+/* Sea weather view: reuses the Today summary card and the Overview timeline. */
+.sea-summary-station { display: block; }
+.sea-summary-source { margin: 0.5rem 0 0; font-size: var(--type-micro); color: var(--text-muted); }
+.sea-summary-source a { color: var(--accent); }

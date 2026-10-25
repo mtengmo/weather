@@ -122,9 +122,13 @@ export interface TimelineRowPoint {
    * (009-timeline-polish-and-header, FR-012/FR-013).
    */
   interpolated?: boolean;
+  /** Direction rows: a period (e.g. wave period in seconds) shown as small sub-text. */
+  period?: number | null;
+  /** True when `value` is a model value rather than an observation. */
+  modelled?: boolean;
 }
 
-export type TimelineRowKind = "line" | "bar" | "wind";
+export type TimelineRowKind = "line" | "bar" | "wind" | "direction";
 
 export interface TimelineRow {
   key: string;
@@ -134,6 +138,12 @@ export interface TimelineRow {
   label: string;
   unitLabel: string;
   kind: TimelineRowKind;
+  /** Decimals for displayed values; defaults to 0 for the temperature row and 1 otherwise. */
+  decimals?: number;
+  /** Prefix positive values with "+". */
+  signed?: boolean;
+  /** Direction rows: "from" (default, meteorological) or "toward" (arrow points along the value). */
+  directionConvention?: "from" | "toward";
   points: TimelineRowPoint[]; // same length/order as TimelineData.periods
   /** false when every point in the series lacks this field — the row is omitted (FR-011). */
   available: boolean;
@@ -536,4 +546,18 @@ export function mergeMultiSourceIntoTimelinePoints(
       point.combinedSourceCount = perSourceAverages.length;
     }
   });
+}
+
+/** Builds the timeline for an overview display mode (24h hourly, 3-day sub-day buckets, 7-day calendar). */
+export function buildTimelineForMode(
+  series: ObservationSeries,
+  unit: UnitSystem,
+  mode: "last-24-hours" | "last-3-days" | "last-7-days",
+  uvRiskHours: Set<number> = new Set()
+): TimelineData {
+  return mode === "last-24-hours"
+    ? buildHourlyTimelineData(series, unit, uvRiskHours)
+    : mode === "last-3-days"
+      ? build3DayTimelineData(series, unit, uvRiskHours)
+      : buildDailyTimelineData(series, unit, uvRiskHours);
 }

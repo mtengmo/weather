@@ -58,5 +58,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
+    // Heavy jsdom integration tests exceed the 5s default when the whole suite runs in parallel.
+    testTimeout: 20000,
   },
 });

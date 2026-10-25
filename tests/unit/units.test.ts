@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach } from "vitest";
 import {
   convertPrecipitation,
   convertTemperature,
+  convertWaterLevel,
+  convertWaveHeight,
   convertWindSpeed,
   getUnitPreference,
   setUnitPreference,
@@ -56,5 +58,18 @@ describe("unit preference persistence", () => {
   it("persists a manual override and returns it on next read", () => {
     setUnitPreference("imperial");
     expect(getUnitPreference()).toBe("imperial");
+  });
+});
+
+describe("convertWaveHeight / convertWaterLevel", () => {
+  it("passes null through", () => {
+    expect(convertWaveHeight(null, "imperial")).toBeNull();
+    expect(convertWaterLevel(null, "imperial")).toBeNull();
+  });
+  it("converts m to ft and cm to in", () => {
+    expect(convertWaveHeight(1, "imperial")).toBeCloseTo(3.28084);
+    expect(convertWaveHeight(1.5, "metric")).toBe(1.5);
+    expect(convertWaterLevel(254, "imperial")).toBeCloseTo(100);
+    expect(convertWaterLevel(-12, "metric")).toBe(-12);
   });
 });

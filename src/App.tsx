@@ -18,7 +18,7 @@ import NoLocationPrompt from "./components/NoLocationPrompt";
 import Footer from "./components/Footer";
 import DebugPanel from "./components/DebugPanel";
 import MapView from "./components/MapView";
-import SeaWeather from "./components/SeaWeather";
+import SeaOverview from "./components/SeaOverview";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 import type { MultiSourceForecastEntry } from "./services/weatherApi";
 
@@ -126,6 +126,14 @@ export default function App() {
     setView("overview");
   }
 
+  function viewSea() {
+    // Same 24h/3d/7d-only display as the Overview — fall back from a 30-day shared window.
+    if (obsWindow === "last-30-days") {
+      setObsWindow("last-24-hours");
+    }
+    setView("sea");
+  }
+
   function openMap() {
     setView("map");
   }
@@ -161,7 +169,7 @@ export default function App() {
           onHome={viewOverview}
           onDetails={() => setView(view === "overview" ? "graph" : "details")}
           onMap={openMap}
-          onSea={() => setView("sea")}
+          onSea={viewSea}
           theme={theme}
           onThemeChange={setTheme}
           unit={unit}
@@ -241,7 +249,21 @@ export default function App() {
         />
       )}
 
-      {view === "sea" && <SeaWeather location={selected} />}
+      {selected && view === "sea" && (
+        <SeaOverview
+          location={selected}
+          window={obsWindow}
+          onWindowChange={setObsWindow}
+          unit={unit}
+          series={series}
+          highLowVisible={highLowVisible}
+          multiSourceForecast={multiSourceForecast}
+          weeklySeries={weeklySeries}
+          uvRiskHours={uvRiskHours}
+          extendedForecast={extendedForecast}
+          onExtendedForecastChange={setExtendedForecast}
+        />
+      )}
 
       <DebugPanel multiSourceForecast={multiSourceForecast} />
 

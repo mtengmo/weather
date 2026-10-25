@@ -37,3 +37,15 @@ export function convertWindSpeed(ms: number | null, to: UnitSystem): number | nu
   if (ms === null) return null;
   return to === "imperial" ? ms * 2.23694 : ms;
 }
+
+/** Wave height in m (metric) or ft (imperial). */
+export function convertWaveHeight(meters: number | null, to: UnitSystem): number | null {
+  if (meters === null) return null;
+  return to === "imperial" ? meters * 3.28084 : meters;
+}
+
+/** Water level in cm (metric) or inches (imperial). */
+export function convertWaterLevel(cm: number | null, to: UnitSystem): number | null {
+  if (cm === null) return null;
+  return to === "imperial" ? cm / 2.54 : cm;
+}

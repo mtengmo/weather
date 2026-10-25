@@ -77,13 +77,10 @@ export async function fetchSeaObservation(
     const dataRes = await fetch(`${BASE_URL}/${parameter}/station/${station.key}/period/latest-day/data.json`, { signal });
     if (!dataRes.ok) continue;
     const data = (await dataRes.json()) as { value?: { date: number; value: number | string }[] };
-    const all = (data.value ?? [])
+    const points = (data.value ?? [])
       .map((v) => ({ time: v.date, value: Number(v.value) }))
       .filter((p) => Number.isFinite(p.value));
-    if (all.length === 0) continue;
-    // Minute values for water level: thin to roughly 150 points.
-    const step = Math.max(1, Math.floor(all.length / 150));
-    const points = all.filter((_, i) => i % step === 0 || i === all.length - 1);
+    if (points.length === 0) continue;
     return { metric, station, points };
   }
   return null;
