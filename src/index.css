@@ -8,6 +8,12 @@
   --accent: #c9a86a;
   --accent-2: #3a7d7a;
   --border: #2e323d;
+  /* Wave-height levels; each >=3:1 on --surface #1c1f27. */
+  --wave-1: #3fbfa8;
+  --wave-2: #a3c93a;
+  --wave-3: #f0b429;
+  --wave-4: #f47c3c;
+  --wave-5: #ef4444;
   --surface-alpha: 1;
   --surface-blur: 0px;
   --error-bg: #3a2323;
@@ -44,6 +50,12 @@
   --accent: #e01050;
   --accent-2: #00d4b5;
   --border: #e5e1e6;
+  /* Wave-height levels; each >=3:1 on #fff. */
+  --wave-1: #0f8f7a;
+  --wave-2: #5f8a0e;
+  --wave-3: #b7791f;
+  --wave-4: #d1560f;
+  --wave-5: #c81e1e;
   --surface-alpha: 1;
   --surface-blur: 0px;
   --error-bg: #ffe3e8;
@@ -1726,3 +1738,32 @@ a {
 .sea-summary-station { display: block; }
 .sea-summary-source { margin: 0.5rem 0 0; font-size: var(--type-micro); color: var(--text-muted); }
 .sea-summary-source a { color: var(--accent); }
+
+/* Sea: wave columns coloured by height level (1 calm .. 5 rough). */
+.weather-timeline-bar.wave-level-1, .sea-wave-legend-swatch.wave-level-1 { background: var(--wave-1); }
+.weather-timeline-bar.wave-level-2, .sea-wave-legend-swatch.wave-level-2 { background: var(--wave-2); }
+.weather-timeline-bar.wave-level-3, .sea-wave-legend-swatch.wave-level-3 { background: var(--wave-3); }
+.weather-timeline-bar.wave-level-4, .sea-wave-legend-swatch.wave-level-4 { background: var(--wave-4); }
+.weather-timeline-bar.wave-level-5, .sea-wave-legend-swatch.wave-level-5 { background: var(--wave-5); }
+.weather-timeline-bar-modelled { outline: 1px dashed var(--text-muted); outline-offset: -1px; opacity: 0.75; }
+.weather-timeline-row-waves-values .weather-timeline-wind-arrow,
+.weather-timeline-row-swell-values .weather-timeline-wind-arrow { color: var(--row-wind); }
+.weather-timeline-bar-value .weather-timeline-wind-arrow { display: block; }
+.sea-wave-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin: 0.5rem 0 0; padding: 0; font-size: var(--type-micro); color: var(--text-muted); }
+.sea-wave-legend-swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; vertical-align: -0.1rem; }
+.sea-summary-pair-source { display: block; font-size: var(--type-micro); color: var(--text-muted); }
+
+/* Sjorapport */
+.sea-report { margin: 0 0 1rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.sea-report-heading { margin: 0 0 0.4rem; font-size: var(--type-body); }
+.sea-report-updated { font-weight: 400; color: var(--text-muted); font-size: var(--type-micro); }
+.sea-report-area { margin: 0.6rem 0 0.2rem; font-size: var(--type-data); }
+.sea-report p { margin: 0 0 0.4rem; }
+.sea-report-source { font-size: var(--type-micro); color: var(--text-muted); }
+
+/* Forecast wave columns keep their height colour (the generic forecast dimming made them muddy);
+   forecast stays distinguishable by a dashed top edge. */
+.weather-timeline-bar.weather-timeline-bar-forecast[class*="wave-level-"] {
+  opacity: 0.9;
+  border-top: 2px dashed var(--text);
+}

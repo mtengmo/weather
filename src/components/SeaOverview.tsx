@@ -3,14 +3,16 @@ import { useTranslation } from "react-i18next";
 import type { Location, ObservationSeries, ObservationWindow, UnitSystem } from "../models/types";
 import type { MultiSourceForecastEntry } from "../services/weatherApi";
 import { useSeaData } from "../hooks/useSeaData";
-import { SEA_METRICS } from "../services/seaObservations";
+import { SEA_METRICS, type SeaMetric } from "../services/seaObservations";
 import { buildTimelineForMode, mergeMultiSourceIntoTimelinePoints, type TimelineData, type TimelineRowPoint } from "./timelineData";
 import { buildSeaRows, mergeObservedAndModel, summarizeSea } from "./seaTimelineData";
-import SeaSummaryCard, { type SeaStationInfo } from "./SeaSummaryCard";
+import SeaSummaryCard, { type SeaStationInfo, type SeaSummaryMetricStations } from "./SeaSummaryCard";
 import { deriveCurrentReading } from "./overviewNow";
 import { OVERVIEW_WINDOWS, useOverviewDisplayMode } from "./timeline/useOverviewDisplayMode";
 import { TimelineFrame, WindowToggle } from "./timeline/TimelineFrame";
 import { BarRow, ConditionRow, DirectionRow, WindRow, formatRowValue } from "./timeline/rows";
+import SeaReport from "./SeaReport";
+import { WAVE_LEVEL_LOWER_BOUNDS_M, waveHeightLevel } from "../services/waveLevel";
 import { LineRow } from "./timeline/lineRow";
 
 interface SeaOverviewProps {
@@ -83,6 +85,24 @@ export default function SeaOverview({
     merged.seaTemperature.length === 0 &&
     merged.waterLevel.length === 0;
 
+  const stationLabel = (metric: SeaMetric): string => {
+    const station = sea.observations[metric]?.station;
+    return station
+      ? t("seaWeather.stationSub", { name: station.name, km: Math.round(station.distanceKm) })
+      : t("seaWeather.modelSource");
+  };
+  const modelLabel = t("seaWeather.modelSource");
+  const metricStations: SeaSummaryMetricStations = {};
+  for (const metric of SEA_METRICS) {
+    const station = sea.observations[metric]?.station;
+    if (station) metricStations[metric] = { name: station.name, distanceKm: station.distanceKm };
+  }
+  const waveBarClass = (point: TimelineRowPoint) => {
+    if (point.value === null) return undefined;
+    const meters = unit === "imperial" ? point.value / 3.28084 : point.value;
+    return `wave-level-${waveHeightLevel(meters)}`;
+  };
+
   const heightText = (point: TimelineRowPoint, row: Parameters<typeof formatRowValue>[0]) => (
     <>
       {formatRowValue(row, point.value as number)}
@@ -96,7 +116,10 @@ export default function SeaOverview({
         {location.displayName} {t("seaWeather.title")}
       </h2>
 
+      <SeaReport latitude={location.latitude} longitude={location.longitude} />
+
       <SeaSummaryCard
+        metricStations={metricStations}
         summary={summary}
         unit={unit}
         location={location}
@@ -138,16 +161,43 @@ export default function SeaOverview({
               <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.probability")} />
               <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.gusts")} />
               {rows.waves.available && (
-                <DirectionRow row={rows.waves} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} renderText={heightText} />
+                <BarRow
+                  row={rows.waves}
+                  periods={timeline.periods}
+                  nowBoundaryIndex={nowHighlightBoundary}
+                  subLabel={stationLabel("waveHeight")}
+                  barClass={waveBarClass}
+                  renderValue={heightText}
+                />
               )}
               {rows.swell.available && (
-                <DirectionRow row={rows.swell} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} renderText={heightText} />
+                <BarRow
+                  row={rows.swell}
+                  periods={timeline.periods}
+                  nowBoundaryIndex={nowHighlightBoundary}
+                  subLabel={modelLabel}
+                  barClass={waveBarClass}
+                  renderValue={heightText}
+                />
               )}
-              <LineRow row={rows.seaTemperature} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} highLowVisible={false} />
-              <LineRow row={rows.waterLevel} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} highLowVisible={false} />
+              <LineRow
+                row={rows.seaTemperature}
+                periods={timeline.periods}
+                nowBoundaryIndex={nowHighlightBoundary}
+                highLowVisible={false}
+                subLabel={stationLabel("seaTemperature")}
+              />
+              <LineRow
+                row={rows.waterLevel}
+                periods={timeline.periods}
+                nowBoundaryIndex={nowHighlightBoundary}
+                highLowVisible={false}
+                subLabel={stationLabel("waterLevel")}
+              />
               {rows.current.available && (
                 <DirectionRow
                   row={rows.current}
+                  subLabel={modelLabel}
                   periods={timeline.periods}
                   nowBoundaryIndex={nowHighlightBoundary}
                   renderText={(p, r) => formatRowValue(r, p.value as number)}
@@ -156,6 +206,20 @@ export default function SeaOverview({
             </>
           )}
         </TimelineFrame>
+      )}
+
+      {rows !== null && rows.waves.available && (
+        <ul className="sea-wave-legend" aria-label={t("seaWeather.waveLegend")}>
+          {WAVE_LEVEL_LOWER_BOUNDS_M.map((lower, i) => {
+            const upper = WAVE_LEVEL_LOWER_BOUNDS_M[i + 1];
+            const text = upper === undefined ? `> ${lower}` : i === 0 ? `< ${upper}` : `${lower}–${upper}`;
+            return (
+              <li key={lower}>
+                <span className={`sea-wave-legend-swatch wave-level-${i + 1}`} aria-hidden="true" /> {text} m
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );

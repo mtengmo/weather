@@ -28,6 +28,12 @@ export const sv: Record<string, string> = {
   "seaWeather.noMarineData": "Ingen havsdata finns för den här platsen.",
   "seaWeather.sourceNote": "Vågor, dyning, ström: Open-Meteo Marine (modell). Vattenstånd, vattentemperatur: SMHI-observationer där sådana finns.",
   "seaWeather.forecastLink": "Hav- och kustprognos hos SMHI",
+  "seaWeather.stationSub": "{{name}} · {{km}} km",
+  "seaWeather.modelSource": "Open-Meteo-modell",
+  "seaWeather.waveLegend": "Våghöjd",
+  "seaReport.title": "Sjörapport",
+  "seaReport.updated": "Uppdaterad {{time}}",
+  "seaReport.source": "Källa: SMHI",
   "app.mapButton": "Karta",
   "app.menu": "Meny",
   "app.locationUnavailable":

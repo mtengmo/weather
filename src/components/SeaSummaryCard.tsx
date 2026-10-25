@@ -7,7 +7,7 @@ import { convertTemperature, convertWaterLevel, convertWaveHeight, convertWindSp
 import { directionToCompass, formatValue } from "../services/format";
 import { formatClockTime } from "../services/timeFormat";
 import { getSunTimes } from "../services/sunMoon";
-import { SEA_WEATHER_URL } from "../services/seaObservations";
+import { SEA_WEATHER_URL, type SeaMetric } from "../services/seaObservations";
 import type { Location, UnitSystem } from "../models/types";
 import type { SeaSummary } from "./seaTimelineData";
 
@@ -18,7 +18,10 @@ export interface SeaStationInfo {
   time: number;
 }
 
+export type SeaSummaryMetricStations = Partial<Record<SeaMetric, { name: string; distanceKm: number }>>;
+
 interface SeaSummaryCardProps {
+  metricStations?: SeaSummaryMetricStations;
   summary: SeaSummary | null;
   unit: UnitSystem;
   location: Pick<Location, "latitude" | "longitude">;
@@ -34,9 +37,12 @@ interface Fact {
   label: string;
   value: string;
   compass?: string;
+  /** Small muted source line (station + distance, or "model"). */
+  source?: string;
 }
 
 export default function SeaSummaryCard({
+  metricStations = {},
   summary,
   unit,
   location,
@@ -73,6 +79,13 @@ export default function SeaSummaryCard({
   const clock = (ms: number) => formatClockTime(new Date(ms));
   const compass = (deg: number | null | undefined) => (deg != null ? directionToCompass(deg) : undefined);
 
+  const sourceFor = (metric: SeaMetric, observed: boolean): string => {
+    const st = metricStations[metric];
+    return observed && st
+      ? t("seaWeather.stationSub", { name: st.name, km: Math.round(st.distanceKm) })
+      : t("seaWeather.modelSource");
+  };
+
   const facts: Fact[] = [];
   if (summary?.wind) {
     const w = summary.wind;
@@ -90,6 +103,7 @@ export default function SeaSummaryCard({
       label: t("seaWeather.waves"),
       value: `${height(w.height)}${w.period != null ? ` · ${formatValue(w.period, 0)} s` : ""}`,
       compass: compass(w.direction),
+      source: sourceFor("waveHeight", w.observed),
     });
   }
   if (summary?.seaTemperature) {
@@ -97,6 +111,7 @@ export default function SeaSummaryCard({
       key: "seaTemperature",
       label: t("seaWeather.seaTemperature"),
       value: `${formatValue(convertTemperature(summary.seaTemperature.value, unit), 1)}°`,
+      source: sourceFor("seaTemperature", summary.seaTemperature.observed),
     });
   }
   if (summary?.waterLevel) {
@@ -104,6 +119,7 @@ export default function SeaSummaryCard({
       key: "waterLevel",
       label: t("seaWeather.waterLevel"),
       value: `${level(summary.waterLevel.value)} ${levelUnit}`,
+      source: sourceFor("waterLevel", summary.waterLevel.observed),
     });
   }
 
@@ -192,6 +208,7 @@ export default function SeaSummaryCard({
             <dd className="today-summary-value">
               {f.value}
               {f.compass ? ` ${f.compass}` : ""}
+              {f.source && <span className="sea-summary-pair-source">{f.source}</span>}
             </dd>
           </div>
         ))}

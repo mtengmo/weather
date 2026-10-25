@@ -7,6 +7,7 @@ import { useThemePreference } from "./hooks/useThemePreference";
 import { useNearbyStationCountPreference } from "./hooks/useNearbyStationCountPreference";
 import { useHighLowVisibilityPreference } from "./hooks/useHighLowVisibilityPreference";
 import { useLanguagePreference } from "./hooks/useLanguagePreference";
+import { useHomeViewPreference } from "./hooks/useHomeViewPreference";
 import { useObservationData } from "./hooks/useObservationData";
 import ObservationChart from "./components/ObservationChart";
 import ObservationDetails from "./components/ObservationDetails";
@@ -43,6 +44,7 @@ export default function App() {
   const { visible: highLowVisible, setVisible: setHighLowVisible } =
     useHighLowVisibilityPreference();
   const { language, setLanguage } = useLanguagePreference();
+  const { homeView, setHomeView } = useHomeViewPreference();
 
   const [selected, setSelected] = useState<Location | null>(null);
   const [obsWindow, setObsWindow] = useState<ObservationWindow>("last-24-hours");
@@ -52,7 +54,7 @@ export default function App() {
   // Optional 48h hourly forecast on the 24 Hours overview; default (off) keeps the 24h requests.
   const [extendedForecast, setExtendedForecast] = useState(false);
   const [locationPanelOpen, setLocationPanelOpen] = useState(false);
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>(homeView);
   // True once Details/graph has been opened at least once this session — gates nearby-station
   // comparison fetching, which only that view ever renders (025-reduce-api-requests, US1). Never
   // reset back to false once set, so returning to the Overview keeps the data already fetched.
@@ -113,8 +115,9 @@ export default function App() {
   function selectLocation(location: Location) {
     setSelected(location);
     setCachedLocation(location);
-    // Land on the Overview, consistent with the same default this app opens on (013, research.md §1).
-    setView("overview");
+    // Land on the user's home view: the Overview by default (013, research.md §1), or Kustväder
+    // when that is what they last chose.
+    setView(homeView);
   }
 
   function viewOverview() {
@@ -123,6 +126,7 @@ export default function App() {
     if (obsWindow === "last-30-days") {
       setObsWindow("last-24-hours");
     }
+    setHomeView("overview");
     setView("overview");
   }
 
@@ -131,6 +135,7 @@ export default function App() {
     if (obsWindow === "last-30-days") {
       setObsWindow("last-24-hours");
     }
+    setHomeView("sea");
     setView("sea");
   }
 

@@ -29,6 +29,12 @@ export const en: Record<string, string> = {
   "seaWeather.noMarineData": "No sea data is available for this location.",
   "seaWeather.sourceNote": "Waves, swell, currents: Open-Meteo Marine (model). Water level, sea temperature: SMHI observations where available.",
   "seaWeather.forecastLink": "Sea and coastal forecast at SMHI",
+  "seaWeather.stationSub": "{{name}} · {{km}} km",
+  "seaWeather.modelSource": "Open-Meteo model",
+  "seaWeather.waveLegend": "Wave height",
+  "seaReport.title": "Sea report",
+  "seaReport.updated": "Updated {{time}}",
+  "seaReport.source": "Source: SMHI",
   "app.mapButton": "Map",
   "app.menu": "Menu",
   "app.locationUnavailable":

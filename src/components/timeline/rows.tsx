@@ -56,11 +56,17 @@ export function BarRow({
   periods,
   nowBoundaryIndex,
   subLabel,
+  barClass,
+  renderValue,
 }: {
   row: TimelineRow;
   periods: TimelinePeriod[];
   nowBoundaryIndex: number | null;
   subLabel?: string;
+  /** Extra class for a column's bar (e.g. a colour level). */
+  barClass?: (point: TimelineRowPoint) => string | undefined;
+  /** Replaces the default value text under the bar; direction rows also get their arrow. */
+  renderValue?: (point: TimelineRowPoint, row: TimelineRow) => React.ReactNode;
 }) {
   const { t } = useTranslation();
   if (!row.available) return null;
@@ -85,7 +91,7 @@ export function BarRow({
               return (
                 <div className="weather-timeline-bar-cell">
                   <div
-                    className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}`}
+                    className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}${point.modelled ? " weather-timeline-bar-modelled" : ""}${barClass?.(point) ? ` ${barClass(point)}` : ""}`}
                     style={{ height: `${heightPercent}%` }}
                   />
                 </div>
@@ -107,15 +113,22 @@ export function BarRow({
                 <span
                   className={[
                     "weather-timeline-bar-value",
-                    point.interpolated ? "weather-timeline-interpolated" : null,
+                    point.interpolated || point.modelled ? "weather-timeline-interpolated" : null,
                     isNowColumn(i, nowBoundaryIndex) ? "weather-timeline-now-column" : null,
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  title={point.interpolated ? t("weatherOverview.estimated") : undefined}
+                  title={point.modelled ? t("seaWeather.modelled") : point.interpolated ? t("weatherOverview.estimated") : undefined}
                 >
-                  {formatRowValue(row, point.value)}
-                  {point.chanceOfRain !== null && point.chanceOfRain !== undefined && point.chanceOfRain > 0 && (
+                  {renderValue ? (
+                    <>
+                      {row.kind === "direction" && <DirectionArrow point={point} row={row} />}
+                      {renderValue(point, row)}
+                    </>
+                  ) : (
+                    formatRowValue(row, point.value)
+                  )}
+                  {!renderValue && point.chanceOfRain !== null && point.chanceOfRain !== undefined && point.chanceOfRain > 0 && (
                     <span className="weather-timeline-bar-chance"> · {Math.round(point.chanceOfRain)}%</span>
                   )}
                 </span>
@@ -125,6 +138,18 @@ export function BarRow({
         </div>
       </div>
     </>
+  );
+}
+
+/** Meteorological direction is where it blows FROM — rotate +180deg so the arrow points where it
+ *  is going TOWARD. "toward" rows already carry that direction. */
+function DirectionArrow({ point, row }: { point: TimelineRowPoint; row: TimelineRow }) {
+  if (point.direction == null) return null;
+  const rotation = row.directionConvention === "toward" ? point.direction : (point.direction + 180) % 360;
+  return (
+    <span className="weather-timeline-wind-arrow" style={{ transform: `rotate(${rotation}deg)` }} aria-hidden="true">
+      ↑
+    </span>
   );
 }
 
