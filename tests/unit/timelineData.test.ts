@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18next from "i18next";
 import "../../src/i18n";
 import {
@@ -608,5 +608,42 @@ describe("smhiSymbolCode threading (043-smhi-27-symbol-icons, US2 guard)", () =>
     );
 
     expect(data.periods.every((p) => p.smhiSymbolCode == null)).toBe(true);
+  });
+});
+
+describe("TimelinePeriod.windy flag", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 12, 0, 0) });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function rainy(windSpeed: number): WeatherObservation {
+    return obs({ timestamp: hoursFromNow(-1), temperature: 10, precipitation: 1, windSpeed, cloudCoverPercent: 90 });
+  }
+
+  it("hourly: set from the hour's wind regardless of condition, condition unchanged", () => {
+    const data = buildHourlyTimelineData(series([rainy(10), rainy(3)]), "metric");
+    expect(data.periods[0].windy).toBe(true);
+    expect(data.periods[0].condition).toBe("light-rain");
+    expect(data.periods[1].windy).toBe(false);
+    expect(data.periods[1].condition).toBe("light-rain");
+  });
+
+  it("3-day buckets: set from the bucket's average wind", () => {
+    const windy = build3DayTimelineData(series([rainy(10)]), "metric");
+    const calm = build3DayTimelineData(series([rainy(3)]), "metric");
+    const withData = (d: typeof windy) => d.periods.filter((p) => p.condition !== null);
+    expect(withData(windy).length).toBeGreaterThan(0);
+    expect(withData(windy).every((p) => p.windy === true)).toBe(true);
+    expect(withData(calm).every((p) => p.windy === false)).toBe(true);
+  });
+
+  it("7-day buckets: set from the day's average wind", () => {
+    const windy = buildDailyTimelineData(series([rainy(10)]), "metric");
+    const calm = buildDailyTimelineData(series([rainy(3)]), "metric");
+    expect(windy.periods.some((p) => p.windy === true)).toBe(true);
+    expect(calm.periods.some((p) => p.windy === true)).toBe(false);
   });
 });

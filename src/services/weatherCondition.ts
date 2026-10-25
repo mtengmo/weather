@@ -43,7 +43,13 @@ export interface WeatherConditionInput {
 
 // Beaufort scale "Fresh Breeze" boundary — a recognizable everyday reference point
 // (research.md §2).
-const WINDY_THRESHOLD_MS = 8;
+export const WINDY_THRESHOLD_MS = 8;
+
+/** True when a wind speed (m/s) is at or above the windy threshold. Independent of the derived
+ *  condition, so callers can overlay a wind badge on any icon (rain + wind etc.). */
+export function isWindy(windSpeedMs: number | null | undefined): boolean {
+  return windSpeedMs != null && windSpeedMs >= WINDY_THRESHOLD_MS;
+}
 // Conventional midpoint between "clear" and "any cloud cover" — also the light/heavy cloud
 // boundary before 038 split "cloudy" into two tiers; now specifically the clear/partly-cloudy
 // boundary.
@@ -123,7 +129,7 @@ export function deriveWeatherCondition(input: WeatherConditionInput): WeatherCon
     }
   }
 
-  if (windSpeed !== null && windSpeed >= WINDY_THRESHOLD_MS) return "windy";
+  if (isWindy(windSpeed)) return "windy";
 
   if (
     symbolCondition === "cloudy" ||
@@ -156,6 +162,16 @@ export function deriveWeatherCondition(input: WeatherConditionInput): WeatherCon
  * sub-day periods (the 3-day view) never populate the `daytime*` fields at all, so they always
  * take this fallback path, reproducing their pre-existing behavior unchanged.
  */
+export function dailyWindSpeed(day: DailyAggregate): number | null {
+  const hasDaytimeData =
+    day.daytimeAverage != null ||
+    day.daytimeTotalPrecipitation != null ||
+    day.daytimeWindAverage != null ||
+    day.daytimeCloudAverage != null ||
+    day.daytimeChanceOfRainMax != null;
+  return (hasDaytimeData ? day.daytimeWindAverage : day.windAverage) ?? null;
+}
+
 export function deriveDailyCondition(day: DailyAggregate): WeatherCondition | null {
   const hasDaytimeData =
     day.daytimeAverage != null ||

@@ -1,6 +1,7 @@
+import { ConditionArtwork } from "./WindBadge";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { deriveWeatherCondition, isNight, type WeatherCondition } from "../services/weatherCondition";
+import { deriveWeatherCondition, isNight, isWindy, type WeatherCondition } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { resolveCharacterIcon } from "./weatherCharacterIcons";
 import { convertTemperature, convertPrecipitation, convertWindSpeed } from "../services/units";
@@ -159,7 +160,7 @@ export default function TodaySummaryCard({
         >
           {iconInfo ? (
             iconInfo.kind === "smhi-symbol" ? (
-              <img src={iconInfo.src} alt="" aria-hidden="true" width={64} height={64} />
+              <ConditionArtwork icon={iconInfo} size={64} windy={isWindy(windAverage)} />
             ) : (
               <iconInfo.Icon aria-hidden="true" size={64} />
             )

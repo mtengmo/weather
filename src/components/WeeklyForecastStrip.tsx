@@ -1,6 +1,7 @@
+import { ConditionArtwork } from "./WindBadge";
 import { useTranslation } from "react-i18next";
 import { formatWeekdayShort } from "../services/timeFormat";
-import { deriveDailyCondition } from "../services/weatherCondition";
+import { dailyWindSpeed, deriveDailyCondition, isWindy } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { convertTemperature } from "../services/units";
 import { formatValue } from "../services/format";
@@ -42,7 +43,7 @@ export default function WeeklyForecastStrip({ days, unit }: WeeklyForecastStripP
             </span>
             {iconInfo ? (
               iconInfo.kind === "smhi-symbol" ? (
-                <img src={iconInfo.src} alt="" aria-hidden="true" width={44} height={44} />
+                <ConditionArtwork icon={iconInfo} size={44} windy={isWindy(dailyWindSpeed(day))} />
               ) : (
                 <iconInfo.Icon aria-hidden="true" size={44} />
               )

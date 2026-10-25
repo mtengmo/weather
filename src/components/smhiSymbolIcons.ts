@@ -152,19 +152,20 @@ for (const [path, src] of Object.entries(artworkModules)) {
  *  of `src`/`Icon` is set, never both (043-smhi-27-symbol-icons, contracts/smhi-symbol-icons.md;
  *  artwork source replaced 063-replace-weather-icons). */
 export type ResolvedConditionIcon =
-  | { kind: "smhi-symbol"; src: string; label: string }
+  | { kind: "smhi-symbol"; src: string; label: string; windy?: boolean }
   | { kind: "condition"; Icon: (typeof WEATHER_ICONS)[keyof typeof WEATHER_ICONS]["Icon"]; label: string };
 
 /** Best-fit SMHI code for a period/condition that has no `symbol_code` of its own — real station
  *  observations never carry one (SMHI's own observation API has no such field; it's forecast-only),
- *  so this lets those periods still show character artwork instead of a lucide icon. `windy` alone
- *  keeps the lucide fallback below — none of the 12 weather types represents wind
- *  (063-replace-weather-icons, research.md §5). Every other condition maps to the code that best
- *  matches it visually. */
+ *  so this lets those periods still show character artwork instead of a lucide icon. None of the
+ *  12 weather types represents wind (063-replace-weather-icons, research.md §5), so `windy` reuses
+ *  the neutral variable-cloudiness sky and callers overlay a `WindBadge` (`windy: true` on the
+ *  resolved icon). Every other condition maps to the code that best matches it visually. */
 const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
   "clear-day": 1, // Clear sky
   "clear-night": 1, // Clear sky (night variant selected by resolveFromParts when it's actually night)
   "partly-cloudy": 3, // Variable cloudiness
+  windy: 3, // Neutral sky; label stays "Windy" and a wind badge is overlaid
   cloudy: 5, // Cloudy sky
   "light-rain": 18, // Light rain
   "heavy-rain": 20, // Heavy rain
@@ -182,7 +183,7 @@ const DEFAULT_ICON_TEMP_BAND: IconTempBand = "nearzero";
 /** Shared second step of both resolvers below: SMHI's own `symbol_code` wins when present and
  *  recognized; otherwise falls back to `CONDITION_SMHI_FALLBACK`'s best-fit code for the given
  *  (already-derived or freshly-derived) `WeatherCondition`, or the existing `WEATHER_ICONS` lucide
- *  icon when no such fallback exists (`windy`) or the condition itself couldn't be classified. Once
+ *  icon when no such fallback exists or the condition itself couldn't be classified. Once
  *  a code is resolved, it's mapped to one of the 12 weather types, banded by temperature (falling
  *  back to `DEFAULT_ICON_TEMP_BAND` when temperature is `null`), and run through
  *  `resolveWeatherTypeForBand`'s never-occurs-in-nature fallback before the matching day/night
@@ -202,6 +203,7 @@ function resolveFromParts(
   let code: number | undefined;
   let label: string | undefined;
   let useNightVariant = isNightNow;
+  let windy = false;
 
   if (smhiSymbolCode != null && SMHI_SYMBOL_LABELS[smhiSymbolCode] !== undefined) {
     code = smhiSymbolCode;
@@ -213,7 +215,9 @@ function resolveFromParts(
     if (fallbackCode !== undefined) {
       code = fallbackCode;
       label = WEATHER_ICONS[condition].label;
-      useNightVariant = condition === "clear-night";
+      windy = condition === "windy";
+      // `windy` has no night/day of its own, so it follows the caller's night flag.
+      useNightVariant = condition === "clear-night" || (windy && isNightNow);
     }
   }
 
@@ -223,7 +227,12 @@ function resolveFromParts(
     const resolvedType = resolveWeatherTypeForBand(weatherType, band);
     const artwork = WEATHER_TYPE_ARTWORK[resolvedType]?.[band];
     if (artwork) {
-      return { kind: "smhi-symbol", src: useNightVariant ? artwork.night : artwork.day, label };
+      return {
+        kind: "smhi-symbol",
+        src: useNightVariant ? artwork.night : artwork.day,
+        label,
+        ...(windy ? { windy: true } : {}),
+      };
     }
   }
 

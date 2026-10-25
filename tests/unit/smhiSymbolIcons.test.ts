@@ -194,11 +194,25 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     }
   });
 
-  it("still uses the lucide fallback for 'windy', which has no weather-type artwork equivalent", () => {
-    const icon = resolveConditionIconFromCondition(null, "windy", false, 10);
+  it("gives 'windy' neutral-sky artwork flagged windy, keeping the Windy label (day and night)", () => {
+    const day = resolveConditionIconFromCondition(null, "windy", false, 10);
+    expect(day?.kind).toBe("smhi-symbol");
+    expect(day?.label).toBe("weatherCondition.windy");
+    if (day?.kind === "smhi-symbol") {
+      expect(day.windy).toBe(true);
+      expect(day.src).toBe(WEATHER_TYPE_ARTWORK.variable?.mild?.day);
+    }
+    const night = resolveConditionIconFromCondition(null, "windy", true, 10);
+    expect(night?.kind).toBe("smhi-symbol");
+    if (night?.kind === "smhi-symbol") {
+      expect(night.windy).toBe(true);
+      expect(night.src).toBe(WEATHER_TYPE_ARTWORK.variable?.mild?.night);
+    }
+  });
 
-    expect(icon?.kind).toBe("condition");
-    expect(icon?.label).toBe("weatherCondition.windy");
+  it("does not flag non-windy icons as windy", () => {
+    const icon = resolveConditionIconFromCondition(null, "cloudy", false, 10);
+    expect(icon && "windy" in icon).toBe(false);
   });
 
   it("returns null when there isn't enough data to classify and no smhiSymbolCode is present", () => {

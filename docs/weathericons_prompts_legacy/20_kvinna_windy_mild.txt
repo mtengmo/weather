@@ -1,0 +1,74 @@
+flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
+
+CRITICAL — reference image protocol: a reference image IS attached to this prompt. You MUST
+match it exactly — same face shape, same proportions, same hairstyle, same art style, same line
+weight, same color palette. Do not reinterpret, restyle, or redesign the character in any way.
+If no reference image is attached, match the flat-vector children's-book icon style described
+above as closely and consistently as possible — avoid drifting toward a painterly, semi-realistic,
+or oversized-head "chibi" style.
+
+Layout: a grid sprite sheet with exactly 3 columns and exactly 2 rows
+(6 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: bright, breezy daylight matching each sky — warm golden sunlight for sun, soft diffused light for cloud — with the wind effect described below. Small charming secondary touches (a flying leaf, a sparkle) must never obscure the weather symbol itself.
+
+Row 2 = nighttime scenes. Mood: dark navy-blue night palette matching each sky — soft blue-white moonlight, muted moonlight through cloud — with the same wind effect. Small charming secondary touches (twinkling stars, a flying leaf) must never obscure the weather symbol itself.. If the clothing description
+below specifies a daylight-only accessory (e.g. sunglasses) for row 1, that
+accessory MUST be physically absent (not worn, not on the head, not visible
+anywhere) in EVERY column of row 2 — this is not optional.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
+core outfit and colors in every column of this sheet, in both rows — only
+pose/expression changes per weather type, never the clothing: wearing a casual everyday jacket and jeans, relaxed neutral expression, hands in pockets
+Exception: daylight-only accessories (e.g. sunglasses worn because of bright
+sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
+in daytime, removed/pushed up at night — if the clothing description above
+specifies a DAY/NIGHT difference. Everything else about the outfit stays
+identical between rows.
+
+CRITICAL — no invented accessories: do not add any clothing item, accessory, or prop that is not
+explicitly listed in the character/clothing description below (e.g. no sunglasses unless the
+clothing description explicitly says so for that specific band).
+
+CRITICAL — this character NEVER experiences precipitation of any kind, in any column,
+in either row: NO rain, NO raindrops, NO rain streaks, NO snow, NO snowflakes, NO sleet,
+NO hail — not even a single drop or flake anywhere in the frame. This character is the
+strictly DRY-weather character (clear/cloudy skies only; no fog on this sheet). If a column's weather
+type does not explicitly describe precipitation, do not add any on your own initiative,
+no matter how visually interesting it might seem — an empty sky/cloud with no rain or
+snow is the CORRECT and expected result for every single column on this sheet.
+
+CRITICAL — wind IS the subject of this sheet: in EVERY icon, in both rows, it is clearly and strongly windy — the character's hair and every loose piece of clothing she is actually wearing per the clothing description below (and NO item that is not listed there) are blown sideways in ONE consistent direction (left to right) as in a stiff gale, the character leans slightly into the wind, and 3-5 bold, simple, black-outlined white/light-blue wind swoosh lines curl around the character and the weather symbol, plus 2-3 loose leaves or small bits of debris swirling in the same direction. The wind effect must be bold and instantly recognizable but must NEVER hide the weather symbol (sun/moon/cloud) or the character's face. The wind direction, swoosh style, leaf style and amount of effect must be IDENTICAL in every icon of the sheet, in both rows — only the weather symbol and the day/night lighting change.
+
+Character(s) for this sheet: an adult woman in her 30s, shoulder-length wavy brown hair, average non-exaggerated adult cartoon body proportions (not curvy/body-conscious, not chibi/oversized-head), wearing a casual everyday jacket and jeans, relaxed neutral expression, hands in pockets. Identical to the reference image, do not redesign.
+
+Temperature band: mild, 5°C till 15°C
+
+CRITICAL — strict column order: the list below is FIXED. Each numbered item is
+exactly one column, in exactly that position, showing exactly that sky — no more, no fewer.
+Do NOT reorder, merge, skip, duplicate, or substitute any column. Every column is WINDY (as
+described above) AND has NO precipitation of any kind.
+
+Columns, left to right (same sky in row 1 and row 2, day mood above / night mood below):
+1. Windy + clear sky (sun / moon) — one big bright sun in a clear sky, NO clouds at all (day) / one full moon with twinkling stars, NO clouds at all (night) — character braced against the wind, hair and clothes streaming sideways
+2. Windy + variable cloudiness (TWO small separate clouds with a clear GAP of sky between them, sun still peeking through the gap) (day) / two small clouds with a gap of night sky between them, moon peeking through (night) — clouds are stretched and streaked sideways by the wind, character holding hat or jacket in the wind
+3. Windy + cloudy / overcast (ONE large, solid, flat gray cloud shape with a crisp outline filling most of the upper frame, NO sun, NO moon, stretched sideways by the wind; still a solid opaque cartoon cloud, no haze or transparency) (day) / same large gray cloud in a gray-not-black night tone (night) — character leaning hard into the wind

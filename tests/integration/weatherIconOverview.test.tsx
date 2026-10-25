@@ -1284,8 +1284,8 @@ describe("US1: colorful condition icons (010-timeline-visual-styling)", () => {
 
   it("resolves cloudy/light-rain/light-snow/clear-night to their own distinct SMHI artwork (047/050/054)", async () => {
     // clear-night now also resolves to real SMHI artwork (the night-moon variant, 054) instead
-    // of a CSS-tinted lucide icon, joining cloudy/light-rain/light-snow (047/050) — only `windy`
-    // still has no SMHI-artwork match and stays on the lucide fallback path.
+    // of a CSS-tinted lucide icon, joining cloudy/light-rain/light-snow (047/050) — `windy`
+    // reuses neutral-sky artwork plus a wind badge.
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",

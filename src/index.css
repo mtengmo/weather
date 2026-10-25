@@ -1778,3 +1778,32 @@ a {
   opacity: 0.9;
   border-top: 2px dashed var(--text);
 }
+
+/* Wind badge over the neutral-sky artwork used for the `windy` condition. Declared last so its
+   svg sizing/colour beats the `.today-summary-icon svg` / `.weather-condition-* svg` rules. */
+.condition-art {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.wind-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.wind-badge svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text);
+}

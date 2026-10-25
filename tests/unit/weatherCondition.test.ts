@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveWeatherCondition } from "../../src/services/weatherCondition";
+import { WINDY_THRESHOLD_MS, deriveWeatherCondition, isWindy } from "../../src/services/weatherCondition";
 
 const DAY = "2026-08-31T12:00:00"; // local noon
 const NIGHT = "2026-08-31T23:00:00"; // local 11pm
@@ -206,5 +206,20 @@ describe("deriveWeatherCondition low-confidence rain/snow guard (038-granular-we
         base({ symbolCondition: "light-rain", precipitation: 0.2, chanceOfRain: 7, windSpeed: 0 })
       )
     ).toBe("light-rain");
+  });
+});
+
+describe("isWindy", () => {
+  it("is true at and above the threshold, false below, and false for null/undefined", () => {
+    expect(isWindy(WINDY_THRESHOLD_MS)).toBe(true);
+    expect(isWindy(WINDY_THRESHOLD_MS + 5)).toBe(true);
+    expect(isWindy(WINDY_THRESHOLD_MS - 0.1)).toBe(false);
+    expect(isWindy(null)).toBe(false);
+    expect(isWindy(undefined)).toBe(false);
+  });
+
+  it("agrees with the derived windy condition when nothing else takes priority", () => {
+    expect(deriveWeatherCondition(base({ windSpeed: 8 }))).toBe("windy");
+    expect(isWindy(8)).toBe(true);
   });
 });

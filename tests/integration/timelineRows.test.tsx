@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { DirectionRow, formatRowValue } from "../../src/components/timeline/rows";
+import { ConditionRow, DirectionRow, formatRowValue } from "../../src/components/timeline/rows";
 import type { TimelinePeriod, TimelineRow } from "../../src/components/timelineData";
 
 function period(key: string): TimelinePeriod {
@@ -81,5 +81,39 @@ describe("timeline rows", () => {
     expect(formatRowValue(row, 12)).toBe("+12 cm");
     expect(formatRowValue(row, -3)).toBe("-3 cm");
     expect(formatRowValue(makeRow({ decimals: 2 }), 1.234)).toBe("1.23 m");
+  });
+});
+
+describe("ConditionRow windy artwork", () => {
+  it("renders artwork img plus a wind badge for a windy period, and no badge otherwise", () => {
+    const windy: TimelinePeriod = { ...period("w"), condition: "windy", temperature: 10 };
+    const cloudy: TimelinePeriod = { ...period("c"), condition: "cloudy", temperature: 10 };
+    const { container } = render(<ConditionRow periods={[windy, cloudy]} nowBoundaryIndex={null} />);
+    const cells = container.querySelectorAll(".weather-timeline-condition");
+    expect(cells[0].querySelector("img")).toBeInTheDocument();
+    expect(cells[0].querySelector(".wind-badge")).toBeInTheDocument();
+    expect(cells[0].textContent).toContain("Windy");
+    expect(cells[1].querySelector("img")).toBeInTheDocument();
+    expect(cells[1].querySelector(".wind-badge")).toBeNull();
+  });
+
+  it("shows the rain icon plus a wind badge for a rainy windy period, none for a calm rainy one", () => {
+    const rainyWindy: TimelinePeriod = { ...period("r1"), condition: "light-rain", temperature: 10, windy: true };
+    const rainyCalm: TimelinePeriod = { ...period("r2"), condition: "light-rain", temperature: 10, windy: false };
+    const { container } = render(<ConditionRow periods={[rainyWindy, rainyCalm]} nowBoundaryIndex={null} />);
+    const cells = container.querySelectorAll(".weather-timeline-condition");
+    expect(cells[0].querySelector("img")).toBeInTheDocument();
+    expect(cells[0].querySelectorAll(".wind-badge")).toHaveLength(1);
+    expect(cells[0].textContent).toContain("Light rain");
+    expect(cells[0].getAttribute("aria-label")).toContain("Windy");
+    expect(cells[1].querySelector(".wind-badge")).toBeNull();
+    expect(cells[1].getAttribute("aria-label")).not.toContain("Windy");
+  });
+
+  it("shows exactly one badge for the windy condition even when the period is flagged windy", () => {
+    const windy: TimelinePeriod = { ...period("w"), condition: "windy", temperature: 10, windy: true };
+    const { container } = render(<ConditionRow periods={[windy]} nowBoundaryIndex={null} />);
+    expect(container.querySelectorAll(".wind-badge")).toHaveLength(1);
+    expect(container.querySelector(".weather-timeline-condition")?.getAttribute("aria-label")).not.toMatch(/Windy.*Windy/);
   });
 });

@@ -1,6 +1,7 @@
+import { ConditionArtwork } from "./WindBadge";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isNight, type WeatherCondition } from "../services/weatherCondition";
+import { isNight, isWindy, type WeatherCondition } from "../services/weatherCondition";
 import { resolveConditionIconFromCondition } from "./smhiSymbolIcons";
 import { resolveCharacterIcon } from "./weatherCharacterIcons";
 import { convertTemperature, convertWaterLevel, convertWaveHeight, convertWindSpeed } from "../services/units";
@@ -184,7 +185,7 @@ export default function SeaSummaryCard({
         >
           {iconInfo ? (
             iconInfo.kind === "smhi-symbol" ? (
-              <img src={iconInfo.src} alt="" aria-hidden="true" width={64} height={64} />
+              <ConditionArtwork icon={iconInfo} size={64} windy={isWindy(summary?.wind?.speed)} />
             ) : (
               <iconInfo.Icon aria-hidden="true" size={64} />
             )

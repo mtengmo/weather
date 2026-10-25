@@ -1,0 +1,60 @@
+flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
+
+CRITICAL — reference image protocol: a reference image IS attached to this prompt. You MUST
+match it exactly — same face shape, same proportions, same hairstyle, same art style, same line
+weight, same color palette. Do not reinterpret, restyle, or redesign the character in any way.
+If no reference image is attached, match the flat-vector children's-book icon style described
+above as closely and consistently as possible — avoid drifting toward a painterly, semi-realistic,
+or oversized-head "chibi" style.
+
+Layout: a grid sprite sheet with exactly 2 columns and exactly 2 rows
+(4 icons total, no more, no fewer).
+
+Row 1 = daytime scenes. Mood: bright daylight breaking through windblown rain clouds, glistening wet highlights — small secondary touches only, never obscuring the rain cloud or umbrella.
+
+Row 2 = nighttime scenes. Mood: dark navy night rain, soft glowing streetlamp reflections in puddles, slanted rain streaks faintly catching moonlight — small secondary touches only, never obscuring the rain cloud or umbrella.. If the clothing description
+below specifies a daylight-only accessory (e.g. sunglasses) for row 1, that
+accessory MUST be physically absent in EVERY column of row 2.
+
+CRITICAL — row 2 must NOT be a small badge, corner icon, or decoration.
+Each icon in row 2 is a FULL, standalone, same-size night version of the
+entire scene directly above it in row 1 — same character, same pose, same
+weather symbol, same composition — just re-lit for night as described
+above.
+
+CRITICAL — in both rows, the weather symbol (sun/moon/cloud/rain/snow)
+must remain large, boldly outlined, and instantly recognizable at a
+glance — mood details are secondary flourishes only, never allowed to
+compete with or obscure the symbol.
+
+CRITICAL — spacing and background: each icon floats completely alone with
+NO background shape, box, blob, rounded rectangle, panel, or fill of any
+kind behind it. The canvas is 100% transparent (alpha channel) except for
+the character and weather symbol themselves. Leave empty space between
+every icon that is wider than the icon itself in every direction — icons
+must not touch, overlap, or share any background element. No dividing
+lines, no grid borders, no labels, no cell numbers.
+
+CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
+core outfit and colors in every column of this sheet, in both rows — only
+pose/expression changes per weather type, never the clothing: matching clear plastic rain ponchos worn OVER t-shirts and knee-length shorts (legs and torso fully covered, NOT swimwear, NOT form-fitting), sharing a small umbrella, calm cheerful standing pose, one puddle by their feet
+Exception: daylight-only accessories (e.g. sunglasses worn because of bright
+sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
+in daytime, removed/pushed up at night — if the clothing description above
+specifies a DAY/NIGHT difference. Everything else about the outfit stays
+identical between rows.
+
+CRITICAL — no invented accessories: do not add any clothing item, accessory, or prop that is not
+explicitly listed in the character/clothing description below (e.g. no sunglasses unless the
+clothing description explicitly says so for that specific band).
+
+CRITICAL — wind IS the subject of this sheet: in EVERY icon, in both rows, it is clearly and strongly windy — both characters' hair and every loose piece of clothing (raincoat hoods, raincoat hems) are blown sideways in ONE consistent direction (left to right) as in a stiff gale, both lean slightly into the wind, and 3-5 bold, simple, black-outlined white/light-blue wind swoosh lines curl around the characters and the rain cloud, plus 2-3 loose leaves or small bits of debris swirling in the same direction. The wind effect must be bold and instantly recognizable but must NEVER hide the rain cloud, the umbrella or the characters' faces. The wind direction, swoosh style, leaf style and amount of effect must be IDENTICAL in every icon of the sheet, in both rows — only the rain intensity and the day/night lighting change.
+
+Character(s) for this sheet: a couple of two CLEARLY ADULT women in their 30s — elongated adult facial proportions (NOT the round, oversized-head baby-face proportions used for the child characters), taller and leaner body proportions than a child, adult-length limbs, defined adult jawline and cheekbones. One has a chin-length bob haircut, the other has loose shoulder-length wavy hair worn down (NO high pigtails, NO bunches, NO childlike hairstyles). Both clearly grown women, matching clear plastic rain ponchos worn OVER t-shirts and knee-length shorts (legs and torso fully covered, NOT swimwear, NOT form-fitting), sharing a small umbrella, calm cheerful standing pose, one puddle by their feet. Identical to the reference image, do not redesign.
+
+Temperature band: warm, 15°C till 25°C
+
+Columns, left to right (same weather type in row 1 and row 2, day mood
+above / night mood below):
+1. Windy light-to-moderate rain — the shared umbrella is bent and tilted hard by the wind, rain streaks slanting sideways in the wind direction, small puddle at feet, glistening wet highlights (day) / streetlamp reflections in the puddle, slanted rain catching the light (night)
+2. Windy heavy rain — the shared umbrella is almost turned inside-out by the gale, both characters leaning hard into the wind, intense sideways rain streaks, dramatic downpour light (day) / heavier slanted rain streaks catching moonlight (night)

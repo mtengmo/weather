@@ -1,3 +1,4 @@
+import { ConditionArtwork } from "../WindBadge";
 import { useTranslation } from "react-i18next";
 import { resolveConditionIconFromCondition } from "../smhiSymbolIcons";
 import { isNight } from "../../services/weatherCondition";
@@ -287,11 +288,11 @@ export function ConditionRow({
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                aria-label={`${period.label}: ${iconInfo ? t(iconInfo.label) : noDataLabel}${period.isForecast ? t("weatherOverview.forecastParenthetical") : ""}${period.uvRisk ? t("weatherOverview.highUvParenthetical") : ""}`}
+                aria-label={`${period.label}: ${iconInfo ? t(iconInfo.label) : noDataLabel}${period.isForecast ? t("weatherOverview.forecastParenthetical") : ""}${period.windy && iconInfo && iconInfo.kind === "smhi-symbol" && !iconInfo.windy ? `, ${t("weatherCondition.windy")}` : ""}${period.uvRisk ? t("weatherOverview.highUvParenthetical") : ""}`}
               >
                 {iconInfo ? (
                   iconInfo.kind === "smhi-symbol" ? (
-                    <img src={iconInfo.src} alt="" aria-hidden="true" width={44} height={44} />
+                    <ConditionArtwork icon={iconInfo} size={44} windy={period.windy} />
                   ) : (
                     <iconInfo.Icon aria-hidden="true" size={44} />
                   )
