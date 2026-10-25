@@ -1,18 +1,13 @@
 flat vector cartoon illustration, thick clean black outlines, consistent flat cel-shading (NOT painterly, NOT airbrushed, NOT semi-realistic rendering, NO soft photographic gradients), playful and humorous, soft rounded shapes, limited pastel color palette, children's book weather app icon style — the exact same rendering technique throughout the whole set, no text, no watermark, no signature.
 
-CRITICAL — reference image protocol: a reference image IS attached to this prompt. You MUST
-match it exactly — same face shape, same proportions, same hairstyle, same art style, same line
-weight, same color palette. Do not reinterpret, restyle, or redesign the character in any way.
-If no reference image is attached, match the flat-vector children's-book icon style described
-above as closely and consistently as possible — avoid drifting toward a painterly, semi-realistic,
-or oversized-head "chibi" style.
+Style consistency: this is a set of flat-vector children's-book weather icons — keep the thick clean black outlines, flat cel-shading and soft rounded shapes described above, and avoid drifting toward a painterly, semi-realistic, or oversized-head "chibi" style. Draw every icon of the sheet as the SAME character(s), with identical face, proportions, hairstyle, outfit and colors in every column and both rows.
 
 Layout: a grid sprite sheet with exactly 3 columns and exactly 2 rows
 (6 icons total, no more, no fewer).
 
 Row 1 = daytime scenes. Mood: bright, breezy daylight matching each sky — warm golden sunlight for sun, soft diffused light for cloud — with the wind effect described below. Small charming secondary touches (a flying leaf, a sparkle) must never obscure the weather symbol itself.
 
-Row 2 = nighttime scenes. Mood: dark navy-blue night palette matching each sky — soft blue-white moonlight, muted moonlight through cloud — with the same wind effect. Small charming secondary touches (twinkling stars, a flying leaf) must never obscure the weather symbol itself.. If the clothing description
+Row 2 = nighttime scenes. Mood: dark navy-blue night palette matching each sky — soft blue-white light from a half moon, muted moonlight through cloud — with the same wind effect. Small charming secondary touches (twinkling stars, a flying leaf) must never obscure the weather symbol itself.. If the clothing description
 below specifies a daylight-only accessory (e.g. sunglasses) for row 1, that
 accessory MUST be physically absent (not worn, not on the head, not visible
 anywhere) in EVERY column of row 2 — this is not optional.
@@ -38,7 +33,7 @@ lines, no grid borders, no labels, no cell numbers.
 
 CRITICAL — clothing consistency: the character(s) wear the EXACT SAME
 core outfit and colors in every column of this sheet, in both rows — only
-pose/expression changes per weather type, never the clothing: wearing a modest one-piece swimsuit (full coverage, cartoon-cute style, NOT a bikini, NOT body-conscious), sitting in a relaxed neutral pose on a tiny beach chair, sipping a drink with a straw, melting ice cream dripping down the hand. DAY: sunglasses on. NIGHT: no sunglasses, calm sleepy smile instead, same pose otherwise
+pose/expression changes per weather type, never the clothing: wearing a modest one-piece swimsuit (full coverage, cartoon-cute style, NOT a bikini, NOT body-conscious), sitting in a relaxed neutral pose on a tiny beach chair, sipping a drink with a straw, melting ice cream dripping down the hand. DAY: sunglasses on, relaxed pose. NIGHT: no sunglasses, and she is clearly WIDE AWAKE and in a party mood — eyes wide open, a big cheerful grin (NOT a sleepy or closed-eyes expression), raising her drink in a toast, with a short string of 5-6 small warm glowing party light bulbs hanging on a line above her beach chair (this string of lights is the ONLY extra prop allowed, night row only); same beach chair and swimsuit otherwise
 Exception: daylight-only accessories (e.g. sunglasses worn because of bright
 sun) may naturally differ between row 1 (day) and row 2 (night) — e.g. worn
 in daytime, removed/pushed up at night — if the clothing description above
@@ -59,7 +54,7 @@ snow is the CORRECT and expected result for every single column on this sheet.
 
 CRITICAL — wind IS the subject of this sheet: in EVERY icon, in both rows, it is clearly and strongly windy — the character's hair and every loose piece of clothing she is actually wearing per the clothing description below (and NO item that is not listed there) are blown sideways in ONE consistent direction (left to right) as in a stiff gale, the character leans slightly into the wind, and 3-5 bold, simple, black-outlined white/light-blue wind swoosh lines curl around the character and the weather symbol, plus 2-3 loose leaves or small bits of debris swirling in the same direction. The wind effect must be bold and instantly recognizable but must NEVER hide the weather symbol (sun/moon/cloud) or the character's face. The wind direction, swoosh style, leaf style and amount of effect must be IDENTICAL in every icon of the sheet, in both rows — only the weather symbol and the day/night lighting change.
 
-Character(s) for this sheet: an adult woman in her 30s, shoulder-length wavy brown hair, average non-exaggerated adult cartoon body proportions (not curvy/body-conscious, not chibi/oversized-head), wearing a modest one-piece swimsuit (full coverage, cartoon-cute style, NOT a bikini, NOT body-conscious), sitting in a relaxed neutral pose on a tiny beach chair, sipping a drink with a straw, melting ice cream dripping down the hand. DAY: sunglasses on. NIGHT: no sunglasses, calm sleepy smile instead, same pose otherwise. Identical to the reference image, do not redesign.
+Character(s) for this sheet: an adult woman in her 30s, shoulder-length wavy brown hair, average non-exaggerated adult cartoon body proportions (not curvy/body-conscious, not chibi/oversized-head), wearing a modest one-piece swimsuit (full coverage, cartoon-cute style, NOT a bikini, NOT body-conscious), sitting in a relaxed neutral pose on a tiny beach chair, sipping a drink with a straw, melting ice cream dripping down the hand. DAY: sunglasses on, relaxed pose. NIGHT: no sunglasses, and she is clearly WIDE AWAKE and in a party mood — eyes wide open, a big cheerful grin (NOT a sleepy or closed-eyes expression), raising her drink in a toast, with a short string of 5-6 small warm glowing party light bulbs hanging on a line above her beach chair (this string of lights is the ONLY extra prop allowed, night row only); same beach chair and swimsuit otherwise. Do not redesign the character between icons.
 
 Temperature band: hot, > 25°C
 
@@ -69,6 +64,6 @@ Do NOT reorder, merge, skip, duplicate, or substitute any column. Every column i
 described above) AND has NO precipitation of any kind.
 
 Columns, left to right (same sky in row 1 and row 2, day mood above / night mood below):
-1. Windy + clear sky (sun / moon) — one big bright sun in a clear sky, NO clouds at all (day) / one full moon with twinkling stars, NO clouds at all (night) — character braced against the wind, hair and clothes streaming sideways
-2. Windy + variable cloudiness (TWO small separate clouds with a clear GAP of sky between them, sun still peeking through the gap) (day) / two small clouds with a gap of night sky between them, moon peeking through (night) — clouds are stretched and streaked sideways by the wind, character holding hat or jacket in the wind
+1. Windy + clear sky (sun / moon) — one big bright sun in a clear sky, NO clouds at all (day) / one HALF moon (a clearly recognizable half-disc, a first-quarter moon with one flat straight edge and one round edge — NOT a full moon, NOT a thin crescent), drawn as a nice charming cartoon moon with a cute, friendly cartoon face on the moon — two small round eyes, a tiny rosy cheek and a gentle, warm SMILE (a happy smiling moon, never sad, sleepy or angry), with twinkling stars, NO clouds at all (night) — character braced against the wind, hair and clothes streaming sideways
+2. Windy + variable cloudiness (TWO small separate clouds with a clear GAP of sky between them, sun still peeking through the gap) (day) / two small clouds with a gap of night sky between them, the same smiling cartoon HALF moon with its friendly face (flat straight edge on one side) peeking through the gap (night) — clouds are stretched and streaked sideways by the wind, character clutching her own jacket, collar, hood or scarf only if it is part of her outfit described above (never add a hat or any item that is not listed), hair and clothes whipping in the wind
 3. Windy + cloudy / overcast (ONE large, solid, flat gray cloud shape with a crisp outline filling most of the upper frame, NO sun, NO moon, stretched sideways by the wind; still a solid opaque cartoon cloud, no haze or transparency) (day) / same large gray cloud in a gray-not-black night tone (night) — character leaning hard into the wind
