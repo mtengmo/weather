@@ -25,10 +25,11 @@ describe("windy icon choice on cards", () => {
     expect(container.querySelector(".wind-badge")).toBeNull();
   });
 
-  it("Weekly strip badges a windy snowy day (no windy snow art)", () => {
+  it("Weekly strip shows windy snow art without a badge for a windy snowy day", () => {
     const snowy = { ...day, average: -10, high: -5, low: -15, totalPrecipitation: 5 };
     const { container } = render(<WeeklyForecastStrip days={[snowy]} unit="metric" />);
-    expect(container.querySelectorAll(".wind-badge")).toHaveLength(1);
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(WEATHER_TYPE_ARTWORK["snow-light-windy"]?.cold?.day);
+    expect(container.querySelector(".wind-badge")).toBeNull();
   });
 
   it("Today card follows the nearest observation's wind, not the day's average", () => {

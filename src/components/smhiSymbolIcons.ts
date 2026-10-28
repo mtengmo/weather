@@ -59,12 +59,14 @@ export type WeatherType =
   | "sleet"
   | "snow-light"
   | "snow-heavy"
-  // Wind variants (windy character artwork): sky + wind, or rain + wind.
+  // Wind variants (windy character artwork): sky + wind, rain + wind, or snow + wind.
   | "windy-clear"
   | "windy-variable"
   | "windy-cloudy"
   | "rain-light-windy"
-  | "rain-heavy-windy";
+  | "rain-heavy-windy"
+  | "snow-light-windy"
+  | "snow-heavy-windy";
 
 /** Inverse of `sheet-manifest.json`'s `code_mapping` — every one of the 27 SMHI codes maps to
  *  exactly one of the 12 `WeatherType`s. */
@@ -182,7 +184,7 @@ const CONDITION_SMHI_FALLBACK: Partial<Record<WeatherCondition, number>> = {
   sleet: 23, // Moderate sleet
 };
 
-/** Base type -> its wind-variant artwork type. Types without an entry (snow, sleet, thunder, fog)
+/** Base type -> its wind-variant artwork type. Types without an entry (sleet, thunder, fog)
  *  keep their base art and get the wind badge instead. */
 const WINDY_VARIANT: Partial<Record<WeatherType, WeatherType>> = {
   clear: "windy-clear",
@@ -192,6 +194,8 @@ const WINDY_VARIANT: Partial<Record<WeatherType, WeatherType>> = {
   overcast: "windy-cloudy",
   "rain-light": "rain-light-windy",
   "rain-heavy": "rain-heavy-windy",
+  "snow-light": "snow-light-windy",
+  "snow-heavy": "snow-heavy-windy",
 };
 
 /** Default temperature band used only when no temperature reading is available at all

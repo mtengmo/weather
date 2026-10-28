@@ -37,6 +37,8 @@ const ALL_TYPES: WeatherType[] = [
   "windy-cloudy",
   "rain-light-windy",
   "rain-heavy-windy",
+  "snow-light-windy",
+  "snow-heavy-windy",
 ];
 
 describe("SMHI_CODE_TO_WEATHER_TYPE (063-replace-weather-icons)", () => {
@@ -78,8 +80,9 @@ describe("WEATHER_TYPE_ARTWORK (063-replace-weather-icons)", () => {
         checked++;
       }
     }
-    // 62 base entries + 3 windy sky types x 6 bands + 2 windy rain types x 4 bands = 88.
-    expect(checked).toBe(88);
+    // 62 base entries + 3 windy sky types x 6 bands + 2 windy rain types x 4 bands
+    // + 2 windy snow types x 3 bands = 94.
+    expect(checked).toBe(94);
   });
 
   it("has no generated artwork for rain at frozen/cold or snow at mild/warm/hot (the fallback cases)", () => {
@@ -260,6 +263,9 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
       [18, "rain-light-windy", 10],
       [10, "rain-heavy-windy", 10],
       [1, "windy-clear", -30], // frozen has windy sky art
+      [15, "snow-light-windy", -10],
+      [27, "snow-heavy-windy", -10],
+      [15, "snow-light-windy", -30],
     ];
     for (const [code, type, temp] of cases) {
       const band = mapTemperatureToIconBand(temp);
@@ -280,14 +286,13 @@ describe("resolveConditionIcon / resolveConditionIconFromCondition (063-replace-
     }
   });
 
-  it("keeps base art plus a badge when no windy art exists (snow, sleet, thunder, fog, rain at frozen)", () => {
+  it("keeps base art plus a badge when no windy art exists (sleet, thunder, fog, rain at frozen)", () => {
     const cases: Array<[number, number, WeatherType]> = [
-      [15, -10, "snow-light"],
-      [27, -10, "snow-heavy"],
       [11, 10, "thunder"],
       [7, 10, "fog"],
       [13, 0, "sleet"],
       [18, -30, "sleet"], // rain at frozen falls back to sleet
+      [15, 10, "sleet"], // snow at mild falls back to sleet
       [20, -10, "sleet"],
     ];
     for (const [code, temp, type] of cases) {
