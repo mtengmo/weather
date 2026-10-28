@@ -11,9 +11,12 @@ import com.tengmo.vader.data.model.DEFAULT_LANGUAGE_PREFERENCE
 import com.tengmo.vader.data.model.DEFAULT_NEARBY_STATION_COUNT
 import com.tengmo.vader.data.model.DEFAULT_THEME
 import com.tengmo.vader.data.model.DEFAULT_UNIT_SYSTEM
+import com.tengmo.vader.data.model.HomeView
 import com.tengmo.vader.data.model.LanguagePreference
 import com.tengmo.vader.data.model.Location
 import com.tengmo.vader.data.model.Theme
+import com.tengmo.vader.data.model.parseHomeView
+import com.tengmo.vader.data.model.storedValue
 import com.tengmo.vader.data.model.UnitSystem
 import com.tengmo.vader.data.model.UserPreferences
 import com.tengmo.vader.data.source.NetworkModule
@@ -37,6 +40,7 @@ class PreferencesStore(context: Context) {
         val highLowVisible = booleanPreferencesKey("high_low_visible")
         val lastViewedLocation = stringPreferencesKey("last_viewed_location_json")
         val followInBackground = booleanPreferencesKey("follow_location_in_background")
+        val homeView = stringPreferencesKey("home_view")
     }
 
     val preferences = dataStore.data.map { prefs ->
@@ -51,6 +55,7 @@ class PreferencesStore(context: Context) {
                 runCatching { NetworkModule.json.decodeFromString(Location.serializer(), it) }.getOrNull()
             },
             followLocationInBackground = prefs[Keys.followInBackground] ?: false,
+            homeView = parseHomeView(prefs[Keys.homeView]),
         )
     }
 
@@ -59,6 +64,7 @@ class PreferencesStore(context: Context) {
 
     suspend fun setFollowLocationInBackground(enabled: Boolean) = dataStore.edit { it[Keys.followInBackground] = enabled }
 
+    suspend fun setHomeView(view: HomeView) = dataStore.edit { it[Keys.homeView] = view.storedValue() }
     suspend fun setTheme(theme: Theme) = dataStore.edit { it[Keys.theme] = theme.name }
     suspend fun setUnit(unit: UnitSystem) = dataStore.edit { it[Keys.unit] = unit.name }
     suspend fun setLanguage(language: LanguagePreference) = dataStore.edit { it[Keys.language] = language.name }

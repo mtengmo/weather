@@ -31,7 +31,10 @@ import com.tengmo.vader.R
 import com.tengmo.vader.data.model.Location
 import com.tengmo.vader.data.model.UnitSystem
 import com.tengmo.vader.data.model.WeatherObservation
+import com.tengmo.vader.data.repository.WeatherConditionInput
 import com.tengmo.vader.data.repository.convertTemperature
+import com.tengmo.vader.data.repository.deriveWeatherCondition
+import com.tengmo.vader.data.repository.isWindy
 import com.tengmo.vader.data.repository.formatValue
 import com.tengmo.vader.data.repository.isNight
 import com.tengmo.vader.data.repository.temperatureUnitLabel
@@ -212,8 +215,13 @@ fun MediumWidgetContent(render: WidgetRender) {
 
 @Composable
 private fun HourCell(render: WidgetRender, obs: WeatherObservation, unit: UnitSystem) {
+    // Windy hours keep their sky (cloud cover) so the windy artwork matches the other screens.
+    val skyCondition = deriveWeatherCondition(
+        WeatherConditionInput(obs.temperature, obs.precipitation, null, obs.cloudCoverPercent, obs.timestamp, obs.symbolCondition, obs.chanceOfRain),
+    )
     val res = resolveWeatherIconRes(
         render.localizedContext, obs.smhiSymbolCode, obs.symbolCondition, isNight(obs.timestamp), obs.temperature,
+        windy = isWindy(obs.windSpeed), skyCondition = skyCondition,
     )
     Column(
         modifier = GlanceModifier.padding(horizontal = 6.dp),

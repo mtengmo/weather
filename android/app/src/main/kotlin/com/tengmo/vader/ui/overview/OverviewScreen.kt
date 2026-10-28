@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tengmo.vader.R
 import com.tengmo.vader.ServiceLocator
 import com.tengmo.vader.data.model.UserPreferences
@@ -43,71 +42,18 @@ import com.tengmo.vader.ui.overview.timeline.OverviewTimeline
 @Composable
 fun OverviewScreen(
     onOpenFavorites: () -> Unit,
-    viewModel: OverviewViewModel = viewModel(),
+    viewModel: OverviewViewModel,
 ) {
-    val context = LocalContext.current
-    val preferencesStore = ServiceLocator.get(context).preferencesStore
-    val prefs by preferencesStore.preferences.collectAsState(initial = UserPreferences())
+    val prefs by ServiceLocator.get(LocalContext.current).preferencesStore.preferences
+        .collectAsState(initial = UserPreferences())
     val state by viewModel.uiState.collectAsState()
-    val permission = rememberLocationPermissionState()
-
-    // Request location once on first composition when not yet granted (US1 scenario 1), then
-    // (re)start whenever permission state changes.
-    LaunchedEffect(Unit) {
-        if (!permission.isGranted) permission.request()
-    }
-    LaunchedEffect(permission.isGranted) { viewModel.start(permission.isGranted) }
-    val appLanguage = TimeFormat.language(appLocale())
-    LaunchedEffect(appLanguage) {
-        viewModel.refreshWarningsForLanguage()
-        viewModel.rebuildTimeline()
-    }
-
-    // A location picked elsewhere (map pin, favorites list) is stored as the last-viewed
-    // location; pick it up here so returning Home shows it (web parity: selectLocation lands on
-    // the Overview, App.tsx).
-    val stored = prefs.lastViewedLocation
-    LaunchedEffect(stored) {
-        val shown = (state.locationState as? LocationLoadState.Ready)?.location
-        if (stored != null && stored != shown && shown != null) {
-            if (stored.latitude == shown.latitude && stored.longitude == shown.longitude && stored.source == shown.source) {
-                // Only the name changed (background re-resolution): relabel, never reload or re-persist.
-                viewModel.applyResolvedName(stored)
-            } else {
-                viewModel.selectLocation(stored, remember = false)
-            }
-        } else if (stored == null && shown != null) {
-            // "Use current location" clears the stored location — re-resolve the device position.
-            viewModel.useCurrentLocation(permission.isGranted)
-        }
-    }
 
     Column(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        when (val loc = state.locationState) {
-            is LocationLoadState.Loading -> LaunchScreen()
-            is LocationLoadState.Unavailable -> LocationUnavailableView(
-                reason = when {
-                    !permission.isGranted && permission.isPermanentlyDenied -> LocationUnavailableReason.PermissionBlocked
-                    !permission.isGranted -> LocationUnavailableReason.NeedsPermission
-                    else -> LocationUnavailableReason.NoFix
-                },
-                onRequestPermission = permission::request,
-                onOpenAppSettings = {
-                    context.startActivity(
-                        android.content.Intent(
-                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            android.net.Uri.fromParts("package", context.packageName, null),
-                        ),
-                    )
-                },
-                onRetry = { viewModel.useCurrentLocation(permission.isGranted) },
-                onSearchPlace = onOpenFavorites,
-            )
-            is LocationLoadState.Ready -> {
+        LocationGate(state, viewModel, onOpenFavorites) { location ->
                 val pullState = rememberPullToRefreshState()
                 PullToRefreshBox(
                     isRefreshing = state.isUserRefreshing,
@@ -156,7 +102,7 @@ fun OverviewScreen(
                     TodaySummaryCard(
                         today = today,
                         unit = prefs.unit,
-                        location = loc.location,
+                        location = location,
                         currentIcon = current?.let { observationIcon(it, java.time.ZoneId.systemDefault()) },
                         currentTemperature = current?.temperature,
                         currentFeelsLike = state.currentFeelsLike,
@@ -175,7 +121,6 @@ fun OverviewScreen(
                     )
                 }
                 }
-            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.tengmo.vader.data.repository
 
+import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.model.WeatherObservation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -259,5 +260,58 @@ class TimelineDataTest {
         assertEquals(col.isNight, icon.isNight)
         assertEquals(col.temperature, icon.temperature)
         assertEquals(true, icon.isNight) // 23:00 local, decided by the observation's own timestamp/zone
+    }
+
+    // --- windy / sky / isNight -----------------------------------------------------------------
+
+    @Test
+    fun hourly_windyColumn_keepsWindyConditionButSkyIgnoresWind() {
+        val last = at(2026, 10, 17, 8)
+        val data = buildHourlyTimeline(
+            listOf(obs(last, wind = 7.9), obs(last + hour, wind = 8.0, forecast = true)), now, zone,
+        )
+        assertFalse(data.periods[0].windy)
+        assertEquals(WeatherCondition.ClearDay, data.periods[0].condition)
+        assertTrue(data.periods[1].windy)
+        assertEquals(WeatherCondition.Windy, data.periods[1].condition)
+        assertEquals(WeatherCondition.ClearDay, data.periods[1].skyCondition)
+    }
+
+    @Test
+    fun observationIcon_carriesWindyAndSkyCondition() {
+        val icon = observationIcon(obs(at(2026, 10, 17, 9), precip = 1.0, wind = 12.0), zone)
+        assertTrue(icon.windy)
+        assertEquals(WeatherCondition.LightRain, icon.condition)
+        assertEquals(WeatherCondition.LightRain, icon.skyCondition)
+        val calm = observationIcon(obs(at(2026, 10, 17, 9), wind = null), zone)
+        assertFalse(calm.windy)
+    }
+
+    private fun windyHourlyAcrossDays(wind: Double): List<WeatherObservation> {
+        val start = at(2026, 10, 15, 0)
+        return (1..24 * 5).map { h -> obs(start + h * hour, forecast = start + h * hour > now, wind = wind) }
+    }
+
+    @Test
+    fun threeDay_windyFromBucketAverage_andOnlyNightBucketIsNight() {
+        val data = build3DayTimeline(windyHourlyAcrossDays(9.0), now, zone)
+        val withData = data.periods.filter { it.temperature != null }
+        assertTrue(withData.size > 5)
+        assertTrue(withData.all { it.windy })
+        assertTrue(withData.all { it.condition == WeatherCondition.Windy })
+        assertTrue(withData.all { it.skyCondition == WeatherCondition.ClearDay })
+        for (p in data.periods) assertEquals(p.subDayPeriod == "night", p.isNight)
+        assertTrue(data.periods.any { it.isNight })
+    }
+
+    @Test
+    fun sevenDay_notWindyBelowThreshold_andAlwaysDay() {
+        val data = buildDailyTimeline(windyHourlyAcrossDays(7.9), now, zone)
+        assertTrue(data.periods.none { it.windy })
+        assertTrue(data.periods.none { it.isNight })
+        val windy = buildDailyTimeline(windyHourlyAcrossDays(8.0), now, zone)
+        assertTrue(windy.periods.count { it.windy } >= 3)
+        assertTrue(windy.periods.filter { it.temperature != null }.all { it.windy })
+        assertTrue(windy.periods.none { it.isNight })
     }
 }

@@ -28,7 +28,7 @@ import com.tengmo.vader.R
 
 /** Column geometry shared by every row so the tint, the Now line and the captions line up. */
 @Immutable
-internal class TimelineGeometry(
+class TimelineGeometry(
     val columnWidth: Dp,
     val columns: Int,
     /** Index of the first forecast column, -1 when everything is observed. */

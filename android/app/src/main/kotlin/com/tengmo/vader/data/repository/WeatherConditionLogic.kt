@@ -9,7 +9,11 @@ import java.time.ZoneId
 // derives a single WeatherCondition from a period's values (FR-011: matching the web app's
 // exact classification, so the same data shows the same icon in both).
 
-private const val WINDY_THRESHOLD_MS = 8.0
+const val WINDY_THRESHOLD_MS = 8.0
+
+/** True when a wind speed (m/s) is at or above the windy threshold, independent of the derived condition. */
+fun isWindy(ms: Double?): Boolean = ms != null && ms >= WINDY_THRESHOLD_MS
+
 private const val CLOUDY_THRESHOLD_PERCENT = 50
 private const val OVERCAST_THRESHOLD_PERCENT = 80
 private const val LOW_CONFIDENCE_CHANCE_OF_RAIN_PERCENT = 20
@@ -60,7 +64,7 @@ fun deriveWeatherCondition(input: WeatherConditionInput): WeatherCondition? {
         }
     }
 
-    if (windSpeed != null && windSpeed >= WINDY_THRESHOLD_MS) return WeatherCondition.Windy
+    if (isWindy(windSpeed)) return WeatherCondition.Windy
 
     if (symbolCondition == WeatherCondition.Cloudy || symbolCondition == WeatherCondition.PartlyCloudy ||
         symbolCondition == WeatherCondition.ClearDay || symbolCondition == WeatherCondition.ClearNight
@@ -76,10 +80,23 @@ fun deriveWeatherCondition(input: WeatherConditionInput): WeatherCondition? {
     return if (timestamp != null && isNight(timestamp)) WeatherCondition.ClearNight else WeatherCondition.ClearDay
 }
 
+/** The wind speed [deriveDailyCondition] uses for a bucket (daytime average when available). */
+fun dailyWindSpeed(day: DailyAggregate): Double? {
+    val hasDaytimeData = day.daytimeAverage != null || day.daytimeTotalPrecipitation != null ||
+        day.daytimeWindAverage != null || day.daytimeCloudAverage != null || day.daytimeChanceOfRainMax != null
+    return if (hasDaytimeData) day.daytimeWindAverage else day.windAverage
+}
+
 /** A whole rolling-24h bucket's single displayed condition, driven by its daytime hours so an
  *  overnight-only or brief-morning shower doesn't make an otherwise-dry day show as rain
  *  (port of weatherCondition.ts's `deriveDailyCondition`, 066/067/069). */
-fun deriveDailyCondition(day: DailyAggregate): WeatherCondition? {
+fun deriveDailyCondition(day: DailyAggregate): WeatherCondition? = deriveDailyConditionWith(day, useWind = true)
+
+/** Same as [deriveDailyCondition] but ignoring wind: the sky/precipitation part only, used to pick
+ *  windy artwork for a windy day. */
+fun deriveDailySkyCondition(day: DailyAggregate): WeatherCondition? = deriveDailyConditionWith(day, useWind = false)
+
+private fun deriveDailyConditionWith(day: DailyAggregate, useWind: Boolean): WeatherCondition? {
     val hasDaytimeData = day.daytimeAverage != null || day.daytimeTotalPrecipitation != null ||
         day.daytimeWindAverage != null || day.daytimeCloudAverage != null || day.daytimeChanceOfRainMax != null
 
@@ -94,7 +111,7 @@ fun deriveDailyCondition(day: DailyAggregate): WeatherCondition? {
         WeatherConditionInput(
             temperature = if (hasDaytimeData) day.daytimeAverage else day.average,
             precipitation = if (hasDaytimeData) daytimePrecipitationForCondition else day.totalPrecipitation,
-            windSpeed = if (hasDaytimeData) day.daytimeWindAverage else day.windAverage,
+            windSpeed = if (useWind) dailyWindSpeed(day) else null,
             cloudCoverPercent = (if (hasDaytimeData) day.daytimeCloudAverage else day.cloudAverage)?.toInt(),
             chanceOfRain = if (hasDaytimeData) day.daytimeChanceOfRainMax else day.chanceOfRainMax,
         ),

@@ -27,10 +27,11 @@ Provide it with `-POPENWEATHERMAP_API_KEY=...` or the `OPENWEATHERMAP_API_KEY` e
 | Path | What |
 |---|---|
 | `app/src/main/kotlin/com/tengmo/vader/data/` | models, the four data-source clients (`source/`), source-selection + aggregation logic (`repository/`), on-device stores (`local/`) |
-| `.../ui/` | Compose screens: `overview/`, `graph/`, `details/`, `map/`, `favorites/`, `settings/` |
+| `.../ui/` | Compose screens: `overview/`, `sea/` (Kustväder: sea report, summary card, `SeaLoader` with its 10-minute caches), `graph/`, `details/`, `map/`, `favorites/`, `settings/` |
 | `.../widget/` | Glance widgets (small, medium), configuration activity, tap handling |
 | `.../work/`, `.../location/` | WorkManager widget refresh, significant-location-change tracking, permission flows |
 | `app/src/main/res/` | strings (English + Swedish), colors, icons, weather artwork |
+| `scripts/sync_weather_icons.py` | syncs the weather/character PNGs from the web app's artwork into `res/drawable-nodpi/` — `--check` verifies they are up to date |
 | `scripts/gen_strings.py` | regenerates `strings.xml` from the web app's `src/i18n/{en,sv}.ts` — re-run when those change |
 
 ## Notes

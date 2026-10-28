@@ -32,7 +32,8 @@ class MainActivity : AppCompatActivity() {
         // every screen pads itself with safeDrawingPadding() so nothing sits under a cut-out or the gesture bar (FR-012).
         enableEdgeToEdge()
         val preferencesStore = ServiceLocator.get(this).preferencesStore
-        handleWidgetTap(intent)
+        // Only on a fresh launch: a recreation (rotation) must not replay the widget tap.
+        if (savedInstanceState == null) handleWidgetTap(intent)
 
         setContent {
             val preferences by preferencesStore.preferences.collectAsState(initial = UserPreferences())

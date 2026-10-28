@@ -23,6 +23,20 @@ val VALID_NEARBY_STATION_COUNTS = 0..4
 typealias HighLowVisibility = Boolean
 const val DEFAULT_HIGH_LOW_VISIBLE: HighLowVisibility = false
 
+/** The last chosen of Overview / Kustvader, restored on the next app start (web `homeView`). */
+enum class HomeView { Overview, Sea }
+val DEFAULT_HOME_VIEW = HomeView.Overview
+
+/** Stored form of a [HomeView] ("overview" | "sea"). */
+fun HomeView.storedValue(): String = if (this == HomeView.Sea) "sea" else "overview"
+
+/** Port of web `getHomeViewPreference`: anything but "sea" / "overview" falls back to the default. */
+fun parseHomeView(stored: String?): HomeView = when (stored) {
+    "sea" -> HomeView.Sea
+    "overview" -> HomeView.Overview
+    else -> DEFAULT_HOME_VIEW
+}
+
 /** Single record, persisted on-device (FR-006, FR-007). */
 data class UserPreferences(
     val theme: Theme = DEFAULT_THEME,
@@ -33,4 +47,5 @@ data class UserPreferences(
     val lastViewedLocation: Location? = null,
     /** Opt-in: background sync follows the phone's last known coarse location (never starts GPS). */
     val followLocationInBackground: Boolean = false,
+    val homeView: HomeView = DEFAULT_HOME_VIEW,
 )

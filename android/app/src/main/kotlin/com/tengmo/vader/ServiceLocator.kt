@@ -8,11 +8,15 @@ import com.tengmo.vader.data.local.PreferencesStore
 import com.tengmo.vader.data.local.SnapshotStore
 import com.tengmo.vader.data.local.WidgetTargetStore
 import com.tengmo.vader.data.repository.WeatherRepository
+import com.tengmo.vader.data.source.MarineSource
 import com.tengmo.vader.data.source.MetNoSource
 import com.tengmo.vader.data.source.NetworkModule
 import com.tengmo.vader.data.source.NominatimSource
 import com.tengmo.vader.data.source.OpenMeteoSource
+import com.tengmo.vader.data.source.SmhiOceanSource
+import com.tengmo.vader.data.source.SmhiSeaReportSource
 import com.tengmo.vader.data.source.SmhiSource
+import com.tengmo.vader.ui.sea.SeaLoader
 import com.tengmo.vader.work.sync.PostSyncHook
 
 /** Minimal hand-rolled DI container (no Hilt/Dagger dependency, to keep this scaffold's build
@@ -27,6 +31,12 @@ class ServiceLocator private constructor(context: Context) {
     val openMeteoSource = OpenMeteoSource(httpClient)
     val metNoSource = MetNoSource(httpClient)
     val nominatimSource = NominatimSource(httpClient)
+    val marineSource = MarineSource(httpClient, json)
+    val smhiOceanSource = SmhiOceanSource(httpClient, json)
+    val smhiSeaReportSource = SmhiSeaReportSource(httpClient, json)
+
+    /** Process-wide so the 10-minute sea caches survive screen / ViewModel recreation. */
+    val seaLoader = SeaLoader.from(marineSource, smhiOceanSource, smhiSeaReportSource)
 
     val weatherRepository = WeatherRepository(
         smhiSource, openMeteoSource, metNoSource, nominatimSource,

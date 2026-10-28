@@ -21,6 +21,21 @@ fun convertWindSpeed(ms: Double?, to: UnitSystem): Double? {
     return if (to == UnitSystem.Imperial) ms * 2.23694 else ms
 }
 
+/** Wave height in m (metric) or ft (imperial). */
+fun convertWaveHeight(meters: Double?, to: UnitSystem): Double? {
+    if (meters == null) return null
+    return if (to == UnitSystem.Imperial) meters * 3.28084 else meters
+}
+
+/** Water level in cm (metric) or inches (imperial). */
+fun convertWaterLevel(cm: Double?, to: UnitSystem): Double? {
+    if (cm == null) return null
+    return if (to == UnitSystem.Imperial) cm / 2.54 else cm
+}
+
+fun lengthUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "ft" else "m"
+fun levelUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "in" else "cm"
+
 fun temperatureUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "°F" else "°C"
 fun precipitationUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "in" else "mm"
 fun windUnitLabel(unit: UnitSystem) = if (unit == UnitSystem.Imperial) "mph" else "m/s"

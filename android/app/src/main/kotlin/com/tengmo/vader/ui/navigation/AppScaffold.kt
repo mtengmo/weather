@@ -23,10 +23,25 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.tengmo.vader.R
+import com.tengmo.vader.data.model.HomeView
 import com.tengmo.vader.ui.Routes
 
+/** The tab that opens for a stored home view (a picked location lands there). */
+fun homeRouteOf(homeView: HomeView): String = if (homeView == HomeView.Sea) Routes.SEA else Routes.OVERVIEW
+
+/** The route the app opens on: the stored home view, except that a widget tap always opens Overview. */
+fun startRouteFor(homeView: HomeView, openedFromWidget: Boolean): String =
+    if (openedFromWidget) Routes.OVERVIEW else homeRouteOf(homeView)
+
+/** The home view to store after the user picks a bottom-bar tab; null for tabs that are not a home view. */
+fun homeViewChosenByTab(route: String): HomeView? = when (route) {
+    Routes.OVERVIEW -> HomeView.Overview
+    Routes.SEA -> HomeView.Sea
+    else -> null
+}
+
 /** Single app-wide Scaffold: top bar (location switcher + settings gear / back arrow) and the
- *  4-tab bottom bar. [content] is placed inside the Scaffold's inner padding. */
+ *  5-tab bottom bar. [content] is placed inside the Scaffold's inner padding. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
@@ -41,6 +56,8 @@ fun AppScaffold(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
     val onSettings = route == Routes.SETTINGS
+    val homeView by chrome.homeView.collectAsState(initial = HomeView.Overview)
+    val homeRoute = homeRouteOf(homeView)
 
     fun navigateTab(target: String) {
         navController.navigate(target) {
@@ -63,8 +80,8 @@ fun AppScaffold(
                         placeName = placeName,
                         favorites = favorites,
                         selectedPlace = selectedPlace,
-                        onUseCurrentLocation = { chrome.useCurrentLocation { navigateTab(Routes.OVERVIEW) } },
-                        onSelectFavorite = { fav -> chrome.select(fav.toLocation()) { navigateTab(Routes.OVERVIEW) } },
+                        onUseCurrentLocation = { chrome.useCurrentLocation { navigateTab(homeRoute) } },
+                        onSelectFavorite = { fav -> chrome.select(fav.toLocation()) { navigateTab(homeRoute) } },
                         onSearchOrManage = { navigateTab(Routes.FAVORITES) },
                     )
                 },
@@ -91,7 +108,10 @@ fun AppScaffold(
                         val selected = route == dest.route
                         NavigationBarItem(
                             selected = selected,
-                            onClick = { navigateTab(dest.route) },
+                            onClick = {
+                                homeViewChosenByTab(dest.route)?.let(chrome::setHomeView)
+                                navigateTab(dest.route)
+                            },
                             icon = { Icon(painterResource(dest.iconRes), contentDescription = null) },
                             label = { Text(stringResource(dest.labelRes)) },
                         )

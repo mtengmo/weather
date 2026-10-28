@@ -38,6 +38,15 @@ class TimelineLogicTest {
         assertEquals("14:00, Mulet, 12°, regn 0.4 mm, vind 5 m/s", s)
     }
 
+    @Test fun descriptionAppendsWindySuffixOnlyWhenGiven() {
+        val t = "%1\$s, %2\$s, %3\$s, %4\$s, %5\$s"
+        assertEquals("14:00, Rain, 12°, 0.4 mm, 5 m/s", columnDescription(t, "14:00", "Rain", "12°", "0.4 mm", "5 m/s"))
+        assertEquals(
+            "14:00, Rain, 12°, 0.4 mm, 5 m/s, Windy",
+            columnDescription(t, "14:00", "Rain", "12°", "0.4 mm", "5 m/s", windySuffix = "Windy"),
+        )
+    }
+
     @Test fun cellTexts() {
         val wind = TimelineRowPoint(isForecast = true, value = 5.2, gust = 9.4)
         assertEquals("5 (9) m/s", windText(wind, "m/s"))

@@ -58,6 +58,7 @@ import com.tengmo.vader.data.repository.formatValue
 import com.tengmo.vader.data.repository.getMoonPhase
 import com.tengmo.vader.data.repository.getSunTimes
 import com.tengmo.vader.data.repository.isNight
+import com.tengmo.vader.data.repository.isWindy
 import com.tengmo.vader.data.repository.precipitationUnitLabel
 import com.tengmo.vader.data.repository.windUnitLabel
 import com.tengmo.vader.ui.stringByName
@@ -122,6 +123,7 @@ fun TodaySummaryCard(
         ),
     )
     val condition = currentIcon?.condition ?: dayCondition
+    val windy = currentIcon?.windy ?: isWindy(today.windAverage)
     // Falls back to today's high/low midpoint when there's no current reading, rather than
     // omitting the icon/character outright (061-cartoon-weather-companion, US3).
     val characterTemperature = currentTemperature
@@ -190,6 +192,8 @@ fun TodaySummaryCard(
                         temperatureCelsius = characterTemperature,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
+                        windy = windy,
+                        skyCondition = currentIcon?.skyCondition,
                     )
                     CompanionCharacterImage(
                         condition = condition,
@@ -235,8 +239,8 @@ fun TodaySummaryCard(
             val summaryDescription = buildString {
                 append(restOfDayLabel)
                 (listOf(
-                    stringResource(R.string.todaySummary_high) to "${formatValue(convertTemperature(restOfDay?.high, unit), 0)}°",
-                    stringResource(R.string.todaySummary_low) to "${formatValue(convertTemperature(restOfDay?.low, unit), 0)}°",
+                    stringResource(R.string.todaySummary_high) to "${formatValue(convertTemperature(restOfDay?.high, unit), 0)}Â°",
+                    stringResource(R.string.todaySummary_low) to "${formatValue(convertTemperature(restOfDay?.low, unit), 0)}Â°",
                 ) + facts.take(2)).forEach { (l, v) -> append(". $l $v") }
             }
             FlowRow(

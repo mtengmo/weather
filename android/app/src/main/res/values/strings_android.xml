@@ -32,8 +32,8 @@
     <string name="privacy_location">Your location is used only to show weather for where you are. Its coordinates are sent solely to the public weather and place-name services that answer your request (SMHI, Open-Meteo, MET Norway, OpenStreetMap Nominatim), never to us. \"My location\" widgets can keep following your position while the app is closed if you allow background location; it is used for nothing else.</string>
     <string name="privacy_noTracking">The app contains no advertising, no analytics and no tracking identifiers.</string>
     <string name="attribution_title">Data sources</string>
-    <string name="attribution_smhi">Weather observations, forecasts, warnings and UV data: SMHI open data (Sweden\'s national weather service).</string>
-    <string name="attribution_openMeteo">Worldwide weather data and place search: Open-Meteo (open-meteo.com).</string>
+    <string name="attribution_smhi">Weather observations, forecasts, warnings and UV data, plus sea observations (water level, wave height, sea temperature) and the sea report (sjörapport): SMHI open data (Sweden\'s national weather service).</string>
+    <string name="attribution_openMeteo">Worldwide weather data and place search: Open-Meteo (open-meteo.com). Waves, swell and currents: Open-Meteo Marine.</string>
     <string name="attribution_metNo">Forecast data: MET Norway (api.met.no), licensed CC BY 4.0.</string>
     <string name="attribution_osm">Map tiles and place names: © OpenStreetMap contributors.</string>
     <string name="attribution_rainviewer">Radar imagery: RainViewer (rainviewer.com).</string>

@@ -32,10 +32,13 @@ import com.tengmo.vader.data.repository.WeatherConditionInput
 import com.tengmo.vader.data.repository.convertPrecipitation
 import com.tengmo.vader.data.repository.convertTemperature
 import com.tengmo.vader.data.repository.convertWindSpeed
+import com.tengmo.vader.data.repository.dailyWindSpeed
 import com.tengmo.vader.data.repository.deriveDailyCondition
+import com.tengmo.vader.data.repository.deriveDailySkyCondition
 import com.tengmo.vader.data.repository.deriveWeatherCondition
 import com.tengmo.vader.data.repository.formatValue
 import com.tengmo.vader.data.repository.isNight
+import com.tengmo.vader.data.repository.isWindy
 import com.tengmo.vader.data.repository.precipitationUnitLabel
 import com.tengmo.vader.data.repository.temperatureUnitLabel
 import com.tengmo.vader.data.repository.toDailyAggregates
@@ -125,7 +128,13 @@ private fun HourlyTable(observations: List<WeatherObservation>, unit: UnitSystem
                     Modifier.weight(1.4f),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                WeatherIconImage(o.smhiSymbolCode, condition, isNight(o.timestamp), o.temperature, null, Modifier.size(28.dp))
+                val skyCondition = deriveWeatherCondition(
+                    WeatherConditionInput(o.temperature, o.precipitation, null, o.cloudCoverPercent, o.timestamp, o.symbolCondition, o.chanceOfRain),
+                )
+                WeatherIconImage(
+                    o.smhiSymbolCode, condition, isNight(o.timestamp), o.temperature, null, Modifier.size(28.dp),
+                    windy = isWindy(o.windSpeed), skyCondition = skyCondition,
+                )
                 Text("${formatValue(convertTemperature(o.temperature, unit), 1)}${temperatureUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 Text("${formatValue(convertPrecipitation(o.precipitation, unit), 1)} ${precipitationUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                 Text("${formatValue(convertWindSpeed(o.windSpeed, unit), 1)} ${windUnitLabel(unit)}", Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
@@ -146,7 +155,10 @@ private fun DailyTable(days: List<DailyAggregate>, unit: UnitSystem) {
                     Modifier.weight(1.4f),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                WeatherIconImage(null, deriveDailyCondition(d), false, d.average, null, Modifier.size(28.dp))
+                WeatherIconImage(
+                    null, deriveDailyCondition(d), false, d.average, null, Modifier.size(28.dp),
+                    windy = isWindy(dailyWindSpeed(d)), skyCondition = deriveDailySkyCondition(d),
+                )
                 Text(
                     "${formatValue(convertTemperature(d.high, unit), 0)}° / ${formatValue(convertTemperature(d.low, unit), 0)}°",
                     Modifier.weight(1f), style = MaterialTheme.typography.bodySmall,

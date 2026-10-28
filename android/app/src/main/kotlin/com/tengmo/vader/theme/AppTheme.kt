@@ -168,6 +168,22 @@ private val IvoryNotice = NoticeColors(marker = Color(0xFFB7791F), text = Color(
 
 val LocalNoticeColors = staticCompositionLocalOf { MidnightNotice }
 
+/** Wave-height level colours 1 (calm) .. 5 (rough), from src/index.css `--wave-1..5`; each >= 3:1 on the card surface. */
+@Immutable
+data class WaveColors(val levels: List<Color>) {
+    /** [level] is 1..5 (see waveHeightLevel). */
+    fun forLevel(level: Int): Color = levels[(level - 1).coerceIn(0, levels.lastIndex)]
+}
+
+val MidnightWaveColors = WaveColors(
+    listOf(Color(0xFF3FBFA8), Color(0xFFA3C93A), Color(0xFFF0B429), Color(0xFFF47C3C), Color(0xFFEF4444)),
+)
+val IvoryWaveColors = WaveColors(
+    listOf(Color(0xFF0F8F7A), Color(0xFF5F8A0E), Color(0xFFB7791F), Color(0xFFD1560F), Color(0xFFC81E1E)),
+)
+
+val LocalWaveColors = staticCompositionLocalOf { MidnightWaveColors }
+
 @Composable
 fun TengmoVaderTheme(theme: Theme, content: @Composable () -> Unit) {
     val colorScheme = when (theme) {
@@ -175,7 +191,8 @@ fun TengmoVaderTheme(theme: Theme, content: @Composable () -> Unit) {
         Theme.Ivory -> IvoryColorScheme
     }
     val notice = if (theme == Theme.Midnight) MidnightNotice else IvoryNotice
-    CompositionLocalProvider(LocalNoticeColors provides notice) {
+    val waves = if (theme == Theme.Midnight) MidnightWaveColors else IvoryWaveColors
+    CompositionLocalProvider(LocalNoticeColors provides notice, LocalWaveColors provides waves) {
         MaterialTheme(colorScheme = colorScheme, typography = appTypography(darkBoost = theme == Theme.Midnight)) {
             // A Surface provides LocalContentColor (onBackground) for every plain Text below it —
             // without one, Material 3 text defaults to black and vanishes on the dark Midnight theme.

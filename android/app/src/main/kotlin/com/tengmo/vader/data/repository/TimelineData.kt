@@ -15,7 +15,10 @@ import java.util.Locale
 /** Overview timeline resolution. */
 enum class TimelineMode { Hours24, Days3, Days7 }
 
-enum class TimelineRowKind { Line, Bar, Wind }
+enum class TimelineRowKind { Line, Bar, Wind, Direction }
+
+/** Whether a direction row's degrees are where something comes FROM (waves, wind) or goes TOWARD (current). */
+enum class DirectionConvention { From, Toward }
 
 /** One column of the shared timeline — every row aligns to this same list. */
 data class TimelinePeriod(
@@ -33,6 +36,10 @@ data class TimelinePeriod(
     /** Raw Celsius value used for the icon's temperature band. */
     val temperature: Double?,
     val uvRisk: Boolean = false,
+    /** True when this period's wind (hour's wind; bucket's average) is windy, whatever [condition] is. */
+    val windy: Boolean = false,
+    /** Sky-only condition (wind ignored); [condition] is Windy whenever windy, which hides the cloud cover. */
+    val skyCondition: WeatherCondition? = null,
     /** True for hours 20:00-05:59 local (hourly) — pick moon vs sun for clear conditions. */
     val isNight: Boolean = false,
     val startMillis: Long,
@@ -55,6 +62,10 @@ data class TimelineRowPoint(
     val combinedSourceCount: Int? = null,
     /** True when [value] was interpolated from its two neighbours. */
     val interpolated: Boolean = false,
+    /** Direction rows (sea): mean period in seconds, when known. */
+    val period: Double? = null,
+    /** Sea rows: a past value made only of model data (no observation behind it). */
+    val modelled: Boolean = false,
 )
 
 data class TimelineRow(
@@ -62,6 +73,13 @@ data class TimelineRow(
     val unitLabel: String,
     val kind: TimelineRowKind,
     val points: List<TimelineRowPoint>, // same length/order as TimelineData.periods
+    /** Fixed decimals for the row's values; null = the renderer's default. */
+    val decimals: Int? = null,
+    /** Show an explicit "+" for positive values (water level). */
+    val signed: Boolean = false,
+    val directionConvention: DirectionConvention = DirectionConvention.From,
+    /** False when no column has a value, so the UI can hide the row. */
+    val available: Boolean = true,
 )
 
 data class TimelineData(
@@ -175,10 +193,13 @@ private fun nightHour(ms: Long, zone: ZoneId): Boolean {
     return hour < NIGHT_END_HOUR || hour >= NIGHT_START_HOUR
 }
 
-private fun hourlyCondition(obs: WeatherObservation, ms: Long, zone: ZoneId, withChance: Boolean): WeatherCondition? {
+private fun hourlyCondition(
+    obs: WeatherObservation, ms: Long, zone: ZoneId, withChance: Boolean, withWind: Boolean = true,
+): WeatherCondition? {
     val c = deriveWeatherCondition(
         WeatherConditionInput(
-            temperature = obs.temperature, precipitation = obs.precipitation, windSpeed = obs.windSpeed,
+            temperature = obs.temperature, precipitation = obs.precipitation,
+            windSpeed = if (withWind) obs.windSpeed else null,
             cloudCoverPercent = obs.cloudCoverPercent, timestamp = obs.timestamp,
             chanceOfRain = if (withChance) obs.chanceOfRain else null,
         ),
@@ -197,6 +218,9 @@ data class ObservationIcon(
     val condition: WeatherCondition?,
     val isNight: Boolean,
     val temperature: Double?,
+    val windy: Boolean = false,
+    /** Sky-only condition (wind ignored), for windy artwork selection. */
+    val skyCondition: WeatherCondition? = null,
 )
 
 /** Single source of icon inputs: the timeline's hourly columns and the Today card both use it,
@@ -208,6 +232,8 @@ fun observationIcon(obs: WeatherObservation, zone: ZoneId): ObservationIcon {
         condition = hourlyCondition(obs, endMs, zone, withChance = true),
         isNight = nightHour(endMs, zone),
         temperature = obs.temperature,
+        windy = isWindy(obs.windSpeed),
+        skyCondition = hourlyCondition(obs, endMs, zone, withChance = true, withWind = false),
     )
 }
 
@@ -237,6 +263,8 @@ fun buildHourlyTimeline(
             label = TimeFormat.hourLabel(Instant.ofEpochMilli(endMs).atZone(zone), locale),
             isForecast = obs.isForecast,
             condition = icon.condition,
+            windy = icon.windy,
+            skyCondition = icon.skyCondition,
             smhiSymbolCode = icon.smhiSymbolCode,
             temperature = icon.temperature,
             uvRisk = periodHasUvRisk(obs.isForecast, endMs - HOUR_MS, endMs, uvRiskHours),
@@ -306,8 +334,12 @@ private fun daysToTimeline(
             isForecast = day.isForecast,
             // Whole-day columns carry no timestamp: a clear day shows the sun, never the moon.
             condition = deriveDailyCondition(day),
+            windy = isWindy(dailyWindSpeed(day)),
+            skyCondition = deriveDailySkyCondition(day),
             temperature = day.average,
             uvRisk = periodHasUvRisk(day.isForecast, starts[i], ends[i], uvRiskHours),
+            // 3-day: only the Night bucket uses night art; 7-day (no subDayPeriod) is always day.
+            isNight = day.subDayPeriod == "night",
             startMillis = starts[i],
             endMillis = ends[i],
             subDayPeriod = day.subDayPeriod,

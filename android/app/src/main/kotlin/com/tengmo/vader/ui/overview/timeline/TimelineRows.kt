@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -42,14 +44,22 @@ import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.repository.TimelineData
 import com.tengmo.vader.data.repository.TimelinePeriod
 import com.tengmo.vader.data.repository.TimelineRow
+import com.tengmo.vader.data.repository.TimelineRowPoint
 import com.tengmo.vader.theme.AppColors
 import com.tengmo.vader.ui.overview.WeatherIconImage
 import com.tengmo.vader.ui.overview.conditionStringKey
 
 /** Forecast marks are lighter than observed ones but stay readable against the forecast tint. */
 private const val ForecastAlpha = 0.85f
+
+/** Sea values with no observation behind them (model only) read lighter, with a dashed outline on bars. */
+internal const val ModelledAlpha = 0.75f
+
+/** Forecast sea columns keep their level colour (web: opacity 0.9). */
+private const val SeaForecastAlpha = 0.9f
 private val IconSize = 36.dp
 private val BarAreaHeight = 28.dp
+private val SeaArrowSize = 16.dp
 private val BarWidth = 24.dp
 private val WindArrowSize = 24.dp
 private val TempBottomPad = 8.dp
@@ -120,6 +130,8 @@ internal fun TimelineWeatherRow(data: TimelineData, g: TimelineGeometry, descrip
                         temperatureCelsius = p.temperature,
                         contentDescription = null,
                         modifier = Modifier.size(IconSize),
+                        windy = p.windy,
+                        skyCondition = p.skyCondition,
                     )
                 }
                 Text(
@@ -139,10 +151,25 @@ internal fun TimelineWeatherRow(data: TimelineData, g: TimelineGeometry, descrip
 
 /** Smooth temperature line: observed solid, forecast dashed and lighter, value labels above. */
 @Composable
-internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
+internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) =
+    TimelineLineRow(row, g, AppColors.rowTemperature) { temperatureText(it) }
+
+/**
+ * Generic smooth line row (temperature, and the sea page's sea temperature / water level):
+ * observed solid, forecast dashed and lighter, value labels from [label] above. Modelled points
+ * (sea: no observation behind them) are drawn at [ModelledAlpha]. [exactRange] scales to the
+ * data's own min/max like the web sea rows (the temperature row keeps a 1-degree minimum span).
+ */
+@Composable
+internal fun TimelineLineRow(
+    row: TimelineRow,
+    g: TimelineGeometry,
+    lineColor: Color,
+    exactRange: Boolean = false,
+    label: (TimelineRowPoint) -> String,
+) {
     val values = remember(row) { row.points.map { it.value } }
     val runs = remember(row) { splitLineRuns(values, row.points.map { it.isForecast }) }
-    val lineColor = AppColors.rowTemperature
     val observedText = MaterialTheme.colorScheme.onSurface
     val forecastText = MaterialTheme.colorScheme.onSurfaceVariant
     val measurer = rememberTextMeasurer()
@@ -162,7 +189,7 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
         if (present.isEmpty()) return@Canvas
         val lo = present.min()
         val hi = present.max()
-        val range = (hi - lo).coerceAtLeast(1.0)
+        val range = if (exactRange) (if (hi - lo > 0) hi - lo else 1.0) else (hi - lo).coerceAtLeast(1.0)
         val labelH = measurer.measure("0", labelStyle).size.height
         val top = labelH + TempLabelGap.toPx() + 3.dp.toPx()
         val plotH = size.height - top - TempBottomPad.toPx()
@@ -187,8 +214,10 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
         }
         row.points.forEachIndexed { i, p ->
             val v = p.value ?: return@forEachIndexed
-            drawCircle(if (p.isForecast) lineColor.copy(alpha = ForecastAlpha) else lineColor, 3.dp.toPx(), Offset(x(i), y(v)))
-            val text = measurer.measure(temperatureText(p), labelStyle.copy(color = if (p.isForecast) forecastText else observedText))
+            val markAlpha = if (p.modelled) ModelledAlpha else if (p.isForecast) ForecastAlpha else 1f
+            drawCircle(lineColor.copy(alpha = markAlpha), 3.dp.toPx(), Offset(x(i), y(v)))
+            val baseText = if (p.isForecast) forecastText else observedText
+            val text = measurer.measure(label(p), labelStyle.copy(color = if (p.modelled) baseText.copy(alpha = ModelledAlpha) else baseText))
             val ty = (y(v) - text.size.height - TempLabelGap.toPx()).coerceAtLeast(0f)
             if (knockouts[i]) {
                 drawRoundRect(
@@ -203,11 +232,27 @@ internal fun TimelineTemperatureRow(row: TimelineRow, g: TimelineGeometry) {
     }
 }
 
-/** Bars for precipitation / snow: observed solid, forecast lighter; value (and chance) beneath. */
+/**
+ * Bars for precipitation / snow: observed solid, forecast lighter; value (and chance) beneath.
+ * The sea page reuses it for waves / swell: [barColor] colours a bar by height level, [sea] switches
+ * the value text to [rowValueText] with the direction arrow above and the "N s" period beneath,
+ * and the bar scale to the data's own maximum (web) instead of the 2 mm floor.
+ */
 @Composable
-internal fun TimelineBarRow(row: TimelineRow, g: TimelineGeometry, showChance: Boolean) {
-    val scaleMax = remember(row) { (row.points.mapNotNull { it.value }.maxOrNull() ?: 0.0).coerceAtLeast(2.0) }
+internal fun TimelineBarRow(
+    row: TimelineRow,
+    g: TimelineGeometry,
+    showChance: Boolean,
+    barColor: ((TimelineRowPoint) -> Color?)? = null,
+    sea: Boolean = false,
+) {
+    val scaleMax = remember(row, sea) {
+        val max = row.points.mapNotNull { it.value }.maxOrNull() ?: 0.0
+        if (sea) max.coerceAtLeast(0.001) else max.coerceAtLeast(2.0)
+    }
     val bar = MaterialTheme.colorScheme.tertiary
+    val arrowTint = MaterialTheme.colorScheme.onSurfaceVariant
+    val modelledOutline = MaterialTheme.colorScheme.onSurfaceVariant
     Row(Modifier.width(g.totalWidth).timelineBackdrop(g).clearAndSetSemantics {}) {
         row.points.forEachIndexed { i, p ->
             Column(
@@ -218,21 +263,46 @@ internal fun TimelineBarRow(row: TimelineRow, g: TimelineGeometry, showChance: B
                     val v = p.value
                     if (v != null && v > 0.0) {
                         val h = (BarAreaHeight * (v / scaleMax).toFloat()).coerceAtLeast(2.dp)
+                        val fill = barColor?.invoke(p) ?: bar
+                        val alpha = if (p.modelled) ModelledAlpha else if (p.isForecast) (if (sea) SeaForecastAlpha else ForecastAlpha) else 1f
                         Box(
                             Modifier
                                 .width(BarWidth)
                                 .height(h)
-                                .background(bar.copy(alpha = if (p.isForecast) ForecastAlpha else 1f), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)),
+                                .background(fill.copy(alpha = alpha), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                                .then(if (p.modelled) Modifier.dashedOutline(modelledOutline) else Modifier),
                         )
                     }
                 }
+                if (sea) {
+                    // Arrow slot is always reserved (empty without a direction) so every column is equally tall.
+                    Box(Modifier.size(SeaArrowSize).nowKnockout(g, i)) {
+                        p.direction?.takeIf { p.value != null }?.let { dir ->
+                            Icon(
+                                painterResource(R.drawable.ic_wind_arrow),
+                                contentDescription = null,
+                                tint = arrowTint,
+                                modifier = Modifier.size(SeaArrowSize).rotate(arrowRotation(row, dir)),
+                            )
+                        }
+                    }
+                }
                 Text(
-                    rainText(p, row.unitLabel),
-                    modifier = Modifier.nowKnockout(g, i),
+                    if (sea) rowValueText(row, p) else rainText(p, row.unitLabel),
+                    modifier = Modifier.nowKnockout(g, i).alpha(if (p.modelled) ModelledAlpha else 1f),
                     style = MaterialTheme.typography.labelSmall,
                     color = valueColor(p.isForecast),
                     textAlign = TextAlign.Center,
                 )
+                if (sea) {
+                    Text(
+                        periodSuffix(p) ?: " ",
+                        modifier = Modifier.nowKnockout(g, i).alpha(if (p.modelled) ModelledAlpha else 1f),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
                 if (showChance) {
                     // Always rendered (blank when unknown) so the row height is the same in every mode.
                     Text(chanceText(p) ?: " ", modifier = Modifier.nowKnockout(g, i), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -270,6 +340,51 @@ internal fun TimelineWindRow(row: TimelineRow, g: TimelineGeometry) {
                     textAlign = TextAlign.Center,
                     minLines = 2,
                     maxLines = 2,
+                )
+            }
+        }
+    }
+}
+
+/** Dashed 1 dp outline inside the bounds: marks a model-only (unobserved) sea value. */
+internal fun Modifier.dashedOutline(color: Color): Modifier = drawBehind {
+    val w = 1.dp.toPx()
+    drawRect(
+        color,
+        topLeft = Offset(w / 2, w / 2),
+        size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+        style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))),
+    )
+}
+
+/** Sea direction row (currents): an arrow rotated to where it flows TOWARD, with the value beneath. */
+@Composable
+internal fun TimelineDirectionRow(row: TimelineRow, g: TimelineGeometry) {
+    val arrowTint = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(Modifier.width(g.totalWidth).timelineBackdrop(g).clearAndSetSemantics {}) {
+        row.points.forEachIndexed { i, p ->
+            Column(
+                Modifier.width(g.columnWidth).padding(vertical = 2.dp, horizontal = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val alpha = if (p.modelled) ModelledAlpha else 1f
+                Box(Modifier.size(WindArrowSize).nowKnockout(g, i)) {
+                    p.direction?.takeIf { p.value != null }?.let { dir ->
+                        Icon(
+                            painterResource(R.drawable.ic_wind_arrow),
+                            contentDescription = null,
+                            tint = arrowTint.copy(alpha = alpha),
+                            modifier = Modifier.size(WindArrowSize).rotate(arrowRotation(row, dir)),
+                        )
+                    }
+                }
+                Text(
+                    rowValueText(row, p),
+                    modifier = Modifier.nowKnockout(g, i).alpha(alpha),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = valueColor(p.isForecast),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
                 )
             }
         }

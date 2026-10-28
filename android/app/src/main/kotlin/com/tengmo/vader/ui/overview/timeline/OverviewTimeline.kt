@@ -70,8 +70,10 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tengmo.vader.R
+import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.repository.TimelineData
 import com.tengmo.vader.data.repository.TimelineMode
+import com.tengmo.vader.data.repository.TimelineRow
 
 private val BaseColumnWidth = 72.dp
 
@@ -81,6 +83,16 @@ private fun fontScaleFactor(): Float = LocalDensity.current.fontScale.coerceIn(1
 private val MaxLabelWidth = 88.dp
 private val ScrimExtra = 20.dp
 private val LabelGap = 6.dp
+
+/** An additional timeline row drawn after the snow row (the sea page's waves, swell, ...). */
+data class TimelineExtraRow(
+    val title: String,
+    val unit: String?,
+    /** Small muted source line under the title/unit (station + distance, or "Model forecast"). */
+    val sublabel: String?,
+    val row: TimelineRow,
+    val renderer: @Composable (TimelineRow, TimelineGeometry) -> Unit,
+)
 
 /** The Overview timeline: observed + forecast on one series, with row titles floating over the data
  *  (fading while scrolling), a Now button and a shared horizontal scroll that opens centred on "Now". Thin shell over the row composables. */
@@ -93,6 +105,7 @@ fun OverviewTimeline(
     onModeChange: (TimelineMode) -> Unit,
     onExtendedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    extraRows: List<TimelineExtraRow> = emptyList(),
 ) {
     Column(modifier) {
         TimelineControls(mode, onModeChange)
@@ -100,7 +113,7 @@ fun OverviewTimeline(
             if (isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         if (timeline != null) {
-            TimelineBody(timeline, timeline.mode == TimelineMode.Hours24, extendedForecast, onExtendedChange)
+            TimelineBody(timeline, timeline.mode == TimelineMode.Hours24, extendedForecast, onExtendedChange, extraRows)
         } else if (!isLoading) {
             Text(
                 stringResource(R.string.weatherOverview_noData),
@@ -137,7 +150,13 @@ private fun TimelineControls(
 }
 
 @Composable
-private fun TimelineBody(data: TimelineData, showExtendedChip: Boolean, extended: Boolean, onExtendedChange: (Boolean) -> Unit) {
+private fun TimelineBody(
+    data: TimelineData,
+    showExtendedChip: Boolean,
+    extended: Boolean,
+    onExtendedChange: (Boolean) -> Unit,
+    extraRows: List<TimelineExtraRow>,
+) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val ColumnWidth = BaseColumnWidth * fontScaleFactor()
@@ -164,6 +183,7 @@ private fun TimelineBody(data: TimelineData, showExtendedChip: Boolean, extended
                 temperature = temperatureText(data.temperature.points[i]),
                 rain = rainSpoken,
                 wind = windText(data.wind.points[i], data.wind.unitLabel),
+                windySuffix = if (p.windy && p.condition != WeatherCondition.Windy) conditionWord(context, WeatherCondition.Windy) else null,
             )
         }
     }
@@ -247,6 +267,11 @@ private fun TimelineBody(data: TimelineData, showExtendedChip: Boolean, extended
                     TimelineBarRow(snow, g, showChance = false)
                 }
             }
+            extraRows.forEach { extra ->
+                TimelineLine(extra.title, extra.unit, scrollState, pad, titleAlpha, onLabelWidth, subtitle = extra.sublabel) {
+                    extra.renderer(extra.row, g)
+                }
+            }
         }
     }
 }
@@ -316,10 +341,14 @@ private fun TimelineLine(
     startPad: Dp,
     titleAlpha: Float,
     onLabelWidth: (Int) -> Unit,
+    subtitle: String? = null,
     content: @Composable () -> Unit,
 ) {
     val labelGapPx = with(LocalDensity.current) { (LabelGap + 4.dp).roundToPx() }
-    Box(Modifier.fillMaxWidth()) {
+    // The label overlay is matched to the row's height, so a row with a subtitle (sea rows) reserves
+    // room for label + unit + subtitle instead of clipping the subtitle.
+    val minHeight = if (subtitle != null) 64.dp * fontScaleFactor() else 0.dp
+    Box(Modifier.fillMaxWidth().heightIn(min = minHeight)) {
         Box(Modifier.fillMaxWidth().horizontalScroll(scrollState)) {
             Box(Modifier.padding(start = startPad)) { content() }
         }
@@ -350,6 +379,15 @@ private fun TimelineLine(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
+                        )
+                    }
+                    if (subtitle != null) {
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }

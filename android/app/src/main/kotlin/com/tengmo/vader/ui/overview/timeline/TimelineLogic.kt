@@ -1,5 +1,7 @@
 package com.tengmo.vader.ui.overview.timeline
 
+import com.tengmo.vader.data.repository.DirectionConvention
+import com.tengmo.vader.data.repository.TimelineRow
 import com.tengmo.vader.data.repository.TimelineRowPoint
 import com.tengmo.vader.data.repository.formatValue
 import java.util.Locale
@@ -68,6 +70,24 @@ internal fun windText(point: TimelineRowPoint, unit: String): String {
     return "${formatValue(speed, 0)}$gust $unit"
 }
 
+/** Port of web `formatRowValue`: honours [TimelineRow.decimals] and [TimelineRow.signed]. */
+internal fun rowValueText(row: TimelineRow, point: TimelineRowPoint): String {
+    val value = point.value ?: return DASH
+    val decimals = row.decimals ?: if (row.key == "temperature") 0 else 1
+    val sign = if (row.signed && value > 0) "+" else ""
+    val unit = if (row.unitLabel == "%") row.unitLabel else " ${row.unitLabel}"
+    return "$sign${formatValue(value, decimals)}$unit"
+}
+
+/** "5 s" mean wave period under a wave value; null when unknown. */
+internal fun periodSuffix(point: TimelineRowPoint): String? =
+    point.period?.let { "${Math.round(it)} s" }
+
+/** Degrees to rotate an up-pointing arrow so it shows where something is going TOWARD:
+ *  meteorological "from" directions are turned +180, "toward" rows already carry it. */
+internal fun arrowRotation(row: TimelineRow, direction: Double): Float =
+    (if (row.directionConvention == DirectionConvention.Toward) direction else (direction + 180.0) % 360.0).toFloat()
+
 /** One complete spoken sentence per column from a translated template with ordered placeholders:
  *  label, condition, temperature, rain, wind. */
 internal fun columnDescription(
@@ -77,6 +97,11 @@ internal fun columnDescription(
     temperature: String,
     rain: String,
     wind: String,
-): String = String.format(Locale.ROOT, template, label, condition, temperature, rain, wind)
+    /** Translated "Windy" word, passed only when the period is windy but its condition word isn't already Windy. */
+    windySuffix: String? = null,
+): String {
+    val sentence = String.format(Locale.ROOT, template, label, condition, temperature, rain, wind)
+    return if (windySuffix != null) "$sentence, $windySuffix" else sentence
+}
 
 internal const val DASH = "—"
