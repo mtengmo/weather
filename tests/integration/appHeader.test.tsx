@@ -254,7 +254,7 @@ describe("Default view is the Overview (013-overview-default-and-layout, US1)", 
     // From the graph view, "Show details" (→ the details table) and "Show overview" (→ Overview) both remain
     // available (020-dashboard-polish-round-five, US4 — replaces the old "View details" button).
     expect(await menuItemNames(user)).toEqual(
-      expect.arrayContaining(["Show details", "Show overview", "Show map"])
+      expect.arrayContaining(["Show details", "Show overview", "Rain map"])
     );
   });
 
@@ -537,7 +537,7 @@ describe("Change location reachable from every screen (016-dashboard-polish-roun
     const user = userEvent.setup();
     render(<App />);
 
-    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Rain map");
     expect(screen.getByRole("button", { name: /Change location/ })).toBeInTheDocument();
   });
 });
@@ -647,7 +647,7 @@ describe("Consolidated header controls (018-dashboard-visual-redesign, US1)", ()
 
     const names = await menuItemNames(user);
     expect(names).toContain("Show details");
-    expect(names).toContain("Show map");
+    expect(names).toContain("Rain map");
   });
 });
 
@@ -688,7 +688,7 @@ describe("Location name visible in the header (019-dashboard-polish-round-four, 
     await clickMenuItem(user, "Show details");
     expect(header).toHaveTextContent("Stockholm");
 
-    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Rain map");
     expect(header).toHaveTextContent("Stockholm");
   });
 });
@@ -722,12 +722,12 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     render(<App />);
 
     await screen.findByRole("heading", { name: /Stockholm.*overview/i });
-    await clickMenuItem(user, "Show map");
-    expect(await menuItemNames(user)).not.toContain("Show map");
+    await clickMenuItem(user, "Rain map");
+    expect(await menuItemNames(user)).not.toContain("Rain map");
 
     await clickMenuItem(user, "Show overview");
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
-    expect(await menuItemNames(user)).toContain("Show map");
+    expect(await menuItemNames(user)).toContain("Rain map");
   });
 
   it("returns to the Overview — not the graph view — even when the map was opened from there (032-dashboard-polish-round-seven, US3)", async () => {
@@ -740,12 +740,12 @@ describe("Map view has a way back (019-dashboard-polish-round-four, US2)", () =>
     await clickMenuItem(user, "Show details");
     await screen.findByRole("heading", { name: "Stockholm" });
 
-    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Rain map");
     await clickMenuItem(user, "Show overview");
 
     // "Show overview" always means the Overview — not back to whichever view was open before the Map.
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
-    expect(await menuItemNames(user)).toContain("Show map");
+    expect(await menuItemNames(user)).toContain("Rain map");
   });
 });
 

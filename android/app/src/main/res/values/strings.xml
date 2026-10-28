@@ -4,7 +4,7 @@
     <string name="app_homeButton">Show overview</string>
     <string name="app_showOverview">Show overview</string>
     <string name="app_showDetails">Show details</string>
-    <string name="app_showMap">Show map</string>
+    <string name="app_showMap">Rain map</string>
     <string name="app_showSeaWeather">Sea weather</string>
     <string name="seaWeather_modelled">Model value (no observation)</string>
     <string name="seaWeather_title">Sea weather</string>
@@ -34,7 +34,7 @@
     <string name="seaReport_updated">Updated %1$s</string>
     <string name="seaReport_source">Source: SMHI</string>
     <string name="seaReport_swedishNote">in Swedish, as SMHI\'s English version is updated less often</string>
-    <string name="app_mapButton">Map</string>
+    <string name="app_mapButton">Rain map</string>
     <string name="app_menu">Menu</string>
     <string name="app_locationUnavailable">We couldn\'t find your location. Choose Use my location to try again, or search for a place or pick a favorite.</string>
     <string name="app_locationDenied">Location access is blocked for this site. Allow it in your browser\'s site settings, then choose Use my location. Or search for a place or pick a favorite.</string>
@@ -212,11 +212,6 @@
     <string name="warningBanner_onlyInSwedish">This warning is only available in Swedish.</string>
     <string name="mapView_ariaLabel">Map</string>
     <string name="mapView_empty">No places on the map yet. Search for a place and add it to favorites, or show its weather, and it will appear here.</string>
-    <string name="mapView_overlayAriaLabel">Map overlay</string>
-    <string name="mapView_overlayRain">Rain</string>
-    <string name="mapView_overlayTemperature">Temperature</string>
-    <string name="mapView_overlayWind">Wind</string>
-    <string name="mapView_overlayNone">None</string>
     <string name="mapView_view">Show weather</string>
     <string name="footer_howThisWorks">How this works</string>
     <string name="footer_privacy">Privacy</string>

@@ -37,7 +37,6 @@
     <string name="attribution_metNo">Prognosdata: MET Norway (api.met.no), licensierad CC BY 4.0.</string>
     <string name="attribution_osm">Kartbilder och ortnamn: © OpenStreetMap-bidragsgivare.</string>
     <string name="attribution_rainviewer">Radarbilder: RainViewer (rainviewer.com).</string>
-    <string name="attribution_owm">Kartlager för temperatur och vind: OpenWeatherMap (openweathermap.org).</string>
     <string name="locationSwitcher_a11y">Byt plats, visar %1$s</string>
     <string name="locationSwitcher_searchPlaces">Sök platser eller hantera favoriter</string>
     <string name="freshness_updatedAt">Uppdaterad %1$s</string>

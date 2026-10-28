@@ -18,9 +18,6 @@ cd android
 .\gradlew.bat :app:installDebug        # install on a connected device / emulator
 ```
 
-The map's Temperature and Wind overlays need a free OpenWeatherMap key (the web app's optional
-`VITE_OPENWEATHERMAP_API_KEY`); without one those two overlays are hidden, exactly as on the web.
-Provide it with `-POPENWEATHERMAP_API_KEY=...` or the `OPENWEATHERMAP_API_KEY` environment variable.
 
 ## Layout
 

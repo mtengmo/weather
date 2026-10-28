@@ -17,16 +17,14 @@ import org.osmdroid.views.overlay.Marker
 /**
  * T044 — the native map surface (research.md §8): OSM base tiles with one marker per pin
  * (favorites + last-viewed, like MapView.tsx). Tapping a marker's info window calls
- * [onSelectLocation]. Weather overlays are applied on top by [MapOverlays] (T045).
+ * [onSelectLocation]. The radar overlay is applied on top by [MapOverlays] (T045).
  * Uses osmdroid, so the map is the app's own rendering — never an embedded third-party weather site
  * (FR-001a, the "no embedded third-party maps" project decision).
  */
 @Composable
 fun MapSurface(
     pins: List<Location>,
-    overlay: MapOverlay,
     radarTileUrl: String?,
-    openWeatherMapKey: String,
     onSelectLocation: (Location) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -55,7 +53,7 @@ fun MapSurface(
         factory = { mapView },
         update = { view ->
             view.overlays.clear()
-            applyOverlay(view, overlay, radarTileUrl, openWeatherMapKey)
+            applyRadarOverlay(view, radarTileUrl)
             pins.forEach { pin ->
                 view.overlays.add(
                     Marker(view).apply {

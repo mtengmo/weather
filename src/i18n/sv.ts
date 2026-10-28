@@ -5,7 +5,7 @@ export const sv: Record<string, string> = {
   "app.homeButton": "Visa översikt",
   "app.showOverview": "Visa översikt",
   "app.showDetails": "Visa detaljer",
-  "app.showMap": "Visa karta",
+  "app.showMap": "Regnkarta",
   "app.showSeaWeather": "Kustväder",
   "seaWeather.modelled": "Modellvärde (ingen observation)",
   "seaWeather.title": "Kustväder",
@@ -35,7 +35,7 @@ export const sv: Record<string, string> = {
   "seaReport.updated": "Uppdaterad {{time}}",
   "seaReport.source": "Källa: SMHI",
   "seaReport.swedishNote": "på svenska, eftersom SMHI:s engelska version uppdateras mer sällan",
-  "app.mapButton": "Karta",
+  "app.mapButton": "Regnkarta",
   "app.menu": "Meny",
   "app.locationUnavailable":
     "Vi kunde inte hitta din plats. Välj Använd min plats för att försöka igen, eller sök efter en plats eller välj en favorit.",
@@ -244,11 +244,6 @@ export const sv: Record<string, string> = {
   "mapView.ariaLabel": "Karta",
   "mapView.empty":
     "Inga platser på kartan än. Sök efter en plats och lägg till den som favorit, eller visa dess väder, så visas den här.",
-  "mapView.overlayAriaLabel": "Kartlager",
-  "mapView.overlayRain": "Regn",
-  "mapView.overlayTemperature": "Temperatur",
-  "mapView.overlayWind": "Vind",
-  "mapView.overlayNone": "Inget",
   "mapView.view": "Visa väder",
 
   "footer.howThisWorks": "Hur det här fungerar",

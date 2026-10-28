@@ -58,7 +58,7 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     await openSettings();
 
     expect(screen.getByRole("button", { name: "Automatic" })).toHaveAttribute("aria-pressed", "true");
-    expect(await menuItemNames(userEvent.setup())).toContain("Show map");
+    expect(await menuItemNames(userEvent.setup())).toContain("Rain map");
   });
 
   it("switches all rendered text to Swedish immediately when Svenska is selected, with no reload", async () => {
@@ -68,7 +68,7 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     await user.click(screen.getByRole("button", { name: "Svenska" }));
 
     const names = await menuItemNames(user);
-    expect(names).toContain("Visa karta");
+    expect(names).toContain("Regnkarta");
     expect(names).toContain("Inställningar");
   });
 
@@ -81,7 +81,7 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     // "English" until it's selected. Panel stays open after a selection, so no need to reopen.
     await user.click(screen.getByRole("button", { name: "English" }));
 
-    expect(await menuItemNames(user)).toContain("Show map");
+    expect(await menuItemNames(user)).toContain("Rain map");
   });
 
   it("persists the chosen language across a fresh render (reload)", async () => {
@@ -92,7 +92,7 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     unmount();
 
     render(<App />);
-    expect(await menuItemNames(userEvent.setup())).toContain("Visa karta");
+    expect(await menuItemNames(userEvent.setup())).toContain("Regnkarta");
   });
 
   it("reverts to the browser-detected language when switched back to Automatic", async () => {
@@ -103,6 +103,6 @@ describe("Manual language setting (066-daily-forecast-language-setting)", () => 
     // Panel stays open after a selection — no need to reopen it before the next click.
     await user.click(screen.getByRole("button", { name: "Automatiskt" }));
 
-    expect(await menuItemNames(user)).toContain("Show map");
+    expect(await menuItemNames(user)).toContain("Rain map");
   });
 });

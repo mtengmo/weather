@@ -37,7 +37,6 @@
     <string name="attribution_metNo">Forecast data: MET Norway (api.met.no), licensed CC BY 4.0.</string>
     <string name="attribution_osm">Map tiles and place names: © OpenStreetMap contributors.</string>
     <string name="attribution_rainviewer">Radar imagery: RainViewer (rainviewer.com).</string>
-    <string name="attribution_owm">Temperature and wind map layers: OpenWeatherMap (openweathermap.org).</string>
     <string name="locationSwitcher_a11y">Change location, showing %1$s</string>
     <string name="locationSwitcher_searchPlaces">Search places or manage favorites</string>
     <string name="freshness_updatedAt">Updated %1$s</string>

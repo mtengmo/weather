@@ -11,7 +11,7 @@ import com.tengmo.vader.BuildConfig
 import com.tengmo.vader.R
 
 /** T072 — data-source attributions required by SMHI/Open-Meteo/MET Norway (CC BY 4.0)/OSM/
- *  RainViewer/OpenWeatherMap terms, plus the app version (the web footer shows its version too). */
+ *  RainViewerterms, plus the app version (the web footer shows its version too). */
 @Composable
 fun AttributionView() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -21,9 +21,6 @@ fun AttributionView() {
         Text(stringResource(R.string.attribution_metNo), style = MaterialTheme.typography.bodySmall)
         Text(stringResource(R.string.attribution_osm), style = MaterialTheme.typography.bodySmall)
         Text(stringResource(R.string.attribution_rainviewer), style = MaterialTheme.typography.bodySmall)
-        if (BuildConfig.OPENWEATHERMAP_API_KEY.isNotBlank()) {
-            Text(stringResource(R.string.attribution_owm), style = MaterialTheme.typography.bodySmall)
-        }
         Text("v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelSmall)
     }
 }

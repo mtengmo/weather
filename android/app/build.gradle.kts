@@ -35,18 +35,10 @@ android {
         targetSdk = 35
         // CI release builds pass -PVERSION_CODE=<run number> so every upload is strictly newer.
         versionCode = (findProperty("VERSION_CODE") as String?)?.toInt() ?: 1
-        versionName = "1.2.0"
+        versionName = "1.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Optional free OpenWeatherMap key for the map's Temperature/Wind overlays — the web
-        // app reads the same optional key (VITE_OPENWEATHERMAP_API_KEY) and hides those two
-        // overlays entirely when it's absent (MapView.tsx). Provide via `-POPENWEATHERMAP_API_KEY=...`
-        // or the OPENWEATHERMAP_API_KEY environment variable; empty by default.
-        val owmKey = (project.findProperty("OPENWEATHERMAP_API_KEY") as String?)
-            ?: System.getenv("OPENWEATHERMAP_API_KEY")
-            ?: ""
-        buildConfigField("String", "OPENWEATHERMAP_API_KEY", "\"$owmKey\"")
     }
 
     buildTypes {
@@ -130,8 +122,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
 
-    // Map (research.md §8) — osmdroid: OSM tiles with custom tile overlays for radar/temperature/
-    // wind, no API key or Google Play Services Maps dependency.
+    // Map (research.md §8) — osmdroid: OSM tiles with a custom radar tile overlay,
+    // no API key or Google Play Services Maps dependency.
     implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // Core

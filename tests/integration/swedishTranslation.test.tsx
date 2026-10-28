@@ -54,7 +54,7 @@ describe("Swedish translation rendering (064-swedish-translation)", () => {
     mockGeolocationUnavailable("sv-SE");
     render(<App />);
 
-    expect(await menuItemNames(userEvent.setup())).toContain("Visa karta");
+    expect(await menuItemNames(userEvent.setup())).toContain("Regnkarta");
     expect(
       screen.getByText(
         "Vi kunde inte hitta din plats. Välj Använd min plats för att försöka igen, eller sök efter en plats eller välj en favorit."
@@ -66,7 +66,7 @@ describe("Swedish translation rendering (064-swedish-translation)", () => {
     mockGeolocationUnavailable("en-US");
     render(<App />);
 
-    expect(await menuItemNames(userEvent.setup())).toContain("Show map");
+    expect(await menuItemNames(userEvent.setup())).toContain("Rain map");
     expect(
       screen.getByText(
         "We couldn't find your location. Choose Use my location to try again, or search for a place or pick a favorite."

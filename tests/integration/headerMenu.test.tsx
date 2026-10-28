@@ -34,7 +34,7 @@ describe("Header overflow menu", () => {
     render(<App />);
     const header = screen.getByRole("banner");
     expect(header).toContainElement(screen.getByRole("button", { name: "Menu" }));
-    for (const name of ["Light", "Dark", "Settings", "Show details", "Show map", "Show overview"]) {
+    for (const name of ["Light", "Dark", "Settings", "Show details", "Rain map", "Show overview"]) {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
   });
@@ -95,10 +95,10 @@ describe("Header overflow menu", () => {
     const user = userEvent.setup();
     render(<App />);
     expect(await menuItemNames(user)).not.toContain("Show overview");
-    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Rain map");
     const mapViewItems = await menuItemNames(user);
     expect(mapViewItems).toContain("Show overview");
-    expect(mapViewItems).not.toContain("Show map");
+    expect(mapViewItems).not.toContain("Rain map");
     await clickMenuItem(user, "Show overview");
     expect(await screen.findByRole("heading", { name: /Stockholm.*overview/i })).toBeInTheDocument();
   });

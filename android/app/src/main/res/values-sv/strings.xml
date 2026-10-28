@@ -4,7 +4,7 @@
     <string name="app_homeButton">Visa översikt</string>
     <string name="app_showOverview">Visa översikt</string>
     <string name="app_showDetails">Visa detaljer</string>
-    <string name="app_showMap">Visa karta</string>
+    <string name="app_showMap">Regnkarta</string>
     <string name="app_showSeaWeather">Kustväder</string>
     <string name="seaWeather_modelled">Modellvärde (ingen observation)</string>
     <string name="seaWeather_title">Kustväder</string>
@@ -34,7 +34,7 @@
     <string name="seaReport_updated">Uppdaterad %1$s</string>
     <string name="seaReport_source">Källa: SMHI</string>
     <string name="seaReport_swedishNote">på svenska, eftersom SMHI:s engelska version uppdateras mer sällan</string>
-    <string name="app_mapButton">Karta</string>
+    <string name="app_mapButton">Regnkarta</string>
     <string name="app_menu">Meny</string>
     <string name="app_locationUnavailable">Vi kunde inte hitta din plats. Välj Använd min plats för att försöka igen, eller sök efter en plats eller välj en favorit.</string>
     <string name="app_locationDenied">Platsåtkomst är blockerad för den här webbplatsen. Tillåt den i webbläsarens webbplatsinställningar och välj sedan Använd min plats. Eller sök efter en plats eller välj en favorit.</string>
@@ -212,11 +212,6 @@
     <string name="warningBanner_onlyInSwedish">Den här varningen finns bara på svenska.</string>
     <string name="mapView_ariaLabel">Karta</string>
     <string name="mapView_empty">Inga platser på kartan än. Sök efter en plats och lägg till den som favorit, eller visa dess väder, så visas den här.</string>
-    <string name="mapView_overlayAriaLabel">Kartlager</string>
-    <string name="mapView_overlayRain">Regn</string>
-    <string name="mapView_overlayTemperature">Temperatur</string>
-    <string name="mapView_overlayWind">Vind</string>
-    <string name="mapView_overlayNone">Inget</string>
     <string name="mapView_view">Visa väder</string>
     <string name="footer_howThisWorks">Hur det här fungerar</string>
     <string name="footer_privacy">Integritet</string>

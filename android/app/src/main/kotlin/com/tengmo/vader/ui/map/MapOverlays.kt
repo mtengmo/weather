@@ -10,11 +10,7 @@ import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.TilesOverlay
 
-// T045 — port of MapView.tsx's overlay logic: Rain (RainViewer radar, key-free), Temperature and
-// Wind (OpenWeatherMap tiles, need a free API key — hidden entirely when no key is configured,
-// exactly as the web app hides them), and None.
-
-enum class MapOverlay { Rain, Temperature, Wind, None }
+// T045 — port of MapView.tsx's radar layer: RainViewer radar (key-free) is the only overlay.
 
 private const val RAINVIEWER_METADATA_URL = "https://api.rainviewer.com/public/weather-maps.json"
 
@@ -46,14 +42,6 @@ private class XyzTileSource(name: String, private val urlFor: (Int, Int, Int) ->
     )
 }
 
-/** Which overlays are actually selectable: Temperature/Wind only exist with an API key. */
-fun availableOverlays(openWeatherMapKey: String): List<MapOverlay> =
-    if (openWeatherMapKey.isNotBlank()) {
-        listOf(MapOverlay.Rain, MapOverlay.Temperature, MapOverlay.Wind, MapOverlay.None)
-    } else {
-        listOf(MapOverlay.Rain, MapOverlay.None)
-    }
-
 private fun tilesOverlay(view: MapView, name: String, urlFor: (Int, Int, Int) -> String): TilesOverlay {
     val provider = MapTileProviderBasic(view.context, XyzTileSource(name, urlFor))
     return TilesOverlay(provider, view.context).apply {
@@ -68,27 +56,10 @@ private fun tilesOverlay(view: MapView, name: String, urlFor: (Int, Int, Int) ->
     }
 }
 
-/** Adds the chosen weather overlay tiles (if any) to [view]; base tiles and markers are managed by
+/** Adds the RainViewer radar tiles (if available) to [view]; base tiles and markers are managed by
  *  MapSurface. */
-fun applyOverlay(view: MapView, overlay: MapOverlay, radarTileUrl: String?, openWeatherMapKey: String) {
-    when (overlay) {
-        MapOverlay.Rain -> radarTileUrl?.let { template ->
-            view.overlays.add(tilesOverlay(view, "rainviewer") { z, x, y -> String.format(template, z, x, y) })
-        }
-        MapOverlay.Temperature -> if (openWeatherMapKey.isNotBlank()) {
-            view.overlays.add(
-                tilesOverlay(view, "owm-temp") { z, x, y ->
-                    "https://tile.openweathermap.org/map/temp_new/$z/$x/$y.png?appid=$openWeatherMapKey"
-                },
-            )
-        }
-        MapOverlay.Wind -> if (openWeatherMapKey.isNotBlank()) {
-            view.overlays.add(
-                tilesOverlay(view, "owm-wind") { z, x, y ->
-                    "https://tile.openweathermap.org/map/wind_new/$z/$x/$y.png?appid=$openWeatherMapKey"
-                },
-            )
-        }
-        MapOverlay.None -> Unit
+fun applyRadarOverlay(view: MapView, radarTileUrl: String?) {
+    radarTileUrl?.let { template ->
+        view.overlays.add(tilesOverlay(view, "rainviewer") { z, x, y -> String.format(template, z, x, y) })
     }
 }

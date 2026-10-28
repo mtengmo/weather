@@ -6,7 +6,7 @@ export const en: Record<string, string> = {
   "app.homeButton": "Show overview",
   "app.showOverview": "Show overview",
   "app.showDetails": "Show details",
-  "app.showMap": "Show map",
+  "app.showMap": "Rain map",
   "app.showSeaWeather": "Sea weather",
   "seaWeather.modelled": "Model value (no observation)",
   "seaWeather.title": "Sea weather",
@@ -36,7 +36,7 @@ export const en: Record<string, string> = {
   "seaReport.updated": "Updated {{time}}",
   "seaReport.source": "Source: SMHI",
   "seaReport.swedishNote": "in Swedish, as SMHI's English version is updated less often",
-  "app.mapButton": "Map",
+  "app.mapButton": "Rain map",
   "app.menu": "Menu",
   "app.locationUnavailable":
     "We couldn't find your location. Choose Use my location to try again, or search for a place or pick a favorite.",
@@ -243,11 +243,6 @@ export const en: Record<string, string> = {
   "mapView.ariaLabel": "Map",
   "mapView.empty":
     "No places on the map yet. Search for a place and add it to favorites, or show its weather, and it will appear here.",
-  "mapView.overlayAriaLabel": "Map overlay",
-  "mapView.overlayRain": "Rain",
-  "mapView.overlayTemperature": "Temperature",
-  "mapView.overlayWind": "Wind",
-  "mapView.overlayNone": "None",
   "mapView.view": "Show weather",
 
   "footer.howThisWorks": "How this works",

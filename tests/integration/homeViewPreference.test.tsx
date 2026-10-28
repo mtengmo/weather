@@ -57,7 +57,7 @@ describe("remembered Overview / Sea weather view", () => {
     const user = userEvent.setup();
     localStorage.setItem("weather-app:last-home-view:v1", "sea");
     render(<App />);
-    await clickMenuItem(user, "Show map");
+    await clickMenuItem(user, "Rain map");
     expect(localStorage.getItem("weather-app:last-home-view:v1")).toBe("sea");
   });
 });

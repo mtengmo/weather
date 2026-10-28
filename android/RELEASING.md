@@ -38,7 +38,6 @@ Repository **Settings → Secrets and variables → Actions → New repository s
 | `ANDROID_KEY_ALIAS` | yes | The key alias (`upload` in the example) |
 | `ANDROID_KEY_PASSWORD` | yes | The key password (same as the keystore password above) |
 | `PLAY_SERVICE_ACCOUNT_JSON` | only for Play upload | The full JSON key of the Play service account (step 4) |
-| `OPENWEATHERMAP_API_KEY` | optional | Enables the map's Temperature and Wind overlays in release builds, as on the web app |
 
 The release workflow fails early if any of the first four are missing. The Play step is skipped when `PLAY_SERVICE_ACCOUNT_JSON` is absent, so the GitHub Release still gets created.
 
