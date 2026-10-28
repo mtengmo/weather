@@ -60,7 +60,40 @@ export function stationsByDistance(stations: RawStation[], latitude: number, lon
 /** How many of the nearest stations to try before giving up (some "active" stations have no data). */
 const MAX_STATIONS_TRIED = 5;
 
-/** Latest-day readings from the nearest active station for a metric; null if none reports data. */
+/** How far back the corrected archive is read; matches the 7-day window of the sea view. */
+const ARCHIVE_DAYS = 7;
+
+/** Hourly points from SMHI's corrected-archive CSV (UTC, `YYYY-MM-DD HH:MM:SS;value;quality;depth`)
+ *  at or after `since`. The file is chronological and covers years, so it is scanned from the end. */
+export function parseArchiveCsv(csv: string, since: number): SeaPoint[] {
+  const lines = csv.split("\n");
+  const points: SeaPoint[] = [];
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d);([^;]*)/.exec(lines[i]);
+    if (!m) continue;
+    const time = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    if (time < since) break;
+    const value = Number(m[7]);
+    if (m[7].trim() !== "" && Number.isFinite(value)) points.push({ time, value });
+  }
+  return points.reverse();
+}
+
+/** Archive readings (checked, but about a day behind) that precede the live latest-day readings.
+ *  Best effort: the live data is still shown if the archive is missing or fails. */
+async function fetchArchivePoints(parameter: number, stationKey: string, before: number, signal?: AbortSignal): Promise<SeaPoint[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/${parameter}/station/${stationKey}/period/corrected-archive/data.csv`, { signal });
+    if (!res.ok) return [];
+    const csv = await res.text();
+    return parseArchiveCsv(csv, Date.now() - ARCHIVE_DAYS * 86400000).filter((p) => p.time < before);
+  } catch {
+    return [];
+  }
+}
+
+/** Readings from the nearest active station for a metric: the live latest day, preceded by up to a
+ *  week of archive data; null if none reports data. */
 export async function fetchSeaObservation(
   metric: SeaMetric,
   latitude: number,
@@ -81,7 +114,8 @@ export async function fetchSeaObservation(
       .map((v) => ({ time: v.date, value: Number(v.value) }))
       .filter((p) => Number.isFinite(p.value));
     if (points.length === 0) continue;
-    return { metric, station, points };
+    const archive = await fetchArchivePoints(parameter, station.key, Math.min(...points.map((p) => p.time)), signal);
+    return { metric, station, points: [...archive, ...points] };
   }
   return null;
 }
