@@ -71,16 +71,11 @@ const FREEZING_CELSIUS = 0;
 // research.md §6). Exported so dailyAggregation.ts's daytime rain-significance check
 // (067-fix-rain-brief-icons) reuses this exact value rather than duplicating it.
 export const PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5;
-// Fixed local-clock-hour day/night rule (research.md §3) — not sunrise/sunset calculation.
-// Exported so other whole-day aggregations (e.g. dailyAggregation.ts's daytime-only filtering,
-// 066-daily-forecast-language-setting) apply exactly this same boundary rather than duplicating it.
-export const NIGHT_START_HOUR = 20;
-export const NIGHT_END_HOUR = 6;
-
-export function isNight(timestamp: string): boolean {
-  const hour = new Date(timestamp).getHours();
-  return hour < NIGHT_END_HOUR || hour >= NIGHT_START_HOUR;
-}
+// Day/night now follows the real sunrise/sunset at the viewed location (services/daylight.ts),
+// falling back to a fixed 06:00-20:00 local-clock rule when no location is set. Re-exported so
+// existing importers keep working.
+import { isNight } from "./daylight";
+export { isNight };
 
 const SYMBOL_PRECIPITATION_CONDITIONS: ReadonlySet<WeatherCondition> = new Set([
   "thunderstorm",

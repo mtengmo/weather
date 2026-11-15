@@ -20,10 +20,8 @@ private fun epochMillisOf(observation: WeatherObservation): Long =
 private fun bucketIndexOf(observation: WeatherObservation, now: Long): Int =
     Math.floorDiv(now - epochMillisOf(observation), BUCKET_MS).toInt()
 
-private fun isDaytime(observation: WeatherObservation, zone: ZoneId): Boolean {
-    val hour = Instant.parse(observation.timestamp).atZone(zone).hour
-    return hour >= NIGHT_END_HOUR && hour < NIGHT_START_HOUR
-}
+private fun isDaytime(observation: WeatherObservation, zone: ZoneId): Boolean =
+    !Daylight.isNight(epochMillisOf(observation), zone)
 
 /** The per-bucket aggregation math shared by whole-day and daytime-only subsets. */
 private data class BucketAggregate(

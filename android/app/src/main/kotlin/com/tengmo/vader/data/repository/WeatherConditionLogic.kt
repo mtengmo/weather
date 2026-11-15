@@ -19,13 +19,10 @@ private const val OVERCAST_THRESHOLD_PERCENT = 80
 private const val LOW_CONFIDENCE_CHANCE_OF_RAIN_PERCENT = 20
 private const val FREEZING_CELSIUS = 0.0
 const val PRECIPITATION_HEAVY_THRESHOLD_MM = 2.5
-const val NIGHT_START_HOUR = 20
-const val NIGHT_END_HOUR = 6
 
-fun isNight(timestamp: String): Boolean {
-    val hour = Instant.parse(timestamp).atZone(ZoneId.systemDefault()).hour
-    return hour < NIGHT_END_HOUR || hour >= NIGHT_START_HOUR
-}
+/** Real sunrise/sunset at [location] (defaults to the place the app is showing); see [Daylight]. */
+fun isNight(timestamp: String, location: Pair<Double, Double>? = Daylight.location): Boolean =
+    Daylight.isNight(Instant.parse(timestamp).toEpochMilli(), ZoneId.systemDefault(), location)
 
 private val SYMBOL_PRECIPITATION_CONDITIONS = setOf(
     WeatherCondition.Thunderstorm, WeatherCondition.Foggy, WeatherCondition.Sleet,

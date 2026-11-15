@@ -264,6 +264,8 @@ class OverviewViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun selectLocation(location: Location, remember: Boolean = true) {
+        // Day/night icons follow this place's real sunrise/sunset (set before any icon is built).
+        com.tengmo.vader.data.repository.Daylight.location = location.latitude to location.longitude
         viewModelScope.launch {
             if (remember) services.preferencesStore.setLastViewedLocation(location)
             hourlyObservations.fill(null)

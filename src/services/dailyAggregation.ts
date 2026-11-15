@@ -1,6 +1,6 @@
 import type { DailyAggregate, WeatherObservation } from "../models/types";
 import { deriveFeelsLike } from "./feelsLike";
-import { NIGHT_END_HOUR, NIGHT_START_HOUR } from "./weatherCondition";
+import { isNight } from "./daylight";
 
 const BUCKET_MS = 24 * 3600_000;
 
@@ -65,8 +65,7 @@ function aggregateBucket(bucket: WeatherObservation[]): Omit<DailyAggregate, "bu
  *  of `isNight`'s own boundary, reused exactly rather than re-derived, so a whole-day condition
  *  computed from these hours never disagrees with the app's existing day/night icon logic. */
 function isDaytimeObservation(obs: WeatherObservation): boolean {
-  const hour = new Date(obs.timestamp).getHours();
-  return hour >= NIGHT_END_HOUR && hour < NIGHT_START_HOUR;
+  return !isNight(obs.timestamp);
 }
 
 /** The `daytime*` subset of `DailyAggregate`, computed by re-running `aggregateBucket` on just a

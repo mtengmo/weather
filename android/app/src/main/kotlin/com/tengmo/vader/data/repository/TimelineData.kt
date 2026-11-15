@@ -188,10 +188,7 @@ fun interpolateIsolatedGaps(row: TimelineRow): TimelineRow {
     return if (points == null) row else row.copy(points = points)
 }
 
-private fun nightHour(ms: Long, zone: ZoneId): Boolean {
-    val hour = Instant.ofEpochMilli(ms).atZone(zone).hour
-    return hour < NIGHT_END_HOUR || hour >= NIGHT_START_HOUR
-}
+private fun nightHour(ms: Long, zone: ZoneId): Boolean = Daylight.isNight(ms, zone)
 
 private fun hourlyCondition(
     obs: WeatherObservation, ms: Long, zone: ZoneId, withChance: Boolean, withWind: Boolean = true,

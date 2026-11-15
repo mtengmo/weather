@@ -81,7 +81,7 @@ private fun WeatherIcon(render: WidgetRender, weather: WidgetState.Weather, size
         render.localizedContext,
         summary.smhiSymbolCode,
         summary.condition,
-        isNight(Instant.now().toString()),
+        isNight(Instant.now().toString(), weather.snapshot.location.latitude to weather.snapshot.location.longitude),
         summary.temperature,
     )
     Image(
@@ -189,7 +189,7 @@ fun MediumWidgetContent(render: WidgetRender) {
 
                 // Row 2: next hours strip.
                 Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    summary.nextHours.forEach { hour -> HourCell(render, hour, unit) }
+                    summary.nextHours.forEach { hour -> HourCell(render, hour, unit, state.snapshot.location.latitude to state.snapshot.location.longitude) }
                 }
 
                 // Footer: permission hint (FR-028) or last-updated time.
@@ -214,13 +214,13 @@ fun MediumWidgetContent(render: WidgetRender) {
 }
 
 @Composable
-private fun HourCell(render: WidgetRender, obs: WeatherObservation, unit: UnitSystem) {
+private fun HourCell(render: WidgetRender, obs: WeatherObservation, unit: UnitSystem, at: Pair<Double, Double>) {
     // Windy hours keep their sky (cloud cover) so the windy artwork matches the other screens.
     val skyCondition = deriveWeatherCondition(
         WeatherConditionInput(obs.temperature, obs.precipitation, null, obs.cloudCoverPercent, obs.timestamp, obs.symbolCondition, obs.chanceOfRain),
     )
     val res = resolveWeatherIconRes(
-        render.localizedContext, obs.smhiSymbolCode, obs.symbolCondition, isNight(obs.timestamp), obs.temperature,
+        render.localizedContext, obs.smhiSymbolCode, obs.symbolCondition, isNight(obs.timestamp, at), obs.temperature,
         windy = isWindy(obs.windSpeed), skyCondition = skyCondition,
     )
     Column(

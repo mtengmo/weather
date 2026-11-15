@@ -20,6 +20,7 @@ import Footer from "./components/Footer";
 import DebugPanel from "./components/DebugPanel";
 import MapView from "./components/MapView";
 import SeaOverview from "./components/SeaOverview";
+import { setDaylightLocation } from "./services/daylight";
 import { getCachedLocation, setCachedLocation } from "./services/locationCache";
 import type { MultiSourceForecastEntry } from "./services/weatherApi";
 
@@ -62,6 +63,10 @@ export default function App() {
   useEffect(() => {
     if (view === "graph" || view === "details") setHasOpenedDetails(true);
   }, [view]);
+
+  // Day/night icons follow the viewed location's real sunrise/sunset. Set during render (it is
+  // idempotent) so children computing icons in this same render already see the new location.
+  setDaylightLocation(selected);
 
   const { series, nearbyStations, multiSourceForecast, weeklySeries, lastUpdated, uvRiskHours, warnings } = useObservationData(
     selected,
