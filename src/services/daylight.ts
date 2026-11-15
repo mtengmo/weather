@@ -3,8 +3,8 @@ import { getSunTimes } from "./sunMoon";
 /**
  * Day/night for icon selection, from the real sunrise/sunset at the viewed location.
  *
- * Whole-hour rule: the first full hour after the event flips. Sunset 16:24 -> night art from
- * 17:00; sunrise 07:30 -> day art from 08:00. Falls back to the fixed 06:00-20:00 local-clock
+ * Whole-hour rule: sunset flips to night at the first full hour after it (16:24 -> night art
+ * from 17:00); sunrise flips to day at the hour it falls in (07:30 -> day art from 07:00). Falls back to the fixed 06:00-20:00 local-clock
  * rule when no location is set, or on a polar day/night date with no sunrise/sunset.
  */
 
@@ -37,6 +37,10 @@ function ceilToHour(ms: number): number {
   return Math.ceil(ms / HOUR_MS) * HOUR_MS;
 }
 
+function floorToHour(ms: number): number {
+  return Math.floor(ms / HOUR_MS) * HOUR_MS;
+}
+
 /** Daylight window (epoch ms) for the local calendar date of `date`, or null when unknown. */
 function daylightWindow(date: Date): { dayStartMs: number; nightStartMs: number } | null {
   if (!activeLocation) return null;
@@ -50,7 +54,7 @@ function daylightWindow(date: Date): { dayStartMs: number; nightStartMs: number 
   );
   const window =
     sunrise !== null && sunset !== null
-      ? { dayStartMs: ceilToHour(Date.parse(sunrise)), nightStartMs: ceilToHour(Date.parse(sunset)) }
+      ? { dayStartMs: floorToHour(Date.parse(sunrise)), nightStartMs: ceilToHour(Date.parse(sunset)) }
       : null;
   windowCache.set(key, window);
   return window;

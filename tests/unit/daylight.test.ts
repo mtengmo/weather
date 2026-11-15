@@ -22,7 +22,7 @@ describe("isNight without a location", () => {
 });
 
 describe("isNight with a location (whole-hour rule)", () => {
-  it("flips to night at the first full hour after sunset and to day at the first full hour after sunrise", () => {
+  it("flips to night at the first full hour after sunset and to day at the hour containing sunrise", () => {
     setDaylightLocation(STOCKHOLM);
     // Late November: short days, so real sunset is well before the fixed 20:00 rule.
     const date = new Date(Date.UTC(2026, 10, 15));
@@ -30,7 +30,7 @@ describe("isNight with a location (whole-hour rule)", () => {
     const sunsetMs = Date.parse(sunset!);
     const sunriseMs = Date.parse(sunrise!);
     const nightStart = Math.ceil(sunsetMs / 3600_000) * 3600_000;
-    const dayStart = Math.ceil(sunriseMs / 3600_000) * 3600_000;
+    const dayStart = Math.floor(sunriseMs / 3600_000) * 3600_000;
 
     expect(isNight(new Date(nightStart - 3600_000).toISOString())).toBe(false);
     expect(isNight(new Date(nightStart).toISOString())).toBe(true);

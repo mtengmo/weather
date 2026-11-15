@@ -7,8 +7,8 @@ import kotlin.math.ceil
 
 /**
  * Day/night for icon selection from the real sunrise/sunset at a location (port of
- * src/services/daylight.ts). Whole-hour rule: the first full hour after the event flips — sunset
- * 16:24 -> night art from 17:00; sunrise 07:30 -> day art from 08:00. Falls back to the fixed
+ * src/services/daylight.ts). Whole-hour rule: sunset flips to night at the first full hour after it (16:24 -> 17:00);
+ * sunrise flips to day at the hour it falls in (07:30 -> 07:00). Falls back to the fixed
  * 06:00-20:00 local-clock rule when no location is known or on a polar day/night date.
  */
 object Daylight {
@@ -27,13 +27,15 @@ object Daylight {
 
     private fun ceilToHour(ms: Long): Long = ceil(ms.toDouble() / HOUR_MS).toLong() * HOUR_MS
 
+    private fun floorToHour(ms: Long): Long = Math.floorDiv(ms, HOUR_MS) * HOUR_MS
+
     private fun window(latitude: Double, longitude: Double, date: java.time.LocalDate): Window? {
         val key = "$latitude,$longitude,$date"
         val cached = cache[key]
         if (cached != null) return cached as? Window
         val (sunrise, sunset) = getSunTimes(latitude, longitude, date)
         val computed = if (sunrise != null && sunset != null) {
-            Window(ceilToHour(sunrise.toEpochMilli()), ceilToHour(sunset.toEpochMilli()))
+            Window(floorToHour(sunrise.toEpochMilli()), ceilToHour(sunset.toEpochMilli()))
         } else null
         if (cache.size > 2000) cache.clear()
         cache[key] = computed ?: NO_WINDOW

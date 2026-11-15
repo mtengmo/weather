@@ -33,7 +33,7 @@ class DaylightTest {
         val (sunrise, sunset) = getSunTimes(stockholm.first, stockholm.second, date)
         val hourMs = 3_600_000L
         val nightStart = Math.ceil(sunset!!.toEpochMilli() / hourMs.toDouble()).toLong() * hourMs
-        val dayStart = Math.ceil(sunrise!!.toEpochMilli() / hourMs.toDouble()).toLong() * hourMs
+        val dayStart = Math.floorDiv(sunrise!!.toEpochMilli(), hourMs) * hourMs
 
         assertEquals(false, Daylight.isNight(nightStart - hourMs, zone, stockholm))
         assertEquals(true, Daylight.isNight(nightStart, zone, stockholm))
