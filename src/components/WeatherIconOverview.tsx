@@ -137,7 +137,7 @@ export default function WeatherIconOverview({
             <>
               <ConditionRow periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} />
               <LineRow row={timeline.temperature} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} highLowVisible={highLowVisible} />
-              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.probability")} />
+              <BarRow row={timeline.precipitation} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.probability")} rainMode={displayMode} />
               <WindRow row={timeline.wind} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} subLabel={t("weatherOverview.gusts")} />
               <BarRow row={timeline.snow} periods={timeline.periods} nowBoundaryIndex={nowHighlightBoundary} />
             </>

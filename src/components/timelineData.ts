@@ -136,6 +136,9 @@ export interface TimelineRowPoint {
   period?: number | null;
   /** True when `value` is a model value rather than an observation. */
   modelled?: boolean;
+  /** Precipitation row, 3-day view only: length of this part-of-day bucket in hours, so the bar
+   *  can show an average mm/h rather than a total that grows with bucket length. */
+  durationHours?: number;
 }
 
 export type TimelineRowKind = "line" | "bar" | "wind" | "direction";
@@ -230,6 +233,7 @@ interface RowSource {
   chanceOfRain?: number | null;
   high?: number | null;
   low?: number | null;
+  durationHours?: number;
 }
 
 function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "periods" | "nowBoundaryIndex"> {
@@ -260,6 +264,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
       // Only ever carried for forecast points, regardless of what the raw source value is —
       // an observed reading is measured, not a probability (011-precipitation-chance, FR-004).
       chanceOfRain: s.isForecast ? s.chanceOfRain ?? null : null,
+      durationHours: s.durationHours,
     })),
     available: true,
   };
@@ -464,6 +469,10 @@ function daysToTimelineData(
     chanceOfRain: day.chanceOfRainMax,
     high: day.high,
     low: day.low,
+    durationHours:
+      day.subDayStartHour !== undefined && day.subDayEndHour !== undefined
+        ? day.subDayEndHour - day.subDayStartHour
+        : undefined,
   }));
 
   // No boundary-column interpolation at daily/sub-day granularity — "now" isn't a single

@@ -2,6 +2,7 @@ import { ConditionArtwork } from "../WindBadge";
 import { useTranslation } from "react-i18next";
 import { resolveConditionIconFromCondition } from "../smhiSymbolIcons";
 import { formatValue } from "../../services/format";
+import { rainBar, toMm, type RainMode } from "../../services/rainScale";
 import type { TimelinePeriod, TimelineRow, TimelineRowPoint } from "../timelineData";
 
 export function xPercent(index: number, count: number): number {
@@ -58,6 +59,7 @@ export function BarRow({
   subLabel,
   barClass,
   renderValue,
+  rainMode,
 }: {
   row: TimelineRow;
   periods: TimelinePeriod[];
@@ -65,6 +67,9 @@ export function BarRow({
   subLabel?: string;
   /** Extra class for a column's bar (e.g. a colour level). */
   barClass?: (point: TimelineRowPoint) => string | undefined;
+  /** Rain rows only: use the fixed, Sweden-calibrated height ceiling and colour levels for this
+   *  view instead of scaling to the largest bar in view. */
+  rainMode?: RainMode;
   /** Replaces the default value text under the bar; direction rows also get their arrow. */
   renderValue?: (point: TimelineRowPoint, row: TimelineRow) => React.ReactNode;
 }) {
@@ -87,11 +92,18 @@ export function BarRow({
               if (point.value === null) {
                 return <span className="weather-timeline-gap" aria-label={t("weatherOverview.noData")}>—</span>;
               }
-              const heightPercent = Math.max(2, (point.value / max) * 100);
+              const rain = rainMode ? rainBar(toMm(point.value, row.unitLabel), rainMode, point.durationHours) : null;
+              const heightPercent = rain ? rain.heightPercent : Math.max(2, (point.value / max) * 100);
+              const rainClass = rain ? `${rain.dry ? " rain-dry" : ""}${rain.overflow ? " rain-overflow" : ""}` : "";
+              const rateTitle =
+                rain?.ratePerHour != null && !rain.dry
+                  ? `≈${formatValue(rain.ratePerHour, 1)} mm/h`
+                  : undefined;
               return (
-                <div className="weather-timeline-bar-cell">
+                <div className="weather-timeline-bar-cell" title={rateTitle}>
+                  {rain?.overflow && <span className="weather-timeline-bar-cap" aria-hidden="true" />}
                   <div
-                    className={`weather-timeline-bar${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}${point.modelled ? " weather-timeline-bar-modelled" : ""}${barClass?.(point) ? ` ${barClass(point)}` : ""}`}
+                    className={`weather-timeline-bar${rainClass}${point.isForecast ? " weather-timeline-bar-forecast" : ""}${point.interpolated ? " weather-timeline-bar-interpolated" : ""}${point.modelled ? " weather-timeline-bar-modelled" : ""}${barClass?.(point) ? ` ${barClass(point)}` : ""}`}
                     style={{ height: `${heightPercent}%` }}
                   />
                 </div>
