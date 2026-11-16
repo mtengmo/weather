@@ -122,7 +122,6 @@ export const sv: Record<string, string> = {
   "timelineRow.temperature": "Temp",
   "timelineRow.precipitation": "Nederbörd",
   "timelineRow.wind": "Vind",
-  "timelineRow.snow": "Snö",
   "timelineRow.waves": "Vågor",
   "timelineRow.swell": "Dyning",
   "timelineRow.seaTemperature": "Vattentemp",

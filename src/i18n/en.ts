@@ -123,7 +123,6 @@ export const en: Record<string, string> = {
   "timelineRow.temperature": "Temp",
   "timelineRow.precipitation": "Precipitation",
   "timelineRow.wind": "Wind",
-  "timelineRow.snow": "Snow",
   "timelineRow.waves": "Waves",
   "timelineRow.swell": "Swell",
   "timelineRow.seaTemperature": "Sea temp",

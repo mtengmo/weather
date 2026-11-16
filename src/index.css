@@ -33,10 +33,12 @@
   --row-temperature: #f2924a;
   --row-wind: #4fb0a6;
   --row-precipitation: #5b9bd9;
-  /* Rain above the view's ceiling (see services/rainScale.ts); >=3:1 on --surface. */
-  --rain-heavy: #9b7bf0;
-  --rain-heavy-cap: #c9b5ff;
-  --row-snow: #dbe9f7;
+  /* Rain intensity classes light -> very heavy (see services/rainScale.ts); >=3:1 on --surface. */
+  --rain-1: #8fb8e8;
+  --rain-2: #4f8fe0;
+  --rain-3: #7a5ce6;
+  --rain-4: #e052c4;
+  --rain-cap: rgba(255, 255, 255, 0.6);
   --now-accent: #5fd0ff;
   /* Calm informational tone for SMHI MESSAGE-level notices: never red. Dot (non-text) needs
      >=3:1 on --surface (7.3:1 here); --notice-text needs >=4.5:1 (same value, 7.3:1). */
@@ -79,10 +81,12 @@
   --row-temperature: #c1590f;
   --row-wind: #2f7a72;
   --row-precipitation: #2f72b8;
-  /* Rain above the view's ceiling (see services/rainScale.ts); >=3:1 on white. */
-  --rain-heavy: #6a43d1;
-  --rain-heavy-cap: #4a2a9e;
-  --row-snow: #4a90c2;
+  /* Rain intensity classes light -> very heavy (see services/rainScale.ts); >=3:1 on white. */
+  --rain-1: #5f93c9;
+  --rain-2: #2f6fc0;
+  --rain-3: #5a3fc4;
+  --rain-4: #b0249c;
+  --rain-cap: rgba(0, 0, 0, 0.45);
   --now-accent: #0369a1;
   /* Calm informational tone, never the crimson accent. #b7791f on #fff = 3.6:1 (dot, >=3:1);
      #9a6412 on #fff = 5.0:1 (text, >=4.5:1). */
@@ -882,16 +886,16 @@ a {
   background: var(--row-precipitation);
 }
 
-.weather-timeline-row-snow .weather-timeline-bar {
-  background: var(--row-snow);
-}
 
-/* Rain bars: linear height against a fixed per-view ceiling (services/rainScale.ts). Colour only
-   means "above the ceiling": the bar is full height in --rain-heavy with a solid cap on top.
-   No rain draws no bar; any rain gets at least 3px so 0.1 mm stays visible. */
+/* Rain bars: linear height against a fixed per-view ceiling, colour = SMHI-anchored intensity
+   class, a cap when the bar is clipped (services/rainScale.ts). No rain draws no bar; any rain
+   gets at least 3px so 0.1 mm stays visible. */
 .weather-timeline-row-precipitation .weather-timeline-bar { min-height: 3px; }
 .weather-timeline-row-precipitation .weather-timeline-bar.rain-dry { min-height: 0; }
-.weather-timeline-row-precipitation .weather-timeline-bar.rain-overflow { background: var(--rain-heavy); }
+.weather-timeline-row-precipitation .weather-timeline-bar.rain-level-1 { background: var(--rain-1); }
+.weather-timeline-row-precipitation .weather-timeline-bar.rain-level-2 { background: var(--rain-2); }
+.weather-timeline-row-precipitation .weather-timeline-bar.rain-level-3 { background: var(--rain-3); }
+.weather-timeline-row-precipitation .weather-timeline-bar.rain-level-4 { background: var(--rain-4); }
 .weather-timeline-row-precipitation .weather-timeline-bar-cell { position: relative; }
 /* A sibling of the bar, not a child, so the forecast bar's reduced opacity doesn't fade it. */
 .weather-timeline-bar-cap {
@@ -901,7 +905,7 @@ a {
   width: 60%;
   height: 4px;
   border-radius: 2px 2px 0 0;
-  background: var(--rain-heavy-cap);
+  background: var(--rain-cap);
 }
 
 /* Small muted second line under a direction row's value (e.g. wave period). */

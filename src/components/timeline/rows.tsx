@@ -94,7 +94,7 @@ export function BarRow({
               }
               const rain = rainMode ? rainBar(toMm(point.value, row.unitLabel), rainMode, point.durationHours) : null;
               const heightPercent = rain ? rain.heightPercent : Math.max(2, (point.value / max) * 100);
-              const rainClass = rain ? `${rain.dry ? " rain-dry" : ""}${rain.overflow ? " rain-overflow" : ""}` : "";
+              const rainClass = rain ? `${rain.dry ? " rain-dry" : ` rain-level-${rain.level}`}${rain.overflow ? " rain-overflow" : ""}` : "";
               const rateTitle =
                 rain?.ratePerHour != null && !rain.dry
                   ? `≈${formatValue(rain.ratePerHour, 1)} mm/h`

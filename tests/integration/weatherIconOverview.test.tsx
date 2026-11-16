@@ -956,7 +956,7 @@ describe("US3: enrichment rows (Sun & Moon summary removed above the timeline, 0
     expect(screen.queryByText(/Moon:/)).not.toBeInTheDocument();
   });
 
-  it("renders the snow row when the underlying data is classified snowy", async () => {
+  it("draws snowy precipitation in the single precipitation row, with no separate snow row", async () => {
     vi.mocked(getObservations).mockResolvedValue({
       location: stockholm,
       window: "last-24-hours",
@@ -976,10 +976,9 @@ describe("US3: enrichment rows (Sun & Moon summary removed above the timeline, 0
     render(<OverviewHarness location={stockholm} />);
     await waitFor(() => expect(getObservations).toHaveBeenCalled());
 
-    // "Snow" also appears as the condition row's label for this snowy hour, so scope the
-    // query to the row title rather than matching any "Snow" text on the page.
-    const snowTitle = await screen.findAllByText(/Snow/);
-    expect(snowTitle.some((el) => el.className === "weather-timeline-row-title")).toBe(true);
+    await waitFor(() => expect(screen.getByText("2.0 mm")).toBeInTheDocument());
+    expect(document.querySelector(".weather-timeline-row-precipitation .weather-timeline-bar")).not.toBeNull();
+    expect(document.querySelector(".weather-timeline-row-snow")).toBeNull();
   });
 
   it("omits the snow row when nothing in the series is classified snowy", async () => {
@@ -2587,30 +2586,6 @@ describe("Precipitation/snow chart: bars and values in separate rows (032-dashbo
     expect(valueCells[0].textContent).toBe("1.5 mm");
     expect(valueCells[1].textContent).toBe("2.0 mm · 60%");
   });
-
-  it("applies the same two-row split to the snow row", async () => {
-    vi.mocked(getObservations).mockResolvedValue({
-      location: stockholm,
-      window: "last-24-hours",
-      status: "ready",
-      observations: [
-        { timestamp: hoursAgo(1), temperature: -5, precipitation: 3, windSpeed: 1, cloudCoverPercent: 90 },
-      ],
-    });
-
-    const { container } = render(<OverviewHarness location={stockholm} />);
-    await waitFor(() => expect(getObservations).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(container.querySelector(".weather-timeline-row-snow .weather-timeline-bar")).not.toBeNull()
-    );
-
-    const snowBarsRow = container.querySelector(".weather-timeline-row-snow .weather-timeline-row-bars");
-    expect(snowBarsRow!.textContent).toBe("");
-
-    const snowValuesRow = container.querySelector(".weather-timeline-row-snow-values .weather-timeline-row-bar-values");
-    expect(snowValuesRow).not.toBeNull();
-    expect(snowValuesRow!.textContent).toContain("3.0 mm");
-  });
 });
 
 describe("Wind direction on 3-day/7-day views (019-dashboard-polish-round-four, US5)", () => {
@@ -3065,9 +3040,6 @@ describe("Temp chart degree scale (032-dashboard-polish-round-seven, US7)", () =
     ).toBeNull();
     expect(
       container.querySelector(".weather-timeline-row-precipitation .weather-timeline-temp-gridline")
-    ).toBeNull();
-    expect(
-      container.querySelector(".weather-timeline-row-snow .weather-timeline-temp-gridline")
     ).toBeNull();
     // Exactly one scale/gridline set exists in total (the temperature row's own).
     expect(container.querySelectorAll(".weather-timeline-temp-scale")).toHaveLength(1);

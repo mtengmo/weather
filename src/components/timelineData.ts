@@ -176,7 +176,6 @@ export interface TimelineData {
   temperature: TimelineRow;
   precipitation: TimelineRow;
   wind: TimelineRow;
-  snow: TimelineRow;
 }
 
 function unitLabels(unit: UnitSystem) {
@@ -285,20 +284,7 @@ function buildRows(sources: RowSource[], unit: UnitSystem): Omit<TimelineData, "
     available: true,
   };
 
-  const snowPoints: TimelineRowPoint[] = sources.map((s) => ({
-    isForecast: s.isForecast,
-    value: s.isSnowy ? convertPrecipitation(s.precipitation, unit) : null,
-  }));
-  const snow: TimelineRow = {
-    key: "snow",
-    label: "timelineRow.snow",
-    unitLabel: labels.precip,
-    kind: "bar",
-    points: snowPoints,
-    available: snowPoints.some((p) => p.value !== null),
-  };
-
-  return { temperature, precipitation, wind, snow };
+  return { temperature, precipitation, wind };
 }
 
 /**
@@ -396,7 +382,6 @@ export function buildHourlyTimelineData(
     temperature: interpolateIsolatedGaps(rows.temperature),
     precipitation: interpolateIsolatedGaps(rows.precipitation),
     wind: interpolateIsolatedGaps(rows.wind),
-    snow: interpolateIsolatedGaps(rows.snow),
   };
 }
 

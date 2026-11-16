@@ -121,23 +121,6 @@ describe("buildHourlyTimelineData", () => {
     });
   });
 
-  it("only includes a snow value when the point is classified snowy", () => {
-    const data = buildHourlyTimelineData(
-      series([
-        obs({
-          timestamp: hoursFromNow(-1),
-          temperature: -5,
-          precipitation: 2,
-          windSpeed: 1,
-          cloudCoverPercent: 90,
-        }),
-      ]),
-      "metric"
-    );
-    expect(data.snow.available).toBe(true);
-    expect(data.snow.points[0].value).toBe(2);
-  });
-
   describe("precipitation row chanceOfRain (011-precipitation-chance)", () => {
     it("passes chanceOfRain through for a forecast point with data", () => {
       const data = buildHourlyTimelineData(
