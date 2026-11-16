@@ -97,7 +97,11 @@ fun resolveWeatherIconSpec(
             code = fallback
             if (condition == WeatherCondition.Windy) isWindy = true
             // Windy has no night/day of its own, so it follows the caller's night flag.
-            useNight = condition == WeatherCondition.ClearNight || (condition == WeatherCondition.Windy && isNight)
+            useNight = when (condition) {
+                WeatherCondition.ClearNight -> true
+                WeatherCondition.ClearDay -> false
+                else -> isNight
+            }
         }
     }
     val type = code?.let { SMHI_CODE_TO_WEATHER_TYPE[it] } ?: return null

@@ -242,8 +242,11 @@ function resolveFromParts(
       code = fallbackCode;
       label = WEATHER_ICONS[condition].label;
       if (condition === "windy") windy = true;
-      // `windy` has no night/day of its own, so it follows the caller's night flag.
-      useNightVariant = condition === "clear-night" || (condition === "windy" && isNightNow);
+      // Observations carry no SMHI symbol code, so every derived condition (rain, snow, cloud...)
+      // must follow the caller's night flag too, not just clear/windy. Whole-day columns pass
+      // isNightNow=false, so 056-fix-night-moon still holds.
+      useNightVariant =
+        condition === "clear-night" ? true : condition === "clear-day" ? false : isNightNow;
     }
   }
 
