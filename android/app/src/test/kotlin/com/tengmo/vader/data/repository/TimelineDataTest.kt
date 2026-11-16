@@ -92,13 +92,10 @@ class TimelineDataTest {
     }
 
     @Test
-    fun snowRow_nullUnlessSnow() {
-        assertNull(buildHourlyTimeline(hourly(3, 2), now, zone).snow)
+    fun snowyPrecipitation_staysInThePrecipitationRow() {
         val snowy = listOf(obs(at(2026, 1, 5, 8), -3.0, 1.0), obs(at(2026, 1, 5, 9), 5.0, 0.0))
         val data = buildHourlyTimeline(snowy, at(2026, 1, 5, 9, 10), zone)
-        assertNotNull(data.snow)
-        assertEquals(1.0, data.snow!!.points[0].value!!, 1e-9)
-        assertNull(data.snow!!.points[1].value)
+        assertEquals(1.0, data.precipitation.points[0].value!!, 1e-9)
     }
 
     @Test

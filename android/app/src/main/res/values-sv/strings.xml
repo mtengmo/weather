@@ -113,7 +113,6 @@
     <string name="timelineRow_temperature">Temp</string>
     <string name="timelineRow_precipitation">Nederbörd</string>
     <string name="timelineRow_wind">Vind</string>
-    <string name="timelineRow_snow">Snö</string>
     <string name="timelineRow_waves">Vågor</string>
     <string name="timelineRow_swell">Dyning</string>
     <string name="timelineRow_seaTemperature">Vattentemp</string>

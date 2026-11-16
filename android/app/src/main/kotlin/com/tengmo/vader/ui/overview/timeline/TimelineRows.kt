@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import com.tengmo.vader.R
 import com.tengmo.vader.data.model.WeatherCondition
 import com.tengmo.vader.data.repository.TimelineData
+import com.tengmo.vader.data.repository.TimelineMode
+import com.tengmo.vader.data.repository.rainBar
+import com.tengmo.vader.theme.LocalRainColors
 import com.tengmo.vader.data.repository.TimelinePeriod
 import com.tengmo.vader.data.repository.TimelineRow
 import com.tengmo.vader.data.repository.TimelineRowPoint
@@ -233,7 +236,7 @@ internal fun TimelineLineRow(
 }
 
 /**
- * Bars for precipitation / snow: observed solid, forecast lighter; value (and chance) beneath.
+ * Bars for precipitation: observed solid, forecast lighter; value (and chance) beneath.
  * The sea page reuses it for waves / swell: [barColor] colours a bar by height level, [sea] switches
  * the value text to [rowValueText] with the direction arrow above and the "N s" period beneath,
  * and the bar scale to the data's own maximum (web) instead of the 2 mm floor.
@@ -245,7 +248,11 @@ internal fun TimelineBarRow(
     showChance: Boolean,
     barColor: ((TimelineRowPoint) -> Color?)? = null,
     sea: Boolean = false,
+    /** Precipitation row: fixed per-view height ceiling, intensity colours and overflow cap (see RainScale.kt). */
+    rainMode: TimelineMode? = null,
 ) {
+    val rainColors = LocalRainColors.current
+    val imperial = row.unitLabel == "in"
     val scaleMax = remember(row, sea) {
         val max = row.points.mapNotNull { it.value }.maxOrNull() ?: 0.0
         if (sea) max.coerceAtLeast(0.001) else max.coerceAtLeast(2.0)
@@ -262,8 +269,13 @@ internal fun TimelineBarRow(
                 Box(Modifier.fillMaxWidth().height(BarAreaHeight), contentAlignment = Alignment.BottomCenter) {
                     val v = p.value
                     if (v != null && v > 0.0) {
-                        val h = (BarAreaHeight * (v / scaleMax).toFloat()).coerceAtLeast(2.dp)
-                        val fill = barColor?.invoke(p) ?: bar
+                        val rain = rainMode?.let { rainBar(v, imperial, it, p.durationHours) }
+                        val h = if (rain != null) {
+                            (BarAreaHeight * rain.heightFraction).coerceAtLeast(3.dp)
+                        } else {
+                            (BarAreaHeight * (v / scaleMax).toFloat()).coerceAtLeast(2.dp)
+                        }
+                        val fill = rain?.let { rainColors.forLevel(it.level) } ?: barColor?.invoke(p) ?: bar
                         val alpha = if (p.modelled) ModelledAlpha else if (p.isForecast) (if (sea) SeaForecastAlpha else ForecastAlpha) else 1f
                         Box(
                             Modifier
@@ -272,6 +284,16 @@ internal fun TimelineBarRow(
                                 .background(fill.copy(alpha = alpha), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                                 .then(if (p.modelled) Modifier.dashedOutline(modelledOutline) else Modifier),
                         )
+                        if (rain?.overflow == true) {
+                            // Drawn after (on top of) the bar and never faded with the forecast alpha.
+                            Box(
+                                Modifier
+                                    .width(BarWidth)
+                                    .height(3.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(rainColors.cap, RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)),
+                            )
+                        }
                     }
                 }
                 if (sea) {

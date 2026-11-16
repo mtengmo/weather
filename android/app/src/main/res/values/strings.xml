@@ -113,7 +113,6 @@
     <string name="timelineRow_temperature">Temp</string>
     <string name="timelineRow_precipitation">Precipitation</string>
     <string name="timelineRow_wind">Wind</string>
-    <string name="timelineRow_snow">Snow</string>
     <string name="timelineRow_waves">Waves</string>
     <string name="timelineRow_swell">Swell</string>
     <string name="timelineRow_seaTemperature">Sea temp</string>

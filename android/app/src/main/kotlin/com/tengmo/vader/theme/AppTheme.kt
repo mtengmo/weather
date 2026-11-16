@@ -184,6 +184,24 @@ val IvoryWaveColors = WaveColors(
 
 val LocalWaveColors = staticCompositionLocalOf { MidnightWaveColors }
 
+/** Rain intensity classes 1 (light) .. 4 (very heavy) plus the overflow cap; from src/index.css `--rain-1..4`, `--rain-cap`. */
+@Immutable
+data class RainColors(val levels: List<Color>, val cap: Color) {
+    /** [level] is 1..4 (see rainBar). */
+    fun forLevel(level: Int): Color = levels[(level - 1).coerceIn(0, levels.lastIndex)]
+}
+
+val MidnightRainColors = RainColors(
+    listOf(Color(0xFF8FB8E8), Color(0xFF4F8FE0), Color(0xFF7A5CE6), Color(0xFFE052C4)),
+    cap = Color(0x99FFFFFF),
+)
+val IvoryRainColors = RainColors(
+    listOf(Color(0xFF5F93C9), Color(0xFF2F6FC0), Color(0xFF5A3FC4), Color(0xFFB0249C)),
+    cap = Color(0x73000000),
+)
+
+val LocalRainColors = staticCompositionLocalOf { MidnightRainColors }
+
 @Composable
 fun TengmoVaderTheme(theme: Theme, content: @Composable () -> Unit) {
     val colorScheme = when (theme) {
@@ -192,7 +210,8 @@ fun TengmoVaderTheme(theme: Theme, content: @Composable () -> Unit) {
     }
     val notice = if (theme == Theme.Midnight) MidnightNotice else IvoryNotice
     val waves = if (theme == Theme.Midnight) MidnightWaveColors else IvoryWaveColors
-    CompositionLocalProvider(LocalNoticeColors provides notice, LocalWaveColors provides waves) {
+    val rain = if (theme == Theme.Midnight) MidnightRainColors else IvoryRainColors
+    CompositionLocalProvider(LocalNoticeColors provides notice, LocalWaveColors provides waves, LocalRainColors provides rain) {
         MaterialTheme(colorScheme = colorScheme, typography = appTypography(darkBoost = theme == Theme.Midnight)) {
             // A Surface provides LocalContentColor (onBackground) for every plain Text below it —
             // without one, Material 3 text defaults to black and vanishes on the dark Midnight theme.

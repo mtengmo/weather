@@ -84,7 +84,7 @@ private val MaxLabelWidth = 88.dp
 private val ScrimExtra = 20.dp
 private val LabelGap = 6.dp
 
-/** An additional timeline row drawn after the snow row (the sea page's waves, swell, ...). */
+/** An additional timeline row drawn after the wind row (the sea page's waves, swell, ...). */
 data class TimelineExtraRow(
     val title: String,
     val unit: String?,
@@ -257,15 +257,10 @@ private fun TimelineBody(
                 TimelineTemperatureRow(data.temperature, g)
             }
             TimelineLine(stringResource(R.string.timelineRow_precipitation), data.precipitation.unitLabel, scrollState, pad, titleAlpha, onLabelWidth) {
-                TimelineBarRow(data.precipitation, g, showChance = true)
+                TimelineBarRow(data.precipitation, g, showChance = true, rainMode = data.mode)
             }
             TimelineLine(stringResource(R.string.timelineRow_wind), data.wind.unitLabel, scrollState, pad, titleAlpha, onLabelWidth) {
                 TimelineWindRow(data.wind, g)
-            }
-            data.snow?.let { snow ->
-                TimelineLine(stringResource(R.string.timelineRow_snow), snow.unitLabel, scrollState, pad, titleAlpha, onLabelWidth) {
-                    TimelineBarRow(snow, g, showChance = false)
-                }
             }
             extraRows.forEach { extra ->
                 TimelineLine(extra.title, extra.unit, scrollState, pad, titleAlpha, onLabelWidth, subtitle = extra.sublabel) {

@@ -66,10 +66,12 @@ data class TimelineRowPoint(
     val period: Double? = null,
     /** Sea rows: a past value made only of model data (no observation behind it). */
     val modelled: Boolean = false,
+    /** Precipitation row, 3-day view: bucket length in hours, so the bar can show average mm/h. */
+    val durationHours: Int? = null,
 )
 
 data class TimelineRow(
-    val key: String, // "temperature" | "precipitation" | "wind" | "snow"
+    val key: String, // "temperature" | "precipitation" | "wind"
     val unitLabel: String,
     val kind: TimelineRowKind,
     val points: List<TimelineRowPoint>, // same length/order as TimelineData.periods
@@ -95,15 +97,11 @@ data class TimelineData(
     val temperature: TimelineRow,
     val precipitation: TimelineRow,
     val wind: TimelineRow,
-    /** Null unless at least one period is snowy — the UI shows the snow row only when non-null. */
-    val snow: TimelineRow?,
 )
 
 private const val DAILY_BUCKET_COUNT = 7
 private const val SUB_DAY_VIEW_DAY_COUNT = 3
 private const val HOUR_MS = 3_600_000L
-
-private fun isSnowyCondition(c: WeatherCondition?) = c == WeatherCondition.LightSnow || c == WeatherCondition.HeavySnow
 
 private fun boundaryIndex(flags: List<Boolean>): Int? {
     val idx = flags.indexOf(true)
@@ -120,11 +118,12 @@ private fun periodHasUvRisk(isForecast: Boolean, startMs: Long, endMs: Long, uvR
 
 private data class RowSource(
     val temperature: Double?, val precipitation: Double?, val windSpeed: Double?,
-    val windDirection: Double?, val windGust: Double?, val isSnowy: Boolean, val isForecast: Boolean,
+    val windDirection: Double?, val windGust: Double?, val isForecast: Boolean,
     val chanceOfRain: Int? = null, val high: Double? = null, val low: Double? = null,
+    val durationHours: Int? = null,
 )
 
-private class Rows(val temperature: TimelineRow, val precipitation: TimelineRow, val wind: TimelineRow, val snow: TimelineRow?)
+private class Rows(val temperature: TimelineRow, val precipitation: TimelineRow, val wind: TimelineRow)
 
 private fun buildRows(sources: List<RowSource>, unit: UnitSystem, interpolate: Boolean): Rows {
     val temperature = TimelineRow(
@@ -143,6 +142,7 @@ private fun buildRows(sources: List<RowSource>, unit: UnitSystem, interpolate: B
                 it.isForecast, convertPrecipitation(it.precipitation, unit),
                 // A measured reading is not a probability: chance only for forecast points.
                 chanceOfRain = if (it.isForecast) it.chanceOfRain else null,
+                durationHours = it.durationHours,
             )
         },
     )
@@ -155,19 +155,13 @@ private fun buildRows(sources: List<RowSource>, unit: UnitSystem, interpolate: B
             )
         },
     )
-    val snowPoints = sources.map {
-        TimelineRowPoint(it.isForecast, if (it.isSnowy) convertPrecipitation(it.precipitation, unit) else null)
-    }
-    val snow = TimelineRow("snow", precipitationUnitLabel(unit), TimelineRowKind.Bar, snowPoints)
-        .takeIf { snowPoints.any { p -> p.value != null } }
-
     return if (interpolate) {
         Rows(
             interpolateIsolatedGaps(temperature), interpolateIsolatedGaps(precipitation),
-            interpolateIsolatedGaps(wind), snow?.let(::interpolateIsolatedGaps),
+            interpolateIsolatedGaps(wind),
         )
     } else {
-        Rows(temperature, precipitation, wind, snow)
+        Rows(temperature, precipitation, wind)
     }
 }
 
@@ -273,7 +267,6 @@ fun buildHourlyTimeline(
     val sources = kept.zip(periods).map { (obs, p) ->
         RowSource(
             obs.temperature, obs.precipitation, obs.windSpeed, obs.windDirection, obs.windGust,
-            isSnowy = isSnowyCondition(hourlyCondition(obs, p.endMillis, zone, withChance = false)),
             isForecast = obs.isForecast, chanceOfRain = obs.chanceOfRain,
         )
     }
@@ -284,7 +277,7 @@ fun buildHourlyTimeline(
         periods = periods,
         nowBoundaryIndex = boundary,
         nowPosition = if (boundary != null && periods.isNotEmpty()) (boundary + 1).toDouble() / periods.size else null,
-        temperature = rows.temperature, precipitation = rows.precipitation, wind = rows.wind, snow = rows.snow,
+        temperature = rows.temperature, precipitation = rows.precipitation, wind = rows.wind,
     )
 }
 
@@ -345,10 +338,8 @@ private fun daysToTimeline(
     val sources = days.map { day ->
         RowSource(
             day.average, day.totalPrecipitation, day.windAverage, day.windDirection, day.windGustHigh,
-            isSnowy = isSnowyCondition(
-                deriveWeatherCondition(WeatherConditionInput(day.average, day.totalPrecipitation, day.windAverage, day.cloudAverage?.toInt())),
-            ),
             isForecast = day.isForecast, chanceOfRain = day.chanceOfRainMax, high = day.high, low = day.low,
+            durationHours = day.subDayStartHour?.let { start -> day.subDayEndHour?.let { end -> end - start } },
         )
     }
     // No boundary-column interpolation at daily/sub-day granularity (web).
@@ -365,7 +356,7 @@ private fun daysToTimeline(
         nowBoundaryIndex = boundary,
         nowColumnIndex = nowIdx.takeIf { hasNow },
         nowPosition = if (hasNow) (nowIdx + fraction) / days.size else null,
-        temperature = rows.temperature, precipitation = rows.precipitation, wind = rows.wind, snow = rows.snow,
+        temperature = rows.temperature, precipitation = rows.precipitation, wind = rows.wind,
     )
 }
 
